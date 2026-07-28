@@ -38,7 +38,9 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    const form = new FormData(e.currentTarget);
+    // Pass the submitter so the clicked button's action (submit vs draft) is
+    // captured — FormData(form) alone omits it, which defaulted everything to DRAFT.
+    const form = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
 
     const body = {
       eventName: form.get("eventName"),
