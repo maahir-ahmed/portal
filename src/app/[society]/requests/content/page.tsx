@@ -26,15 +26,15 @@ const TABS: ContentRequestStatus[] = [
 
 const CLOSED = new Set(["COMPLETED", "CANCELLED"]);
 
-// Left-accent colour based on how close the content is due (open requests only).
-function proximityAccent(dueDate: Date, status: string): string {
+// Whole-card highlight (bg + border) based on how close the content is due.
+function proximityClasses(dueDate: Date, status: string): string {
   if (CLOSED.has(status)) return "border-l-zinc-200";
   const days = Math.ceil((dueDate.getTime() - Date.now()) / 86_400_000);
-  if (days < 0) return "border-l-red-600";      // overdue
-  if (days <= 2) return "border-l-red-500";      // imminent
-  if (days <= 6) return "border-l-amber-500";     // this week
-  if (days <= 14) return "border-l-yellow-400";   // soon
-  return "border-l-emerald-500";                  // plenty of time
+  if (days < 0) return "border-l-red-600 border-red-200 bg-red-100";       // overdue
+  if (days <= 2) return "border-l-red-500 border-red-200 bg-red-50";        // imminent
+  if (days <= 6) return "border-l-amber-500 border-amber-200 bg-amber-50";   // this week
+  if (days <= 14) return "border-l-yellow-400 border-yellow-200 bg-yellow-50"; // soon
+  return "border-l-emerald-500 border-emerald-200 bg-emerald-50";           // plenty of time
 }
 
 function daysLabel(dueDate: Date, status: string): string | null {
@@ -132,7 +132,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
             const label = daysLabel(r.deadline, r.status);
             return (
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`}>
-                <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityAccent(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
+                <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityClasses(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 min-w-0">
