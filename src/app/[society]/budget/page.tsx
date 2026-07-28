@@ -21,8 +21,9 @@ export default async function BudgetPage({ params }: Props) {
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
   });
   if (!membership) redirect("/");
-  // Budget planning + oversight is exec-only (claims are submitted via Treasury).
-  if (membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
+  // All members can see the budget totals; only execs get the individual claims
+  // list (treasury claims are private) and the edit controls.
+  const isExec = membership.role === "EXECUTIVE";
 
   const societyId = membership.societyId;
 
@@ -66,7 +67,8 @@ export default async function BudgetPage({ params }: Props) {
     <SpendingBudgetClient
       societySlug={societySlug}
       categories={categories}
-      transactions={transactions}
+      transactions={isExec ? transactions : []}
+      isExec={isExec}
     />
   );
 }

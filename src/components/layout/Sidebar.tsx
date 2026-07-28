@@ -51,7 +51,7 @@ const navItems = [
     href: "/budget",
     label: "Spending Budget",
     icon: PiggyBank,
-    minRole: "EXECUTIVE" as const,
+    // Visible to all members (view-only); edits + claim list are exec-only in the page.
   },
   {
     href: "/executive/queue",
