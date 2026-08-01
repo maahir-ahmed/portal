@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
+import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
 import { formatDate, formatDateTime, isLateArcSubmission } from "@/lib/utils";
 import { ArrowLeft, AlertTriangle, Users, MapPin, Clock, Pencil } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
@@ -80,11 +81,21 @@ export default async function RoomBookingDetailPage({ params }: Props) {
           </p>
         </div>
         {canEdit && (
-          <Button asChild variant="outline" size="sm" className="flex-shrink-0">
-            <Link href={`/${societySlug}/requests/room-booking/${booking.id}/edit`}>
-              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${societySlug}/requests/room-booking/${booking.id}/edit`}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+              </Link>
+            </Button>
+            <ConfirmDelete
+              endpoint={`/api/societies/${societySlug}/room-bookings/${booking.id}`}
+              redirect={`/${societySlug}/requests/room-booking`}
+              title="Delete this room booking?"
+              description="This permanently removes the booking request and its comments. If it was already submitted to Arc, cancel it there too. This cannot be undone."
+              successMessage="Room booking deleted"
+              confirmLabel="Delete booking"
+            />
+          </div>
         )}
       </div>
 
