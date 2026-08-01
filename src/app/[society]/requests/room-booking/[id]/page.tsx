@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { formatDate, formatDateTime, isLateArcSubmission } from "@/lib/utils";
-import { ArrowLeft, AlertTriangle, Users, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Users, MapPin, Clock, Pencil } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
 interface Props {
@@ -44,7 +44,6 @@ export default async function RoomBookingDetailPage({ params }: Props) {
     where: { id },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true, email: true } },
-      assignedTo: { select: { id: true, name: true, avatarUrl: true } },
       thread: {
         include: {
           comments: {
@@ -61,12 +60,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
   const isExec = membership.role === "EXECUTIVE";
   const isLate = booking.hasExternalGuests && isLateArcSubmission(booking.preferredDate);
 
-  const execMembers = isExec
-    ? await prisma.societyMembership.findMany({
-        where: { societyId: membership.societyId, role: "EXECUTIVE", isActive: true },
-        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
-      })
-    : [];
+  const canEdit = isExec || booking.submittedById === session.user.id;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -85,6 +79,13 @@ export default async function RoomBookingDetailPage({ params }: Props) {
             Submitted by {booking.submittedBy.name} · {formatDateTime(booking.createdAt)}
           </p>
         </div>
+        {canEdit && (
+          <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+            <Link href={`/${societySlug}/requests/room-booking/${booking.id}/edit`}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+            </Link>
+          </Button>
+        )}
       </div>
 
       {isLate && (
@@ -195,8 +196,6 @@ export default async function RoomBookingDetailPage({ params }: Props) {
               currentStatus={booking.status}
               statuses={STATUSES}
               apiPath={`/api/societies/${societySlug}/room-bookings/${booking.id}`}
-              members={execMembers.map((m) => m.user)}
-              assignedToId={booking.assignedToId}
             />
           )}
         </div>
