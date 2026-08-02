@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,8 +25,11 @@ export interface ContentRequestInitial {
   otherNotes: string | null;
 }
 
-// Date -> value for <input type="datetime-local">
-const dtLocal = (d?: string | null) => (d ? format(new Date(d), "yyyy-MM-dd'T'HH:mm") : "");
+// Stored instant -> value for <input type="datetime-local">. Dates are treated as
+// naive wall-clock (stored/displayed as-is in UTC), so slice the UTC ISO here.
+// Formatting in the viewer's local timezone shifted the value by their offset on
+// every edit round-trip.
+const dtLocal = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 16) : "");
 
 export function ContentRequestForm({ societySlug, initial }: { societySlug: string; initial?: ContentRequestInitial }) {
   const router = useRouter();
