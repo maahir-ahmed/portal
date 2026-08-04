@@ -104,11 +104,11 @@ export default function NewRoomBookingPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time *</Label>
-                <Input id="startTime" name="startTime" type="time" required />
+                <Input id="startTime" name="startTime" type="time" step={900} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endTime">End Time *</Label>
-                <Input id="endTime" name="endTime" type="time" required />
+                <Input id="endTime" name="endTime" type="time" step={900} required />
               </div>
             </div>
             <div className="space-y-2">

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { formatDate, isLateArcSubmission } from "@/lib/utils";
-import { Plus, Building2, AlertTriangle } from "lucide-react";
+import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -91,12 +91,12 @@ export default async function RoomBookingsPage({ params }: Props) {
                             )}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                            <span>📅 {formatDate(b.preferredDate)}</span>
-                            <span>🕐 {b.startTime} – {b.endTime}</span>
-                            <span>📍 {locationLabels[b.preferredLocation]}</span>
-                            <span>👥 {b.maxAttendees} max</span>
+                            <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(b.preferredDate)}</span>
+                            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {b.startTime} – {b.endTime}</span>
+                            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {locationLabels[b.preferredLocation]}</span>
+                            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {b.maxAttendees} max</span>
                             {b.hasExternalGuests && (
-                              <span className="text-orange-600">⚠ External guests</span>
+                              <span className="inline-flex items-center gap-1 text-orange-600"><AlertTriangle className="h-3 w-3" /> External guests</span>
                             )}
                           </div>
                         </div>

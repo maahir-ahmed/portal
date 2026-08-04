@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, formatDistanceToNow, differenceInBusinessDays } from "date-fns";
+import { format, formatDistanceToNow, differenceInBusinessDays, isSameDay } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -12,6 +12,18 @@ export function formatDate(date: Date | string) {
 
 export function formatDateTime(date: Date | string) {
   return format(new Date(date), "d MMM yyyy, h:mm a");
+}
+
+export function formatTime(date: Date | string) {
+  return format(new Date(date), "h:mm a");
+}
+
+// "6:00 PM – 9:00 PM", or "6:00 PM – 5 Aug 2026, 1:00 AM" when the event spans days.
+export function formatTimeRange(start: Date | string, end?: Date | string | null) {
+  const s = new Date(start);
+  if (!end) return formatTime(s);
+  const e = new Date(end);
+  return `${formatTime(s)} – ${isSameDay(s, e) ? formatTime(e) : formatDateTime(e)}`;
 }
 
 export function timeAgo(date: Date | string) {

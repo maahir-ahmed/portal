@@ -105,11 +105,11 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date & Time *</Label>
-                <Input id="startDate" name="startDate" type="datetime-local" defaultValue={dtLocal(initial?.startDate)} required />
+                <Input id="startDate" name="startDate" type="datetime-local" step={900} defaultValue={dtLocal(initial?.startDate)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endDate">End Date & Time</Label>
-                <Input id="endDate" name="endDate" type="datetime-local" defaultValue={dtLocal(initial?.endDate)} />
+                <Input id="endDate" name="endDate" type="datetime-local" step={900} defaultValue={dtLocal(initial?.endDate)} />
               </div>
             </div>
             <div className="space-y-2">
@@ -129,7 +129,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
             </div>
             <div className="space-y-2">
               <Label htmlFor="deadline">Content Deadline *</Label>
-              <Input id="deadline" name="deadline" type="datetime-local" defaultValue={dtLocal(initial?.deadline)} required />
+              <Input id="deadline" name="deadline" type="datetime-local" step={900} defaultValue={dtLocal(initial?.deadline)} required />
               <p className="text-xs text-muted-foreground">When do you need the content ready by?</p>
             </div>
           </CardContent>

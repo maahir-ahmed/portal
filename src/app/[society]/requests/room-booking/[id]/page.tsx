@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { formatDate, formatDateTime, isLateArcSubmission } from "@/lib/utils";
-import { ArrowLeft, AlertTriangle, Users, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
 interface Props {
@@ -109,7 +109,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span><strong>Date:</strong> {formatDate(booking.preferredDate)}</span>
                 </div>
                 <div className="flex items-center gap-2">

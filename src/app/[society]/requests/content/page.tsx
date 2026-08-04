@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatDate, statusLabel, cn } from "@/lib/utils";
-import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, MapPin } from "lucide-react";
+import { formatDate, formatTimeRange, statusLabel, cn } from "@/lib/utils";
+import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, Clock, MapPin } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
 interface Props {
@@ -139,6 +139,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
                           <p className="font-medium truncate">{r.eventName}</p>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                             <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(r.startDate)}</span>
+                            <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {formatTimeRange(r.startDate, r.endDate)}</span>
                             <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {r.location}</span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-2 flex-wrap">

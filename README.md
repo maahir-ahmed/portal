@@ -7,7 +7,7 @@ Web app for running a university society committee: content requests, room booki
 **Requests**
 - **Content requests** — marketing workflow. The list is ordered by event date, colour-coded by how close the event is, and each status tab shows a count. Marketing directors upload finished graphics, paste the event blurb, and tick items done. Rubric event links generate a transparent QR code automatically.
 - **Room bookings** — Arc booking requests, with a warning when external guests need 7 business days' notice.
-- **Treasury** — reimbursement claims with amount-based multi-executive approval (≥ $50 needs the treasurer). Owners can edit claims and add/remove receipts while a claim is still pending. Bank details saved per user.
+- **Treasury** — reimbursement claims with amount-based multi-executive approval (≥ $50 needs the treasurer). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts while a claim is still pending. Bank details saved per user.
 - **Printing** — club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold), approved by execs; approved requests draw down the budget.
 
 **Spending budget** (exec-only tab) — the yearly budget tracker, replacing the committee's spreadsheet:
@@ -27,6 +27,8 @@ Web app for running a university society committee: content requests, room booki
 Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL · NextAuth v5 · Tailwind CSS v4 · shadcn/ui
 
 ## Getting started
+
+Needs Node 20+ and Docker (for the local database).
 
 ```bash
 npm install
@@ -82,3 +84,13 @@ src/
 prisma/           schema + seed
 deploy/           Docker compose, env templates, deploy scripts
 ```
+
+## Notes
+
+Rubric integration talks to [hellorubric.com](https://hellorubric.com) with per-society credentials entered in Settings and stored in your own database — nothing is committed to this repo, and the Rubric API is undocumented, so those endpoints may break without warning. Not affiliated with or endorsed by Rubric, Arc UNSW, or UNSW.
+
+Built for one society's committee rather than as a general product: expect UNSW/Arc-specific assumptions (room booking rules, Arc grant flow, printing tiers). Issues and PRs are welcome, but there's no support commitment. Found a security bug? Open an issue with no exploit detail and I'll follow up.
+
+## License
+
+[MIT](LICENSE) © Maahir Ahmed

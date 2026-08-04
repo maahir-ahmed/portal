@@ -13,8 +13,8 @@ import { RubricForm } from "./RubricForm";
 import { RubricQrCode } from "@/components/requests/RubricQrCode";
 import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog";
 import { AssignRubricEvent } from "@/components/requests/AssignRubricEvent";
-import { formatDate, formatDateTime } from "@/lib/utils";
-import { ArrowLeft, Calendar, MapPin, Clock, QrCode, ExternalLink, Send, Pencil } from "lucide-react";
+import { formatDate, formatDateTime, formatTimeRange } from "@/lib/utils";
+import { ArrowLeft, Calendar, MapPin, Clock, Hourglass, QrCode, ExternalLink, Send, Pencil } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
 interface Props {
@@ -98,14 +98,18 @@ export default async function ContentRequestDetailPage({ params }: Props) {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <span><strong>Date:</strong> {formatDate(request.startDate)}{request.endDate ? ` – ${formatDate(request.endDate)}` : ""}</span>
+                  <span><strong>Date:</strong> {formatDate(request.startDate)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span><strong>Time:</strong> {formatTimeRange(request.startDate, request.endDate)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span><strong>Location:</strong> {request.location}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <Hourglass className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span><strong>Deadline:</strong> {formatDateTime(request.deadline)}</span>
                 </div>
               </div>
