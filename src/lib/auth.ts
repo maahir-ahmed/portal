@@ -61,7 +61,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
-        token.memberships = (user as any).memberships;
+        token.memberships = user.memberships;
       }
       // Reflect profile edits (name/email) made via the account page without re-login.
       if (trigger === "update" && session) {
@@ -72,8 +72,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token) {
-        (session.user as any).id = token.id as string;
-        (session.user as any).memberships = token.memberships as any;
+        session.user.id = token.id as string;
+        session.user.memberships = token.memberships;
       }
       return session;
     },

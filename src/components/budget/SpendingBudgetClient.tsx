@@ -41,8 +41,7 @@ interface Txn {
 const UNCLASSIFIED = "__none__";
 const money = (v: number | null) => (v == null ? "—" : formatCurrency(v));
 
-const SUM_FIELDS = ["budget2024", "budget2024v2", "budget2025", "usage2025", "yearlyBudget", "usage2026", "worstCase"] as const;
-type SumField = (typeof SUM_FIELDS)[number];
+type SumField = "budget2024" | "budget2024v2" | "budget2025" | "usage2025" | "yearlyBudget" | "usage2026" | "worstCase";
 function sumOf(cats: Category[], field: SumField): number {
   return Math.round(cats.reduce((s, c) => s + (Number(c[field]) || 0), 0) * 100) / 100;
 }
@@ -63,7 +62,7 @@ export function SpendingBudgetClient({ societySlug, categories, transactions, is
   function toggle(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }

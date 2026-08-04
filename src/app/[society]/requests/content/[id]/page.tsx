@@ -305,12 +305,10 @@ export default async function ContentRequestDetailPage({ params }: Props) {
 
           {/* Thread */}
           <ThreadView
-            threadId={request.thread?.id}
             comments={request.thread?.comments ?? []}
             requestType="content-request"
             requestId={request.id}
             societySlug={societySlug}
-            currentUserId={session.user.id}
             isExec={isExec}
           />
         </div>
@@ -334,7 +332,6 @@ export default async function ContentRequestDetailPage({ params }: Props) {
 
           {isExec && (
             <StatusUpdater
-              requestId={request.id}
               currentStatus={request.status}
               statuses={STATUSES}
               apiPath={`/api/societies/${societySlug}/content-requests/${request.id}`}

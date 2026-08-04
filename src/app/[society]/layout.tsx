@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import type { SessionUser } from "@/types";
 
 interface SocietyLayoutProps {
   children: React.ReactNode;
@@ -17,8 +18,8 @@ export default function SocietyLayout({ children }: SocietyLayoutProps) {
 
   if (!session?.user) return null;
 
-  const membership = (session.user as any).memberships?.find(
-    (m: any) => m.society.slug === params.society
+  const membership = session.user.memberships?.find(
+    (m) => m.society.slug === params.society
   );
 
   const societyName = membership?.society?.name ?? params.society;
@@ -31,7 +32,7 @@ export default function SocietyLayout({ children }: SocietyLayoutProps) {
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <Sidebar
-          user={session.user as any}
+          user={session.user as SessionUser}
           societyName={societyName}
           societySlug={params.society}
           userRole={userRole}
@@ -46,7 +47,7 @@ export default function SocietyLayout({ children }: SocietyLayoutProps) {
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           <div className="fixed left-0 top-0 h-full z-50">
             <Sidebar
-              user={session.user as any}
+              user={session.user as SessionUser}
               societyName={societyName}
               societySlug={params.society}
               userRole={userRole}

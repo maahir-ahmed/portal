@@ -1,5 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Rubric serves these images from hosts we do not
+   know ahead of time; next/image would need a wildcard remotePattern to render them. */
+
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -33,6 +36,7 @@ export default function RubricEventsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.society]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets its own loading flag; state already starts in that value on mount
   useEffect(() => { load(); }, [load]);
 
   async function handleArchive(eventId: string | number) {

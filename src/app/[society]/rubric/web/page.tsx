@@ -131,7 +131,7 @@ export default async function RubricWebPage({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Fill Rubric's forms using the details panel — click any field to copy it, then paste into the form.
+            Fill Rubric&apos;s forms using the details panel — click any field to copy it, then paste into the form.
           </p>
           <a
             href={RUBRIC_URL}

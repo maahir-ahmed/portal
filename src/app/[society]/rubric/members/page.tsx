@@ -47,6 +47,7 @@ export default function RubricMembersPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.society]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets its own loading flag; state already starts in that value on mount
   useEffect(() => { load(filter); }, [filter, load]);
 
   function exportCsv() {

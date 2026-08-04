@@ -13,7 +13,7 @@ interface Approval {
   id: string;
   approvedById: string;
   isTreasurer: boolean;
-  approvedAt: string;
+  approvedAt: Date | string;
   approvedBy: { id: string; name: string; avatarUrl?: string | null };
 }
 
@@ -27,7 +27,6 @@ interface TreasuryApprovalPanelProps {
   isApproved: boolean;
   isExec: boolean;
   hasUserApproved: boolean;
-  currentUserId: string;
   currentStatus: string;
 }
 
@@ -41,7 +40,6 @@ export function TreasuryApprovalPanel({
   isApproved,
   isExec,
   hasUserApproved,
-  currentUserId,
   currentStatus,
 }: TreasuryApprovalPanelProps) {
   const router = useRouter();

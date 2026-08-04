@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Bell, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { timeAgo } from "@/lib/utils";
@@ -32,13 +31,7 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  async function fetchNotifications() {
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications?limit=10");
       if (res.ok) {
@@ -47,7 +40,14 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
         setUnreadCount(data.unreadCount);
       }
     } catch {}
-  }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- polls an external API; state is set after the fetch resolves
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   async function markAllRead() {
     await fetch("/api/notifications/read-all", { method: "POST" });

@@ -11,22 +11,18 @@ import { MessageSquare, Lock, Send } from "lucide-react";
 import type { CommentWithAuthor } from "@/types";
 
 interface ThreadViewProps {
-  threadId?: string;
   comments: CommentWithAuthor[];
   requestType: string;
   requestId: string;
   societySlug: string;
-  currentUserId: string;
   isExec: boolean;
 }
 
 export function ThreadView({
-  threadId,
   comments: initialComments,
   requestType,
   requestId,
   societySlug,
-  currentUserId,
   isExec,
 }: ThreadViewProps) {
   const [comments, setComments] = useState(initialComments);

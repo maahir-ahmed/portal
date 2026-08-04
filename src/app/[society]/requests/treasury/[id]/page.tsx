@@ -191,23 +191,20 @@ export default async function TreasuryDetailPage({ params }: Props) {
             requestId={request.id}
             societySlug={societySlug}
             amount={amount}
-            approvals={request.approvals as any}
+            approvals={request.approvals}
             neededApprovals={neededApprovals}
             needsTreasurer={needsTreasurer}
             isApproved={isApproved}
             isExec={isExec}
             hasUserApproved={hasUserApproved}
-            currentUserId={session.user.id}
             currentStatus={request.status}
           />
 
           <ThreadView
-            threadId={request.thread?.id}
             comments={request.thread?.comments ?? []}
             requestType="treasury"
             requestId={request.id}
             societySlug={societySlug}
-            currentUserId={session.user.id}
             isExec={isExec}
           />
         </div>
@@ -278,7 +275,6 @@ export default async function TreasuryDetailPage({ params }: Props) {
 
           {isExec && (
             <StatusUpdater
-              requestId={request.id}
               currentStatus={request.status}
               statuses={STATUSES}
               apiPath={`/api/societies/${societySlug}/treasury/${request.id}`}

@@ -277,7 +277,7 @@ export default function NewTreasuryPage() {
                       onChange={() => setUseExisting(false)}
                       className="h-4 w-4"
                     />
-                    <span className="text-sm">I'll enter my own</span>
+                    <span className="text-sm">I&apos;ll enter my own</span>
                   </label>
                 </div>
 

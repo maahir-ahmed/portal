@@ -25,7 +25,7 @@ async function main() {
   });
 
   // Create demo departments
-  const [marketing, technical, events] = await Promise.all([
+  const [marketing, technical] = await Promise.all([
     prisma.department.upsert({ where: { id: "dept-marketing" }, update: {}, create: { id: "dept-marketing", societyId: society.id, name: "Marketing" } }),
     prisma.department.upsert({ where: { id: "dept-technical" }, update: {}, create: { id: "dept-technical", societyId: society.id, name: "Technical" } }),
     prisma.department.upsert({ where: { id: "dept-events" }, update: {}, create: { id: "dept-events", societyId: society.id, name: "Events" } }),

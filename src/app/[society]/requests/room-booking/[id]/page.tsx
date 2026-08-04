@@ -175,12 +175,10 @@ export default async function RoomBookingDetailPage({ params }: Props) {
           </Card>
 
           <ThreadView
-            threadId={booking.thread?.id}
             comments={booking.thread?.comments ?? []}
             requestType="room-booking"
             requestId={booking.id}
             societySlug={societySlug}
-            currentUserId={session.user.id}
             isExec={isExec}
           />
         </div>
@@ -203,7 +201,6 @@ export default async function RoomBookingDetailPage({ params }: Props) {
 
           {isExec && (
             <StatusUpdater
-              requestId={booking.id}
               currentStatus={booking.status}
               statuses={STATUSES}
               apiPath={`/api/societies/${societySlug}/room-bookings/${booking.id}`}

@@ -1,5 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Rubric serves these images from hosts we do not
+   know ahead of time; next/image would need a wildcard remotePattern to render them. */
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { RubricShell } from "@/components/rubric/RubricShell";

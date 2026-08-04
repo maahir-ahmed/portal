@@ -16,7 +16,6 @@ interface Member {
 }
 
 interface StatusUpdaterProps {
-  requestId: string;
   currentStatus: string;
   statuses: string[];
   apiPath: string;
@@ -25,7 +24,6 @@ interface StatusUpdaterProps {
 }
 
 export function StatusUpdater({
-  requestId,
   currentStatus,
   statuses,
   apiPath,

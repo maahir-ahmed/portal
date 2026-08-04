@@ -4,6 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import type { ContentRequestStatus } from "@prisma/client";
 
 const createSchema = z.object({
   eventName: z.string().min(1).max(200),
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
   const requests = await prisma.contentRequest.findMany({
     where: {
       societyId: membership!.societyId,
-      ...(status ? { status: status as any } : {}),
+      ...(status ? { status: status as ContentRequestStatus } : {}),
       ...(!canSeeAll ? { submittedById: session!.user.id } : {}),
     },
     include: {

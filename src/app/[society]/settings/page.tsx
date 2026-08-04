@@ -13,11 +13,12 @@ import { TitlesManager } from "@/components/settings/TitlesManager";
 import { RubricSettings } from "@/components/settings/RubricSettings";
 import { ImageUploadField } from "@/components/settings/ImageUploadField";
 import { SECRETARIAL_ALLOWANCE } from "@/lib/printing";
+import type { Society } from "@prisma/client";
 
 export default function SettingsPage() {
   const params = useParams<{ society: string }>();
   const [saving, setSaving] = useState(false);
-  const [society, setSociety] = useState<any>(null);
+  const [society, setSociety] = useState<Society | null>(null);
 
   useEffect(() => {
     fetch(`/api/societies/${params.society}`)
@@ -146,18 +147,18 @@ export default function SettingsPage() {
             <CardTitle className="text-base">Social Media & Links</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
+            {([
               { name: "website", label: "Website", icon: Globe, placeholder: "https://secsoc.unsw.edu.au" },
               { name: "facebookUrl", label: "Facebook", icon: Share2, placeholder: "https://facebook.com/..." },
               { name: "instagramUrl", label: "Instagram", icon: Share2, placeholder: "https://instagram.com/..." },
               { name: "discordUrl", label: "Discord", icon: Link2, placeholder: "https://discord.gg/..." },
               { name: "linkedinUrl", label: "LinkedIn", icon: Link2, placeholder: "https://linkedin.com/company/..." },
-            ].map(({ name, label, icon: Icon, placeholder }) => (
+            ] as const).map(({ name, label, icon: Icon, placeholder }) => (
               <div key={name} className="space-y-2">
                 <Label htmlFor={name} className="flex items-center gap-2">
                   <Icon className="h-4 w-4" /> {label}
                 </Label>
-                <Input id={name} name={name} type="url" defaultValue={(society as any)[name] ?? ""} placeholder={placeholder} />
+                <Input id={name} name={name} type="url" defaultValue={society[name] ?? ""} placeholder={placeholder} />
               </div>
             ))}
           </CardContent>

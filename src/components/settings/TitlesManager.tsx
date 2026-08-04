@@ -39,6 +39,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
     if (res.ok) setTitles(await res.json());
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load-on-mount; re-runs only when the society changes
   useEffect(() => { load(); }, [societySlug]);
 
   async function handleAdd(roleLevel: string) {

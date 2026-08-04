@@ -17,7 +17,7 @@ export async function requireAuth(): Promise<AuthResult> {
   if (!session?.user?.id) {
     return { session: null, error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
-  return { session: session as any, error: null };
+  return { session: session as NonNullable<AuthResult["session"]>, error: null };
 }
 
 type MembershipResult =
