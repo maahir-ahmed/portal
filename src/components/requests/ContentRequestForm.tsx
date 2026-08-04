@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimeField } from "@/components/ui/datetime";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -109,11 +110,11 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date & Time *</Label>
-                <Input id="startDate" name="startDate" type="datetime-local" step={900} defaultValue={dtLocal(initial?.startDate)} required />
+                <DateTimeField id="startDate" name="startDate" defaultValue={dtLocal(initial?.startDate)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endDate">End Date & Time</Label>
-                <Input id="endDate" name="endDate" type="datetime-local" step={900} defaultValue={dtLocal(initial?.endDate)} />
+                <DateTimeField id="endDate" name="endDate" defaultValue={dtLocal(initial?.endDate)} />
               </div>
             </div>
             <div className="space-y-2">
@@ -133,7 +134,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
             </div>
             <div className="space-y-2">
               <Label htmlFor="deadline">Content Deadline *</Label>
-              <Input id="deadline" name="deadline" type="datetime-local" step={900} defaultValue={dtLocal(initial?.deadline)} required />
+              <DateTimeField id="deadline" name="deadline" defaultValue={dtLocal(initial?.deadline)} required />
               <p className="text-xs text-muted-foreground">When do you need the content ready by?</p>
             </div>
           </CardContent>

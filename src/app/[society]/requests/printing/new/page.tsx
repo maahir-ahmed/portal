@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimeField } from "@/components/ui/datetime";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,7 +115,7 @@ export default function NewPrintingRequestPage() {
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="pickupAt">Latest pick-up date &amp; time *</Label>
-              <Input id="pickupAt" name="pickupAt" type="datetime-local" required />
+              <DateTimeField id="pickupAt" name="pickupAt" required />
               <p className="text-xs text-muted-foreground">
                 Submitted on behalf of your society — your name and email are taken from your account.
               </p>

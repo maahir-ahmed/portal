@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimeSelect } from "@/components/ui/datetime";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -145,11 +146,11 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
               </div>
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time *</Label>
-                <Input id="startTime" name="startTime" type="time" step={900} defaultValue={initial?.startTime} required />
+                <TimeSelect id="startTime" name="startTime" defaultValue={initial?.startTime} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endTime">End Time *</Label>
-                <Input id="endTime" name="endTime" type="time" step={900} defaultValue={initial?.endTime} required />
+                <TimeSelect id="endTime" name="endTime" defaultValue={initial?.endTime} required />
               </div>
             </div>
             <div className="space-y-2">

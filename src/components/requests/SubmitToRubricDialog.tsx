@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateTimeField } from "@/components/ui/datetime";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -233,11 +234,11 @@ export function SubmitToRubricDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date & Time *</Label>
-                <Input type="datetime-local" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <DateTimeField defaultValue={startDate} onChange={setStartDate} />
               </div>
               <div className="space-y-2">
                 <Label>End Date & Time *</Label>
-                <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <DateTimeField defaultValue={endDate} onChange={setEndDate} />
               </div>
             </div>
             <div className="space-y-2">
