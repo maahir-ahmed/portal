@@ -26,24 +26,24 @@ const TABS: ContentRequestStatus[] = [
 
 const CLOSED = new Set(["COMPLETED", "CANCELLED"]);
 
-// Left-accent colour based on how close the event is (open requests only).
-function proximityAccent(startDate: Date, status: string): string {
+// Whole-card highlight (bg + border) based on how close the content is due.
+function proximityClasses(dueDate: Date, status: string): string {
   if (CLOSED.has(status)) return "border-l-zinc-200";
-  const days = Math.ceil((startDate.getTime() - Date.now()) / 86_400_000);
-  if (days < 0) return "border-l-red-600";      // event passed, still open
-  if (days <= 2) return "border-l-red-500";      // imminent
-  if (days <= 6) return "border-l-amber-500";     // this week
-  if (days <= 14) return "border-l-yellow-400";   // soon
-  return "border-l-emerald-500";                  // plenty of time
+  const days = Math.ceil((dueDate.getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return "border-l-red-600 border-red-200 bg-red-100";       // overdue
+  if (days <= 2) return "border-l-red-500 border-red-200 bg-red-50";        // imminent
+  if (days <= 6) return "border-l-amber-500 border-amber-200 bg-amber-50";   // this week
+  if (days <= 14) return "border-l-yellow-400 border-yellow-200 bg-yellow-50"; // soon
+  return "border-l-emerald-500 border-emerald-200 bg-emerald-50";           // plenty of time
 }
 
-function daysLabel(startDate: Date, status: string): string | null {
+function daysLabel(dueDate: Date, status: string): string | null {
   if (CLOSED.has(status)) return null;
-  const days = Math.ceil((startDate.getTime() - Date.now()) / 86_400_000);
+  const days = Math.ceil((dueDate.getTime() - Date.now()) / 86_400_000);
   if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return "Today";
-  if (days === 1) return "Tomorrow";
-  return `in ${days}d`;
+  if (days === 0) return "Due today";
+  if (days === 1) return "Due tomorrow";
+  return `Due in ${days}d`;
 }
 
 export default async function ContentRequestsPage({ params, searchParams }: Props) {
@@ -74,12 +74,14 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
   const countFor = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
   const totalCount = counts.reduce((a, c) => a + c._count, 0);
 
-  // Open requests first (by event date, soonest first), then closed ones (also by date).
+  // Open requests first (soonest due first), then closed ones newest-to-oldest.
   const requests = rows.sort((a, b) => {
     const aClosed = CLOSED.has(a.status) ? 1 : 0;
     const bClosed = CLOSED.has(b.status) ? 1 : 0;
     if (aClosed !== bClosed) return aClosed - bClosed;
-    return a.startDate.getTime() - b.startDate.getTime();
+    return aClosed
+      ? b.startDate.getTime() - a.startDate.getTime()   // completed/cancelled: newest first
+      : a.deadline.getTime() - b.deadline.getTime();     // open: soonest due first
   });
 
   return (
@@ -127,10 +129,10 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
       ) : (
         <div className="space-y-2.5">
           {requests.map((r) => {
-            const label = daysLabel(r.startDate, r.status);
+            const label = daysLabel(r.deadline, r.status);
             return (
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`}>
-                <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityAccent(r.startDate, r.status), CLOSED.has(r.status) && "opacity-70")}>
+                <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityClasses(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 min-w-0">

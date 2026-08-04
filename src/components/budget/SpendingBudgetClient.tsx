@@ -47,8 +47,8 @@ function sumOf(cats: Category[], field: SumField): number {
   return Math.round(cats.reduce((s, c) => s + (Number(c[field]) || 0), 0) * 100) / 100;
 }
 
-export function SpendingBudgetClient({ societySlug, categories, transactions }: {
-  societySlug: string; categories: Category[]; transactions: Txn[];
+export function SpendingBudgetClient({ societySlug, categories, transactions, isExec }: {
+  societySlug: string; categories: Category[]; transactions: Txn[]; isExec: boolean;
 }) {
   const router = useRouter();
   const base = `/api/societies/${societySlug}/budget/categories`;
@@ -90,7 +90,7 @@ export function SpendingBudgetClient({ societySlug, categories, transactions }: 
             <p className="text-sm text-muted-foreground">Track this year&apos;s spend, and compare budgets across years.</p>
           </div>
         </div>
-        <Button className="gap-2" onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Add category</Button>
+        {isExec && <Button className="gap-2" onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Add category</Button>}
       </div>
 
       {/* Sub-tab switcher */}
@@ -110,11 +110,11 @@ export function SpendingBudgetClient({ societySlug, categories, transactions }: 
         <CurrentYearView
           categories={categories} transactions={transactions}
           totalBudget={totalBudget} totalUsage={totalUsage}
-          onEdit={setEditing} onReclassify={reclassify} societySlug={societySlug}
+          onEdit={setEditing} onReclassify={reclassify} societySlug={societySlug} canEdit={isExec}
         />
       ) : (
         <ComparisonView
-          categories={categories} expanded={expanded} onToggle={toggle} onEdit={setEditing}
+          categories={categories} expanded={expanded} onToggle={toggle} onEdit={setEditing} canEdit={isExec}
         />
       )}
 
@@ -131,9 +131,9 @@ export function SpendingBudgetClient({ societySlug, categories, transactions }: 
 }
 
 // ── Current-year budget vs live usage ─────────────────────────────────────────
-function CurrentYearView({ categories, transactions, totalBudget, totalUsage, onEdit, onReclassify, societySlug }: {
+function CurrentYearView({ categories, transactions, totalBudget, totalUsage, onEdit, onReclassify, societySlug, canEdit }: {
   categories: Category[]; transactions: Txn[]; totalBudget: number; totalUsage: number;
-  onEdit: (c: Category) => void; onReclassify: (id: string, cat: string | null) => void; societySlug: string;
+  onEdit: (c: Category) => void; onReclassify: (id: string, cat: string | null) => void; societySlug: string; canEdit: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -159,9 +159,11 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="font-medium flex items-center gap-1.5">
                     {c.name}
-                    <button onClick={() => onEdit(c)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity" title="Edit category">
-                      <Pencil className="h-3 w-3" />
-                    </button>
+                    {canEdit && (
+                      <button onClick={() => onEdit(c)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity" title="Edit category">
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
                   </span>
                   <span className="text-muted-foreground">
                     {formatCurrency(c.usage2026)} of {formatCurrency(c.yearlyBudget)}{" · "}
@@ -180,6 +182,7 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
         </CardContent>
       </Card>
 
+      {canEdit && (
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Treasury Claims</CardTitle></CardHeader>
         <CardContent>
@@ -231,13 +234,14 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }
 
 // ── Archival year-by-year comparison ──────────────────────────────────────────
-function ComparisonView({ categories, expanded, onToggle, onEdit }: {
-  categories: Category[]; expanded: Set<string>; onToggle: (id: string) => void; onEdit: (c: Category) => void;
+function ComparisonView({ categories, expanded, onToggle, onEdit, canEdit }: {
+  categories: Category[]; expanded: Set<string>; onToggle: (id: string) => void; onEdit: (c: Category) => void; canEdit: boolean;
 }) {
   return (
     <Card>
@@ -258,7 +262,7 @@ function ComparisonView({ categories, expanded, onToggle, onEdit }: {
             </thead>
             <tbody>
               {categories.map((c) => (
-                <CategoryRow key={c.id} c={c} open={expanded.has(c.id)} onToggle={() => onToggle(c.id)} onEdit={() => onEdit(c)} />
+                <CategoryRow key={c.id} c={c} open={expanded.has(c.id)} onToggle={() => onToggle(c.id)} onEdit={() => onEdit(c)} canEdit={canEdit} />
               ))}
               {categories.length > 0 && <TotalRow cats={categories} />}
               {categories.length === 0 && (
@@ -283,7 +287,7 @@ function TotalCard({ label, value, valueClass }: { label: string; value: number;
   );
 }
 
-function CategoryRow({ c, open, onToggle, onEdit }: { c: Category; open: boolean; onToggle: () => void; onEdit: () => void }) {
+function CategoryRow({ c, open, onToggle, onEdit, canEdit }: { c: Category; open: boolean; onToggle: () => void; onEdit: () => void; canEdit: boolean }) {
   const hasDetail = !!(c.reasoning || c.notes);
   return (
     <>
@@ -303,9 +307,11 @@ function CategoryRow({ c, open, onToggle, onEdit }: { c: Category; open: boolean
         <td className="py-2.5 px-3 text-right whitespace-nowrap font-medium">{money(c.yearlyBudget)}</td>
         <td className="py-2.5 px-3 text-right whitespace-nowrap">{money(c.worstCase)}</td>
         <td className="py-2.5 px-3 text-right">
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-muted-foreground hover:text-foreground p-1" title="Edit category">
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+          {canEdit && (
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="text-muted-foreground hover:text-foreground p-1" title="Edit category">
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
         </td>
       </tr>
       {open && hasDetail && (

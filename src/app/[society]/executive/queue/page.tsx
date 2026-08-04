@@ -36,10 +36,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
     }),
     prisma.roomBooking.findMany({
       where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
-      include: {
-        submittedBy: { select: { id: true, name: true, avatarUrl: true } },
-        assignedTo: { select: { id: true, name: true, avatarUrl: true } },
-      },
+      include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { preferredDate: "asc" },
     }),
     prisma.treasuryRequest.findMany({
@@ -146,9 +143,6 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                     </Link>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <StatusBadge status={b.status} />
-                      {b.assignedTo && (
-                        <UserAvatar name={b.assignedTo.name} avatarUrl={b.assignedTo.avatarUrl} size="sm" />
-                      )}
                       <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
                         <Link href={`/${societySlug}/rubric/web?type=room&id=${b.id}`}>Submit on Rubric →</Link>
                       </Button>

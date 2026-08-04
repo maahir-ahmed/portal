@@ -8,8 +8,9 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
+import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
 import { formatDate, formatDateTime, isLateArcSubmission } from "@/lib/utils";
-import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
 interface Props {
@@ -44,7 +45,6 @@ export default async function RoomBookingDetailPage({ params }: Props) {
     where: { id },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true, email: true } },
-      assignedTo: { select: { id: true, name: true, avatarUrl: true } },
       thread: {
         include: {
           comments: {
@@ -61,12 +61,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
   const isExec = membership.role === "EXECUTIVE";
   const isLate = booking.hasExternalGuests && isLateArcSubmission(booking.preferredDate);
 
-  const execMembers = isExec
-    ? await prisma.societyMembership.findMany({
-        where: { societyId: membership.societyId, role: "EXECUTIVE", isActive: true },
-        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
-      })
-    : [];
+  const canEdit = isExec || booking.submittedById === session.user.id;
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -85,6 +80,23 @@ export default async function RoomBookingDetailPage({ params }: Props) {
             Submitted by {booking.submittedBy.name} · {formatDateTime(booking.createdAt)}
           </p>
         </div>
+        {canEdit && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${societySlug}/requests/room-booking/${booking.id}/edit`}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+              </Link>
+            </Button>
+            <ConfirmDelete
+              endpoint={`/api/societies/${societySlug}/room-bookings/${booking.id}`}
+              redirect={`/${societySlug}/requests/room-booking`}
+              title="Delete this room booking?"
+              description="This permanently removes the booking request and its comments. If it was already submitted to Arc, cancel it there too. This cannot be undone."
+              successMessage="Room booking deleted"
+              confirmLabel="Delete booking"
+            />
+          </div>
+        )}
       </div>
 
       {isLate && (
@@ -195,8 +207,6 @@ export default async function RoomBookingDetailPage({ params }: Props) {
               currentStatus={booking.status}
               statuses={STATUSES}
               apiPath={`/api/societies/${societySlug}/room-bookings/${booking.id}`}
-              members={execMembers.map((m) => m.user)}
-              assignedToId={booking.assignedToId}
             />
           )}
         </div>

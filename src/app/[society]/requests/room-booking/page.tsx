@@ -32,7 +32,6 @@ export default async function RoomBookingsPage({ params }: Props) {
     },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true } },
-      assignedTo: { select: { id: true, name: true, avatarUrl: true } },
     },
     orderBy: { preferredDate: "asc" },
   });
@@ -103,9 +102,6 @@ export default async function RoomBookingsPage({ params }: Props) {
                       </div>
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <StatusBadge status={b.status} />
-                        {b.assignedTo && (
-                          <UserAvatar name={b.assignedTo.name} avatarUrl={b.assignedTo.avatarUrl} size="sm" />
-                        )}
                       </div>
                     </div>
                   </CardContent>
