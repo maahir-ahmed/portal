@@ -123,7 +123,7 @@ export default function NewPrintingRequestPage() {
           </CardContent>
         </Card>
 
-        <Card className="mt-4">
+        <Card data-tour="printing-options" className="mt-4">
           <CardHeader><CardTitle className="text-base">Print job</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
@@ -184,7 +184,7 @@ export default function NewPrintingRequestPage() {
               <Textarea id="additionalDetails" name="additionalDetails" rows={3} placeholder="e.g. anything our team should know" />
             </div>
 
-            <div className="rounded-lg bg-gray-50 border p-3 flex items-center justify-between text-sm">
+            <div data-tour="printing-cost" className="rounded-lg bg-gray-50 border p-3 flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Estimated cost (deducted from your secretarial allowance on approval)</span>
               <span className="text-lg font-bold text-green-700">${estCost.toFixed(2)}</span>
             </div>

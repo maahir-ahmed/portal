@@ -89,14 +89,15 @@ export function SpendingBudgetClient({ societySlug, categories, transactions, is
             <p className="text-sm text-muted-foreground">Track this year&apos;s spend, and compare budgets across years.</p>
           </div>
         </div>
-        {isExec && <Button className="gap-2" onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Add category</Button>}
+        {isExec && <Button data-tour="budget-add" className="gap-2" onClick={() => setCreating(true)}><Plus className="h-4 w-4" /> Add category</Button>}
       </div>
 
       {/* Sub-tab switcher */}
-      <div className="inline-flex rounded-lg border bg-muted/40 p-0.5 text-sm">
+      <div data-tour="budget-tabs" className="inline-flex rounded-lg border bg-muted/40 p-0.5 text-sm">
         {([["current", "Current Year"], ["comparison", "Comparison"]] as const).map(([key, label]) => (
           <button
             key={key}
+            data-tour={`budget-tab-${key}`}
             onClick={() => setTab(key)}
             className={`px-4 py-1.5 rounded-md transition-colors ${tab === key ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
           >
@@ -136,14 +137,14 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
 }) {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div data-tour="budget-totals" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <TotalCard label="2026 Budget" value={totalBudget} />
         <TotalCard label="Spent so far" value={totalUsage} />
         <TotalCard label="Remaining" value={Math.round((totalBudget - totalUsage) * 100) / 100}
           valueClass={totalBudget - totalUsage < 0 ? "text-red-600" : "text-green-700"} />
       </div>
 
-      <Card>
+      <Card data-tour="budget-categories">
         <CardHeader className="pb-3"><CardTitle className="text-base">By Category</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {categories.length === 0 ? (
@@ -182,7 +183,7 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
       </Card>
 
       {canEdit && (
-      <Card>
+      <Card data-tour="budget-claims">
         <CardHeader className="pb-3"><CardTitle className="text-base">Treasury Claims</CardTitle></CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
@@ -243,7 +244,7 @@ function ComparisonView({ categories, expanded, onToggle, onEdit, canEdit }: {
   categories: Category[]; expanded: Set<string>; onToggle: (id: string) => void; onEdit: (c: Category) => void; canEdit: boolean;
 }) {
   return (
-    <Card>
+    <Card data-tour="budget-comparison">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

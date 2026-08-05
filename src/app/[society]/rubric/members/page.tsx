@@ -105,7 +105,7 @@ export default function RubricMembersPage() {
             </button>
           ))}
         </div>
-        <Button variant="outline" size="sm" onClick={exportCsv} disabled={members.length === 0}>
+        <Button variant="outline" size="sm" data-tour="rubric-export" onClick={exportCsv} disabled={members.length === 0}>
           <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
         </Button>
       </div>

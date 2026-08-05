@@ -21,6 +21,7 @@ Web app for running a university society committee: content requests, room booki
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action.
 - Per-society branding (logo/banner upload, colours), member directory, titles, notifications, and an audit log.
 - Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
+- **Guided tour** — the mortarboard button in the header walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
 
 ## Stack
 
@@ -67,6 +68,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run db:seed` | Seed data |
 | `npm run db:studio` | Prisma Studio |
 | `npm run lint` | ESLint |
+| `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
 
 ## Deployment
 

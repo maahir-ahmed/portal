@@ -71,7 +71,7 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
   }
 
   return (
-    <Card>
+    <Card data-tour="settings-rubric">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
           <span>Rubric Integration</span>

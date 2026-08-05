@@ -137,7 +137,7 @@ export default function AccountPage() {
 
       {/* Profile + email */}
       <form onSubmit={handleProfile}>
-        <Card>
+        <Card data-tour="account-profile">
           <CardHeader>
             <CardTitle className="text-base">Profile</CardTitle>
             <CardDescription>Changing your email requires your current password.</CardDescription>
@@ -170,7 +170,7 @@ export default function AccountPage() {
 
       {/* Bank details — used to prefill reimbursement claims */}
       <form onSubmit={handleBank}>
-        <Card>
+        <Card data-tour="account-bank">
           <CardHeader>
             <CardTitle className="text-base">Bank Details</CardTitle>
             <CardDescription>
@@ -202,7 +202,7 @@ export default function AccountPage() {
 
       {/* Password */}
       <form onSubmit={handlePassword}>
-        <Card>
+        <Card data-tour="account-password">
           <CardHeader>
             <CardTitle className="text-base">Change Password</CardTitle>
           </CardHeader>

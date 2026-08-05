@@ -140,7 +140,7 @@ export default function NewTreasuryPage() {
       </div>
 
       {/* Rules acknowledgement */}
-      <Card className="border-amber-200 bg-amber-50/50">
+      <Card data-tour="treasury-rules" className="border-amber-200 bg-amber-50/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-amber-600" /> Reimbursement Policy
@@ -183,7 +183,7 @@ export default function NewTreasuryPage() {
                 <Label htmlFor="expenseDate">Expense Date *</Label>
                 <Input id="expenseDate" name="expenseDate" type="date" required />
               </div>
-              <div className="space-y-2">
+              <div data-tour="treasury-amount" className="space-y-2">
                 <Label htmlFor="amount">Amount (AUD) *</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -204,7 +204,7 @@ export default function NewTreasuryPage() {
               />
             </div>
             {categories.length > 0 && (
-              <div className="space-y-2">
+              <div data-tour="treasury-category" className="space-y-2">
                 <Label>Budget Category</Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -220,7 +220,7 @@ export default function NewTreasuryPage() {
         </Card>
 
         {/* Receipts */}
-        <Card>
+        <Card data-tour="treasury-receipts">
           <CardHeader><CardTitle className="text-base">Receipts &amp; Attachments</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div
@@ -250,7 +250,7 @@ export default function NewTreasuryPage() {
         </Card>
 
         {/* Bank Details */}
-        <Card>
+        <Card data-tour="treasury-bank">
           <CardHeader><CardTitle className="text-base">Bank Details</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {savedAccount === undefined ? (
@@ -332,7 +332,7 @@ export default function NewTreasuryPage() {
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <div data-tour="treasury-submit" className="flex gap-3">
           <Button type="submit" disabled={loading || !acknowledged || savedAccount === undefined}>
             {loading ? "Submitting…" : "Submit Claim"}
           </Button>

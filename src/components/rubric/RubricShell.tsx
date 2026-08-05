@@ -66,7 +66,7 @@ export function RubricShell({ children }: RubricShellProps) {
       </div>
 
       {/* Tab bar */}
-      <div className="border-b flex gap-1 overflow-x-auto">
+      <div data-tour="rubric-tabs" className="border-b flex gap-1 overflow-x-auto">
         {tabs.map((tab) => {
           const href = `${base}${tab.href}`;
           const active = tab.href === ""

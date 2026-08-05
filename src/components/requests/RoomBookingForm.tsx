@@ -111,7 +111,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
         </div>
       </div>
 
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
+      <div data-tour="room-notice" className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
         <strong>Note:</strong> Arc requires room booking submissions at least 7 business days before the event
         when external guests are involved.
       </div>
@@ -180,7 +180,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
         </Card>
 
         {/* External Guests */}
-        <Card>
+        <Card data-tour="room-external">
           <CardHeader>
             <CardTitle className="text-base">External Organisations / Persons</CardTitle>
           </CardHeader>
@@ -270,7 +270,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
         </Card>
 
         {/* Safety Officer */}
-        <Card>
+        <Card data-tour="room-safety">
           <CardHeader>
             <CardTitle className="text-base">Event Safety Officer</CardTitle>
           </CardHeader>
@@ -327,7 +327,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <div data-tour="room-submit" className="flex gap-3">
           <Button type="submit" disabled={loading || !location}>
             {loading ? "Saving…" : editing ? "Save Changes" : "Submit Booking Request"}
           </Button>

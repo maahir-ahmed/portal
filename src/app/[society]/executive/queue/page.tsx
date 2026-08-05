@@ -84,7 +84,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
       {/* Rubric Events Pending */}
       {rubricPending.length > 0 && (
-        <section>
+        <section data-tour="queue-rubric">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
             <QrCode className="h-4 w-4 text-orange-600" />
             Rubric Events Required
@@ -120,7 +120,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
       {/* Room Bookings Queue */}
       {roomPending.length > 0 && (
-        <section>
+        <section data-tour="queue-rooms">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
             <Building2 className="h-4 w-4 text-purple-600" />
             Room Bookings
@@ -157,7 +157,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
       {/* Treasury — Awaiting Approval */}
       {treasuryApproving.length > 0 && (
-        <section>
+        <section data-tour="queue-treasury">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
             <Wallet className="h-4 w-4 text-green-600" />
             Treasury — Awaiting Approval
@@ -216,7 +216,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
       {/* Printing — in flight (approval → Arc submission → pickup readiness) */}
       {printingPending.length > 0 && (
-        <section>
+        <section data-tour="queue-printing">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
             <Printer className="h-4 w-4 text-blue-600" />
             Printing
@@ -265,7 +265,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
       {/* Treasury — Pending Reimbursement */}
       {reimbursementPending.length > 0 && (
-        <section>
+        <section data-tour="queue-reimburse">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
             <Banknote className="h-4 w-4 text-emerald-700" />
             Pending Reimbursement

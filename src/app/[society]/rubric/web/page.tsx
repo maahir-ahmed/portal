@@ -142,7 +142,7 @@ export default async function RubricWebPage({
             Open in new tab <ExternalLink className="h-3.5 w-3.5" />
           </a>
         </div>
-        <div className="flex flex-col gap-3 lg:h-[calc(100vh-15rem)] lg:flex-row">
+        <div data-tour="rubric-web" className="flex flex-col gap-3 lg:h-[calc(100vh-15rem)] lg:flex-row">
           <iframe
             src={RUBRIC_URL}
             title="Rubric portal"

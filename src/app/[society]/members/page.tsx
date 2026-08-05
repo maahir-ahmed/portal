@@ -73,8 +73,8 @@ export default async function MembersPage({ params }: Props) {
               <span className="ml-2 text-xs normal-case bg-gray-100 px-2 py-0.5 rounded-full">{group.length}</span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {group.map((m) => (
-                <Card key={m.id}>
+              {group.map((m, i) => (
+                <Card key={m.id} data-tour={i === 0 ? "member-card" : undefined}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       <UserAvatar name={m.user.name} avatarUrl={m.user.avatarUrl} size="lg" />

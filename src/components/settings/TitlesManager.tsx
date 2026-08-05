@@ -94,7 +94,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
   const byRole = (role: string) => titles.filter((t) => t.roleLevel === role);
 
   return (
-    <Card>
+    <Card data-tour="settings-titles">
       <CardHeader>
         <CardTitle className="text-base">Roles &amp; Titles</CardTitle>
         <CardDescription>

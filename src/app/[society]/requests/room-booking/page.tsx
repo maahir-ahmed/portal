@@ -52,7 +52,7 @@ export default async function RoomBookingsPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Room Booking Requests</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Arc room and resource bookings</p>
         </div>
-        <Button asChild>
+        <Button asChild data-tour="room-new">
           <Link href={`/${societySlug}/requests/room-booking/new`}>
             <Plus className="h-4 w-4 mr-2" /> New Booking
           </Link>
@@ -71,10 +71,10 @@ export default async function RoomBookingsPage({ params }: Props) {
         </Card>
       ) : (
         <div className="space-y-3">
-          {bookings.map((b) => {
+          {bookings.map((b, i) => {
             const isLate = b.hasExternalGuests && isLateArcSubmission(b.preferredDate);
             return (
-              <Link key={b.id} href={`/${societySlug}/requests/room-booking/${b.id}`}>
+              <Link key={b.id} href={`/${societySlug}/requests/room-booking/${b.id}`} data-tour={i === 0 ? "room-card" : undefined}>
                 <Card className="hover:border-blue-300 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">

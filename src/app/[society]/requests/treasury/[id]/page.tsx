@@ -99,7 +99,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
           </p>
         </div>
         {canEdit && (
-          <div className="flex items-center gap-2">
+          <div data-tour="claim-edit" className="flex items-center gap-2">
             {request.status === "DRAFT" && (
               <SubmitClaimButton societySlug={societySlug} requestId={request.id} />
             )}
@@ -226,7 +226,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
           </Card>
 
           {/* Approval Progress */}
-          <Card>
+          <Card data-tour="approval-progress">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Approval Progress</CardTitle>
             </CardHeader>

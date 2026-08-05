@@ -98,7 +98,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
+        <Card data-tour="content-form">
           <CardHeader>
             <CardTitle className="text-base">Event Details</CardTitle>
           </CardHeader>
@@ -140,7 +140,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-tour="content-required">
           <CardHeader>
             <CardTitle className="text-base">Content Required</CardTitle>
             <CardDescription>Select all types of content you need</CardDescription>
@@ -189,7 +189,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
           </CardContent>
         </Card>
 
-        <div className="flex gap-3">
+        <div data-tour="content-submit" className="flex gap-3">
           {editing ? (
             <Button type="submit" disabled={loading}>
               {loading ? "Saving…" : "Save Changes"}

@@ -91,7 +91,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
           <h1 className="text-2xl font-semibold tracking-tight">Content Requests / Events</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Marketing &amp; promotional requests, linked to Rubric events</p>
         </div>
-        <Button asChild>
+        <Button asChild data-tour="content-new">
           <Link href={`/${societySlug}/requests/content/new`}>
             <Plus className="h-4 w-4 mr-2" /> New Request
           </Link>
@@ -99,7 +99,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
       </div>
 
       {/* Status filter with counts */}
-      <div className="flex gap-2 flex-wrap">
+      <div data-tour="content-tabs" className="flex gap-2 flex-wrap">
         <Link href={`/${societySlug}/requests/content`}>
           <Button variant={!status ? "default" : "outline"} size="sm" className="gap-1.5">
             All <span className={cn("tabnums text-xs", !status ? "opacity-70" : "text-muted-foreground")}>{totalCount}</span>
@@ -128,10 +128,10 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
         </Card>
       ) : (
         <div className="space-y-2.5">
-          {requests.map((r) => {
+          {requests.map((r, i) => {
             const label = daysLabel(r.deadline, r.status);
             return (
-              <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`}>
+              <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`} data-tour={i === 0 ? "content-card" : undefined}>
                 <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityClasses(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">

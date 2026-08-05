@@ -54,13 +54,13 @@ export default async function PrintingRequestsPage({ params }: Props) {
             <p className="text-sm text-muted-foreground">Club printing via Arc Front Desk</p>
           </div>
         </div>
-        <Button asChild className="gap-2">
+        <Button asChild data-tour="printing-new" className="gap-2">
           <Link href={`/${societySlug}/requests/printing/new`}><Plus className="h-4 w-4" /> New Request</Link>
         </Button>
       </div>
 
       {/* Secretarial budget — visible to everyone */}
-      <Card>
+      <Card data-tour="printing-allowance">
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-2">
             <div>
@@ -91,8 +91,8 @@ export default async function PrintingRequestsPage({ params }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
-          {requests.map((r) => (
-            <Link key={r.id} href={`/${societySlug}/requests/printing/${r.id}`}>
+          {requests.map((r, i) => (
+            <Link key={r.id} href={`/${societySlug}/requests/printing/${r.id}`} data-tour={i === 0 ? "printing-card" : undefined}>
               <Card className="hover:shadow-sm transition-shadow">
                 <CardContent className="p-4 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">

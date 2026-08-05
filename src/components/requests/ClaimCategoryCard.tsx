@@ -46,7 +46,7 @@ export function ClaimCategoryCard({ societySlug, requestId, categoryId, category
   }
 
   return (
-    <Card>
+    <Card data-tour="claim-category">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Budget Category</CardTitle>
       </CardHeader>

@@ -114,7 +114,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <Card>
+          <Card data-tour="room-detail">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Event Details</CardTitle>
             </CardHeader>

@@ -83,7 +83,7 @@ export default async function DashboardPage({ params }: Props) {
             Welcome back, {session.user.name?.split(" ")[0]}
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div data-tour="dash-actions" className="flex gap-2 flex-wrap">
           <Button asChild size="sm" variant="outline">
             <Link href={`/${societySlug}/requests/content/new`}>
               <Plus className="h-4 w-4 mr-1" /> Content Request
@@ -103,7 +103,7 @@ export default async function DashboardPage({ params }: Props) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="dash-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} color="blue" />
         <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />
         <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} color="green" />
@@ -113,7 +113,7 @@ export default async function DashboardPage({ params }: Props) {
       </div>
 
       {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div data-tour="dash-recent" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Content Requests */}
         <Card>
           <CardHeader className="pb-3">

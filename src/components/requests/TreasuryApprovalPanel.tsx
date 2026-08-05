@@ -91,7 +91,7 @@ export function TreasuryApprovalPanel({
   const canReject = isExec && currentStatus === "AWAITING_APPROVAL";
 
   return (
-    <Card>
+    <Card data-tour="approval-panel">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Approval</CardTitle>
       </CardHeader>

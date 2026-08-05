@@ -137,7 +137,7 @@ export function MarketingContentPanel({
   );
 
   return (
-    <Card>
+    <Card data-tour="marketing-panel">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Megaphone className="h-4 w-4" /> Marketing — Deliverables

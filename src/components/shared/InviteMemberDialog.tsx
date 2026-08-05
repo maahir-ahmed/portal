@@ -84,7 +84,7 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm"><UserPlus className="h-4 w-4 mr-2" /> Add Member</Button>
+        <Button size="sm" data-tour="member-invite"><UserPlus className="h-4 w-4 mr-2" /> Add Member</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>

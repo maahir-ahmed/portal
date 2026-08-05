@@ -56,7 +56,7 @@ export function StatusUpdater({
   }
 
   return (
-    <Card>
+    <Card data-tour="status-updater">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Manage Request</CardTitle>
       </CardHeader>

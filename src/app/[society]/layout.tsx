@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { TutorialOverlay } from "@/components/tutorial/TutorialOverlay";
 import type { SessionUser } from "@/types";
 
 interface SocietyLayoutProps {
@@ -69,6 +70,8 @@ export default function SocietyLayout({ children }: SocietyLayoutProps) {
           <div className="mx-auto max-w-[1320px]">{children}</div>
         </main>
       </div>
+
+      <TutorialOverlay />
     </div>
   );
 }

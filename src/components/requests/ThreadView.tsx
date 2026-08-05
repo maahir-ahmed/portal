@@ -54,7 +54,7 @@ export function ThreadView({
   const visibleComments = comments.filter((c) => !c.isInternal || isExec);
 
   return (
-    <Card>
+    <Card data-tour="thread">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <MessageSquare className="h-4 w-4" />

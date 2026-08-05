@@ -47,7 +47,7 @@ export function ConfirmDelete({ endpoint, redirect, title, description, successM
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 text-red-600 hover:text-red-700">
+        <Button variant="outline" size="sm" data-tour="delete-button" className="gap-1.5 text-red-600 hover:text-red-700">
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
       </DialogTrigger>

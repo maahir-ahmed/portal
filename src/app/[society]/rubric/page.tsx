@@ -109,7 +109,7 @@ export default function RubricOverviewPage() {
   return (
     <RubricShell>
       {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="rubric-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Ticket Revenue" value={revenue > 0 ? formatCurrency(revenue) : undefined} icon={TrendingUp} color="green" />
         <StatCard label="Grants" value={grantsCount} icon={Package} color="amber" />
         <StatCard label="Active Members" value={activeMembers} icon={Users} color="blue" />

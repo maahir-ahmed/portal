@@ -136,7 +136,7 @@ export default async function PrintingRequestDetailPage({ params }: Props) {
       </Card>
 
       {isExec && request.status === "PENDING_APPROVAL" && (
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card data-tour="printing-decision" className="border-blue-200 bg-blue-50/50">
           <CardContent className="p-4 flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
               Approving deducts <strong>${Number(request.cost).toFixed(2)}</strong> from the secretarial allowance.

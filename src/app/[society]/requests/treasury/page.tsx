@@ -46,7 +46,7 @@ export default async function TreasuryPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Treasury Requests</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Reimbursements and expense claims</p>
         </div>
-        <Button asChild>
+        <Button asChild data-tour="treasury-new">
           <Link href={`/${societySlug}/requests/treasury/new`}>
             <Plus className="h-4 w-4 mr-2" /> New Claim
           </Link>
@@ -65,12 +65,12 @@ export default async function TreasuryPage({ params }: Props) {
         </Card>
       ) : (
         <div className="space-y-3">
-          {requests.map((r) => {
+          {requests.map((r, i) => {
             const amount = Number(r.amount);
             const needed = treasuryApprovalsNeeded(amount);
             const approved = r.approvals.length;
             return (
-              <Link key={r.id} href={`/${societySlug}/requests/treasury/${r.id}`}>
+              <Link key={r.id} href={`/${societySlug}/requests/treasury/${r.id}`} data-tour={i === 0 ? "treasury-card" : undefined}>
                 <Card className="hover:border-blue-300 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">

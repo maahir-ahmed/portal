@@ -15,6 +15,7 @@ import {
   Globe2,
   UserCog,
   PiggyBank,
+  GraduationCap,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -26,61 +27,72 @@ const navItems = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
+    tour: "dashboard",
   },
   {
     href: "/requests/content",
     label: "Content Requests / Events",
     icon: FileText,
+    tour: "content",
   },
   {
     href: "/requests/room-booking",
     label: "Room Bookings",
     icon: Building2,
+    tour: "room",
   },
   {
     href: "/requests/treasury",
     label: "Treasury",
     icon: Wallet,
+    tour: "treasury",
   },
   {
     href: "/requests/printing",
     label: "Printing",
     icon: Printer,
+    tour: "printing",
   },
   {
     href: "/budget",
     label: "Spending Budget",
     icon: PiggyBank,
+    tour: "budget",
     // Visible to all members (view-only); edits + claim list are exec-only in the page.
   },
   {
     href: "/executive/queue",
     label: "Exec Queue",
     icon: Shield,
+    tour: "queue",
     minRole: "EXECUTIVE" as const,
   },
   {
     href: "/members",
     label: "Members",
     icon: Users,
+    tour: "members",
     minRole: "EXECUTIVE" as const,
   },
   {
     href: "/rubric",
     label: "Rubric Portal",
     icon: Globe2,
+    tour: "rubric",
     minRole: "DIRECTOR" as const, // exec + director (directors see the Events tab only)
   },
   {
     href: "/settings",
     label: "Settings",
     icon: Settings,
+    tour: "settings",
     minRole: "EXECUTIVE" as const,
   },
   {
     href: "/account",
     label: "My Account",
     icon: UserCog,
+    tour: "account",
   },
 ];
 
@@ -107,9 +119,9 @@ export function Sidebar({ user, societyName, societySlug, userRole, primaryColor
     .slice(0, 2);
 
   return (
-    <aside className="flex h-full w-64 flex-col bg-[#0b0b0d] text-zinc-300 border-r border-white/5">
+    <aside data-tour="sidebar" className="flex h-full w-64 flex-col bg-[#0b0b0d] text-zinc-300 border-r border-white/5">
       {/* Society Header */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-white/5">
+      <div data-tour="sidebar-society" className="flex items-center gap-3 px-5 h-16 border-b border-white/5">
         {societyLogo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={societyLogo} alt={societyName} className="h-8 w-8 object-contain flex-shrink-0" />
@@ -140,6 +152,7 @@ export function Sidebar({ user, societyName, societySlug, userRole, primaryColor
                 <Link
                   key={item.href}
                   href={href}
+                  data-tour={`nav-${item.tour}`}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                     active
@@ -159,11 +172,22 @@ export function Sidebar({ user, societyName, societySlug, userRole, primaryColor
               );
             })}
         </div>
+
+        {/* Guided tour — same launcher as the header button, just findable. */}
+        <p className="px-3 pt-6 pb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-600">Help</p>
+        <button
+          data-tour="tour-launcher-sidebar"
+          onClick={() => window.dispatchEvent(new Event("tutorial:start"))}
+          className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-400 transition-colors hover:bg-white/[0.04] hover:text-zinc-100"
+        >
+          <GraduationCap className="h-[18px] w-[18px] flex-shrink-0 text-zinc-500 transition-colors group-hover:text-zinc-300" />
+          Take the tour
+        </button>
       </nav>
 
       {/* User Footer */}
       <div className="border-t border-white/5 p-3">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-1.5">
+        <div data-tour="sidebar-user" className="flex items-center gap-3 rounded-lg px-2 py-1.5">
           <Avatar className="h-8 w-8 flex-shrink-0">
             <AvatarImage src={user.image ?? ""} alt={user.name} />
             <AvatarFallback className="bg-white/10 text-zinc-200 text-xs font-medium">{initials}</AvatarFallback>

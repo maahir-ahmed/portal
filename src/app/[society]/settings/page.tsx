@@ -59,7 +59,7 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
+        <Card data-tour="settings-general">
           <CardHeader>
             <CardTitle className="text-base">General</CardTitle>
           </CardHeader>
@@ -79,7 +79,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-tour="settings-tier">
           <CardHeader>
             <CardTitle className="text-base">Secretarial Allowance</CardTitle>
             <CardDescription>Your Arc club tier sets the printing budget for the year.</CardDescription>
@@ -101,7 +101,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-tour="settings-branding">
           <CardHeader>
             <CardTitle className="text-base">Branding</CardTitle>
             <CardDescription>Customise your society&apos;s colours and logo</CardDescription>
@@ -142,7 +142,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-tour="settings-social">
           <CardHeader>
             <CardTitle className="text-base">Social Media & Links</CardTitle>
           </CardHeader>

@@ -157,7 +157,7 @@ export default function RubricEventsPage() {
 
   return (
     <RubricShell>
-      <div className="flex items-center justify-between">
+      <div data-tour="rubric-events" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{events.length > 0 ? `${events.length} events on Rubric` : ""}</p>
         <SubmitToRubricDialog
           societySlug={params.society}

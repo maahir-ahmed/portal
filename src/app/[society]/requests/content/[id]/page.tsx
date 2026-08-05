@@ -79,7 +79,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
           </p>
         </div>
         {canEdit && (
-          <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+          <Button asChild variant="outline" size="sm" data-tour="content-edit" className="flex-shrink-0">
             <Link href={`/${societySlug}/requests/content/${request.id}/edit`}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
             </Link>
@@ -90,7 +90,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main details */}
         <div className="lg:col-span-2 space-y-4">
-          <Card>
+          <Card data-tour="content-details">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Event Details</CardTitle>
             </CardHeader>
@@ -126,7 +126,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card data-tour="content-flags">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Content Required</CardTitle>
             </CardHeader>
@@ -188,7 +188,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
 
           {/* Rubric section */}
           {request.rubricRequired && (
-            <Card className={request.rubricEventLink ? "border-green-200 bg-green-50/30" : "border-orange-200 bg-orange-50/30"}>
+            <Card data-tour="content-rubric" className={request.rubricEventLink ? "border-green-200 bg-green-50/30" : "border-orange-200 bg-orange-50/30"}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <QrCode className="h-4 w-4" /> Rubric Event
