@@ -146,6 +146,9 @@ model User {
   email            String    @unique
   name             String
   passwordHash     String?
+  // Set when an executive issues a temporary passphrase (new member, or a reset).
+  // The app blocks on a change-password dialog until the user picks their own.
+  mustChangePassword Boolean @default(false)
   avatarUrl        String?
   phone            String?
   zId              String?

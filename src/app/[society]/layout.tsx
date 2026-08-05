@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { TutorialOverlay } from "@/components/tutorial/TutorialOverlay";
+import { ChangePasswordDialog } from "@/components/shared/ChangePasswordDialog";
 import type { SessionUser } from "@/types";
 
 interface SocietyLayoutProps {
@@ -72,6 +73,7 @@ export default function SocietyLayout({ children }: SocietyLayoutProps) {
       </div>
 
       <TutorialOverlay />
+      <ChangePasswordDialog />
     </div>
   );
 }

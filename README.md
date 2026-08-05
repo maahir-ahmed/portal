@@ -21,7 +21,8 @@ Rubric credentials never leave the server. The browser calls `POST /api/societie
 
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
-- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a temporary password. Login is the only unauthenticated page.
+- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login is the only unauthenticated page.
+- The member is then blocked on a change-password dialog until they pick their own — no dismissing it, and the new password has to differ from the passphrase. Same flow after an exec resets a password.
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
 - Nine portfolios (Careers, Conferences, Creatives, CTF, Education, Marketing, Projects, Socials, Media), each with a director title and a subcom title. A member's portfolio follows their title, so "Creative Subcom" groups them under Creatives; it is never set by hand. Executives are grouped by role and hold no portfolio.
 - Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Portfolios and titles are both managed in Settings.
@@ -77,6 +78,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run lint` | ESLint |
 | `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
 | `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
+| `npm run check:passphrase` | Verifies the temporary-passphrase wordlist stays unique and large enough for the entropy it claims |
 
 ## Deployment
 

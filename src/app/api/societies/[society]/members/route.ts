@@ -4,6 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
 import { portfolioForTitle } from "@/lib/titles";
+import { generatePassphrase } from "@/lib/passphrase";
 import { z } from "zod";
 
 const schema = z.object({
@@ -30,13 +31,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     let tempPassword: string | null = null;
 
     if (!user) {
-      // Create the user with a temporary password
-      tempPassword = Math.random().toString(36).slice(-10) + "A1!";
+      // Temporary passphrase, handed to the member out of band. mustChangePassword
+      // blocks the app on a change-password dialog until they replace it.
+      tempPassword = generatePassphrase();
       user = await prisma.user.create({
         data: {
           email: body.email,
           name: body.name,
           passwordHash: await hashPassword(tempPassword),
+          mustChangePassword: true,
         },
       });
     }

@@ -167,9 +167,13 @@ export function EditMemberDialog({
             <Label>Password</Label>
             {tempPassword ? (
               <div className="rounded-md border bg-muted/40 p-2">
-                <p className="text-xs text-muted-foreground mb-1.5">Temporary password: copy and share it now, it won&apos;t be shown again.</p>
+                <p className="text-xs text-muted-foreground mb-1.5">
+                  Temporary passphrase: copy and share it now, it won&apos;t be shown again. They&apos;ll
+                  be asked to choose their own password when they sign in.
+                </p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded bg-background px-2 py-1 text-sm">{tempPassword}</code>
+                  {/* Wraps rather than truncates: the whole point of a passphrase is being readable. */}
+                  <code className="flex-1 break-all rounded bg-background px-2 py-1 text-sm">{tempPassword}</code>
                   <Button type="button" size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(tempPassword); toast.success("Copied"); }}>
                     Copy
                   </Button>

@@ -27,8 +27,17 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Current password is incorrect" }, { status: 403 });
     }
 
+    // Otherwise "changing" a temporary passphrase to itself would clear
+    // mustChangePassword and leave the exec-issued credential live.
+    if (data.newPassword === data.currentPassword) {
+      return NextResponse.json({ error: "Your new password must be different" }, { status: 400 });
+    }
+
     const passwordHash = await hashPassword(data.newPassword);
-    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, mustChangePassword: false },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

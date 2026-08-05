@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
+import { generatePassphrase } from "@/lib/passphrase";
 
 type Params = { society: string; membershipId: string };
 
-// Exec resets a member's password to a random temp value, returned once so the
-// exec can hand it over. The user changes it in My Account after logging in.
+// Exec resets a member's password to a temporary passphrase, returned once so the
+// exec can hand it over. mustChangePassword then blocks the member on a
+// change-password dialog until they pick their own.
 // Note: doesn't invalidate existing sessions; add if a reset must force logout
 export async function POST(_req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -23,10 +24,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const tempPassword = randomBytes(6).toString("base64url");
+  const tempPassword = generatePassphrase();
   await prisma.user.update({
     where: { id: target.userId },
-    data: { passwordHash: await hashPassword(tempPassword) },
+    data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true },
   });
 
   await createAuditLog({
