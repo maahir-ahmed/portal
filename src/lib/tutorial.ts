@@ -655,6 +655,14 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Website, Facebook, Instagram, Discord and LinkedIn.",
   },
   {
+    id: "settings-portfolios",
+    target: "settings-portfolios",
+    minRole: "EXECUTIVE",
+    title: "Portfolios",
+    body:
+      "The areas the Members page groups people into. Add, rename and remove them here; deleting one leaves its members unassigned rather than removing them. The Executive portfolio is fixed, because executives are matched to it by name.",
+  },
+  {
     id: "settings-titles",
     target: "settings-titles",
     minRole: "EXECUTIVE",

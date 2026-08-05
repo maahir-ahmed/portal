@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Globe, Link2, Share2 } from "lucide-react";
 import { TitlesManager } from "@/components/settings/TitlesManager";
+import { PortfoliosManager } from "@/components/settings/PortfoliosManager";
 import { RubricSettings } from "@/components/settings/RubricSettings";
 import { ImageUploadField } from "@/components/settings/ImageUploadField";
 import { SECRETARIAL_ALLOWANCE } from "@/lib/printing";
@@ -169,6 +170,7 @@ export default function SettingsPage() {
         </Button>
       </form>
 
+      <PortfoliosManager societySlug={params.society} />
       <TitlesManager societySlug={params.society} />
       <RubricSettings societySlug={params.society} />
     </div>

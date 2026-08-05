@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { InviteMemberDialog } from "@/components/shared/InviteMemberDialog";
@@ -104,6 +105,14 @@ export default async function MembersPage({ params }: Props) {
           </Card>
         ))}
       </div>
+
+      {portfolios.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+          This society has no portfolios yet, so everyone is listed as unassigned. Create them in{" "}
+          <Link href={`/${societySlug}/settings`} className="font-medium underline">Settings</Link>, then
+          assign people with the pencil on their card.
+        </div>
+      )}
 
       {groups.map((group) => (
         <section key={group.key}>

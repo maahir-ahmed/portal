@@ -20,7 +20,7 @@ Web app for running a university society committee: content requests, room booki
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
-- Member directory grouped by portfolio (Executive, Marketing, Technical, ...), executives first inside each portfolio, then directors, then subcommittee, with head counts per role. Titles are configurable per role level.
+- Member directory grouped by portfolio (Executive, Marketing, Technical, ...), executives first inside each portfolio, then directors, then subcommittee, with head counts per role. Portfolios and titles are both managed in Settings.
 - Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
 - **Guided tour**: the mortarboard button in the header walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
 
