@@ -10,7 +10,7 @@ const schema = z.object({
   name: z.string().min(1),
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]),
   title: z.string().nullable().optional(),
-  departmentId: z.string().nullable().optional(),
+  portfolioId: z.string().nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       }
       await prisma.societyMembership.update({
         where: { id: existing.id },
-        data: { isActive: true, role: body.role, title: body.title ?? null, departmentId: body.departmentId ?? null },
+        data: { isActive: true, role: body.role, title: body.title ?? null, portfolioId: body.portfolioId ?? null },
       });
     } else {
       await prisma.societyMembership.create({
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           societyId: membership!.societyId,
           role: body.role,
           title: body.title ?? null,
-          departmentId: body.departmentId ?? null,
+          portfolioId: body.portfolioId ?? null,
         },
       });
     }

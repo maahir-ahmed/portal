@@ -11,23 +11,24 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
+import { EXEC_PORTFOLIO } from "@/lib/portfolios";
 
-interface Department { id: string; name: string }
+interface Portfolio { id: string; name: string }
 interface SocietyTitle { id: string; name: string; roleLevel: string }
 
 interface InviteMemberDialogProps {
   societySlug: string;
-  departments: Department[];
+  portfolios: Portfolio[];
 }
 
-export function InviteMemberDialog({ societySlug, departments }: InviteMemberDialogProps) {
+export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [titles, setTitles] = useState<SocietyTitle[]>([]);
   const [role, setRole] = useState("SUBCOMMITTEE");
   const [title, setTitle] = useState("__none__");
-  const [departmentId, setDepartmentId] = useState("__none__");
+  const [portfolioId, setPortfolioId] = useState("__none__");
 
   useEffect(() => {
     if (open) {
@@ -41,6 +42,10 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
   function handleRoleChange(newRole: string) {
     setRole(newRole);
     setTitle("__none__");
+    // Executives belong to the Executive portfolio, so preselect it for them.
+    const execPortfolio = portfolios.find((p) => p.name === EXEC_PORTFOLIO);
+    if (newRole === "EXECUTIVE" && execPortfolio) setPortfolioId(execPortfolio.id);
+    else if (portfolioId === execPortfolio?.id) setPortfolioId("__none__");
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -56,7 +61,7 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
         email: form.get("email"),
         role,
         title: title === "__none__" ? null : title,
-        departmentId: departmentId === "__none__" ? null : departmentId,
+        portfolioId: portfolioId === "__none__" ? null : portfolioId,
       }),
     });
 
@@ -72,7 +77,7 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
       setOpen(false);
       setRole("SUBCOMMITTEE");
       setTitle("__none__");
-      setDepartmentId("__none__");
+      setPortfolioId("__none__");
       router.refresh();
     } else {
       toast.error(data.error ?? "Failed to add member");
@@ -120,14 +125,14 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
               </SelectContent>
             </Select>
           </div>
-          {departments.length > 0 && (
+          {portfolios.length > 0 && (
             <div className="space-y-2">
-              <Label>Department</Label>
-              <Select value={departmentId} onValueChange={setDepartmentId}>
-                <SelectTrigger><SelectValue placeholder="Select a department…" /></SelectTrigger>
+              <Label>Portfolio</Label>
+              <Select value={portfolioId} onValueChange={setPortfolioId}>
+                <SelectTrigger><SelectValue placeholder="Select a portfolio…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">(No department)</SelectItem>
-                  {departments.map((d) => (
+                  <SelectItem value="__none__">(No portfolio)</SelectItem>
+                  {portfolios.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
                 </SelectContent>

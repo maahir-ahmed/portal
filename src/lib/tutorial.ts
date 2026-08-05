@@ -528,7 +528,15 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-members",
     minRole: "EXECUTIVE",
     title: "Members",
-    body: "The committee directory, grouped by role, with titles, departments, zIDs and phone numbers. Executives only.",
+    body: "The committee directory, grouped by portfolio, with titles, zIDs and phone numbers. Executives only.",
+  },
+  {
+    id: "member-totals",
+    target: "member-totals",
+    minRole: "EXECUTIVE",
+    title: "Who is on the committee",
+    body:
+      "Head counts for executives, directors and subcommittee across the whole society. The list underneath is grouped by portfolio instead, with executives first inside each one, then directors, then subcommittee.",
   },
   {
     id: "member-invite",
@@ -536,7 +544,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Adding a member",
     body:
-      "Name, email, role, title and department. A brand-new account comes back with a temporary password in the toast, so copy it before it disappears.",
+      "Name, email, role, title and portfolio. Picking the Executive role preselects the Executive portfolio. A brand-new account comes back with a temporary password in the toast, so copy it before it disappears.",
   },
   {
     id: "member-edit",
@@ -544,7 +552,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Editing a member",
     body:
-      "The pencil on a member card changes their role, title, department or phone number, or resets their password. Titles matter beyond decoration: a title containing “marketing” unlocks the marketing deliverables panel on content requests.",
+      "The pencil on a member card changes their role, title, portfolio or phone number, or resets their password. Titles matter beyond decoration: a title containing “marketing” unlocks the marketing deliverables panel on content requests.",
   },
 
   // ── Rubric portal ──────────────────────────────────────────────────────────

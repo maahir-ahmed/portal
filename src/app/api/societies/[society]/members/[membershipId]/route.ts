@@ -9,7 +9,7 @@ type Params = { society: string; membershipId: string };
 const patchSchema = z.object({
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]).optional(),
   title: z.string().nullable().optional(),
-  departmentId: z.string().nullable().optional(),
+  portfolioId: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
 });
 
@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         data: {
           ...(body.role !== undefined && { role: body.role }),
           ...(body.title !== undefined && { title: body.title }),
-          ...(body.departmentId !== undefined && { departmentId: body.departmentId }),
+          ...(body.portfolioId !== undefined && { portfolioId: body.portfolioId }),
         },
       }),
       body.phone !== undefined

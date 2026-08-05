@@ -125,7 +125,7 @@ model Society {
   updatedAt      DateTime @updatedAt
 
   memberships      SocietyMembership[]
-  departments      Department[]
+  portfolios       Portfolio[]
   titles           SocietyTitle[]
   contentRequests  ContentRequest[]
   roomBookings     RoomBooking[]
@@ -171,7 +171,7 @@ model SocietyMembership {
   userId       String
   societyId    String
   role         Role     @default(SUBCOMMITTEE)
-  departmentId String?
+  portfolioId  String?
   title        String?
   isActive     Boolean  @default(true)
   joinedAt     DateTime @default(now())
@@ -179,14 +179,16 @@ model SocietyMembership {
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   society    Society     @relation(fields: [societyId], references: [id], onDelete: Cascade)
-  department Department? @relation(fields: [departmentId], references: [id])
+  portfolio  Portfolio?  @relation(fields: [portfolioId], references: [id])
 
   @@unique([userId, societyId])
   @@index([societyId])
   @@index([userId])
 }
 
-model Department {
+// A portfolio is the area of the society someone works in (Executive, Marketing,
+// Technical, ...). Executives sit in the Executive portfolio.
+model Portfolio {
   id        String   @id @default(cuid())
   societyId String
   name      String
@@ -194,6 +196,8 @@ model Department {
 
   society     Society             @relation(fields: [societyId], references: [id], onDelete: Cascade)
   memberships SocietyMembership[]
+
+  @@unique([societyId, name])
 }
 
 // ─── Auth (NextAuth) ──────────────────────────────────────────────────────────

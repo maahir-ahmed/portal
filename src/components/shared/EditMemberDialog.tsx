@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
 
-interface Department { id: string; name: string }
+interface Portfolio { id: string; name: string }
 interface SocietyTitle { id: string; name: string; roleLevel: string }
 
 interface EditMemberDialogProps {
@@ -22,8 +22,8 @@ interface EditMemberDialogProps {
   memberPhone: string | null;
   currentRole: string;
   currentTitle: string | null;
-  currentDepartmentId: string | null;
-  departments: Department[];
+  currentPortfolioId: string | null;
+  portfolios: Portfolio[];
 }
 
 export function EditMemberDialog({
@@ -33,8 +33,8 @@ export function EditMemberDialog({
   memberPhone,
   currentRole,
   currentTitle,
-  currentDepartmentId,
-  departments,
+  currentPortfolioId,
+  portfolios,
 }: EditMemberDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -45,7 +45,7 @@ export function EditMemberDialog({
   const [titles, setTitles] = useState<SocietyTitle[]>([]);
   const [role, setRole] = useState(currentRole);
   const [title, setTitle] = useState(currentTitle ?? "__none__");
-  const [departmentId, setDepartmentId] = useState(currentDepartmentId ?? "__none__");
+  const [portfolioId, setPortfolioId] = useState(currentPortfolioId ?? "__none__");
   const [phone, setPhone] = useState(memberPhone ?? "");
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export function EditMemberDialog({
       body: JSON.stringify({
         role,
         title: title === "__none__" ? null : title,
-        departmentId: departmentId === "__none__" ? null : departmentId,
+        portfolioId: portfolioId === "__none__" ? null : portfolioId,
         phone: phone.trim() || null,
       }),
     });
@@ -148,14 +148,14 @@ export function EditMemberDialog({
               </SelectContent>
             </Select>
           </div>
-          {departments.length > 0 && (
+          {portfolios.length > 0 && (
             <div className="space-y-2">
-              <Label>Department</Label>
-              <Select value={departmentId} onValueChange={setDepartmentId}>
-                <SelectTrigger><SelectValue placeholder="Select a department…" /></SelectTrigger>
+              <Label>Portfolio</Label>
+              <Select value={portfolioId} onValueChange={setPortfolioId}>
+                <SelectTrigger><SelectValue placeholder="Select a portfolio…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">(No department)</SelectItem>
-                  {departments.map((d) => (
+                  <SelectItem value="__none__">(No portfolio)</SelectItem>
+                  {portfolios.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
                 </SelectContent>

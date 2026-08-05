@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { EXEC_PORTFOLIO } from "../src/lib/portfolios";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -24,12 +25,16 @@ async function main() {
     },
   });
 
-  // Create demo departments
-  const [marketing, technical] = await Promise.all([
-    prisma.department.upsert({ where: { id: "dept-marketing" }, update: {}, create: { id: "dept-marketing", societyId: society.id, name: "Marketing" } }),
-    prisma.department.upsert({ where: { id: "dept-technical" }, update: {}, create: { id: "dept-technical", societyId: society.id, name: "Technical" } }),
-    prisma.department.upsert({ where: { id: "dept-events" }, update: {}, create: { id: "dept-events", societyId: society.id, name: "Events" } }),
-  ]);
+  // Portfolios. Executive is the one execs are assigned to; every society gets it.
+  const [executive, marketing, technical] = await Promise.all(
+    [EXEC_PORTFOLIO, "Marketing", "Technical", "Events"].map((name) =>
+      prisma.portfolio.upsert({
+        where: { societyId_name: { societyId: society.id, name } },
+        update: {},
+        create: { societyId: society.id, name },
+      })
+    )
+  );
 
   // Create demo users
   const password = await bcrypt.hash("password123", 12);
@@ -82,22 +87,22 @@ async function main() {
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: maahir.id, societyId: society.id } },
       update: {},
-      create: { userId: maahir.id, societyId: society.id, role: "EXECUTIVE", title: "President & Treasurer" },
+      create: { userId: maahir.id, societyId: society.id, role: "EXECUTIVE", title: "President & Treasurer", portfolioId: executive.id },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: alice.id, societyId: society.id } },
       update: {},
-      create: { userId: alice.id, societyId: society.id, role: "EXECUTIVE", title: "Secretary", departmentId: marketing.id },
+      create: { userId: alice.id, societyId: society.id, role: "EXECUTIVE", title: "Secretary", portfolioId: executive.id },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: bob.id, societyId: society.id } },
       update: {},
-      create: { userId: bob.id, societyId: society.id, role: "DIRECTOR", title: "Technical Director", departmentId: technical.id },
+      create: { userId: bob.id, societyId: society.id, role: "DIRECTOR", title: "Technical Director", portfolioId: technical.id },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: charlie.id, societyId: society.id } },
       update: {},
-      create: { userId: charlie.id, societyId: society.id, role: "SUBCOMMITTEE", title: "Marketing Subcom", departmentId: marketing.id },
+      create: { userId: charlie.id, societyId: society.id, role: "SUBCOMMITTEE", title: "Marketing Subcom", portfolioId: marketing.id },
     }),
   ]);
 
