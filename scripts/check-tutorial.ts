@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { TOUR_STEPS, TOOLTIP_W, stepsFor, tooltipBox } from "../src/lib/tutorial";
+import { TOUR_STEPS, TOOLTIP_W, normalisePage, stepsFor, stepsForPage, tooltipBox } from "../src/lib/tutorial";
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -68,6 +68,29 @@ for (const [label, r] of cases) {
   const bottomOk = typeof box.bottom === "number" && box.bottom >= 0 && box.bottom < VH;
   assert.ok(topOk || bottomOk, `${label}: box off-screen vertically (top ${box.top}, bottom ${box.bottom})`);
 }
+
+// Per-page help: every page the app has should have something to say, and every
+// step should belong to exactly one page.
+assert.equal(normalisePage("/secsoc/requests/treasury/cmrbf28n6001s01nwdiprcdzz", "secsoc"), "/requests/treasury/[id]");
+assert.equal(normalisePage("/requests/room-booking/new"), "/requests/room-booking/new");
+assert.equal(normalisePage("/secsoc/dashboard", "secsoc"), "/dashboard");
+
+const PAGES = [
+  "/dashboard",
+  "/requests/content", "/requests/content/new", "/requests/content/[id]",
+  "/requests/room-booking", "/requests/room-booking/new", "/requests/room-booking/[id]",
+  "/requests/treasury", "/requests/treasury/new", "/requests/treasury/[id]",
+  "/requests/printing", "/requests/printing/new", "/requests/printing/[id]",
+  "/budget", "/executive/queue", "/members",
+  "/rubric", "/rubric/events", "/rubric/members", "/rubric/grants", "/rubric/web",
+  "/settings", "/account",
+];
+const emptyPages = PAGES.filter((page) => stepsForPage("EXECUTIVE", page).length === 0);
+assert.deepEqual(emptyPages, [], `pages with no help steps:\n  ${emptyPages.join("\n  ")}`);
+
+const pagedTotal = PAGES.reduce((sum, page) => sum + stepsForPage("EXECUTIVE", page).length, 0);
+const tourable = TOUR_STEPS.filter((s) => !s.kind).length;
+assert.equal(pagedTotal, tourable, `${tourable - pagedTotal} step(s) sit on a page not listed in PAGES`);
 
 console.log(
   `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors, ${cases.length} placement cases | ` +

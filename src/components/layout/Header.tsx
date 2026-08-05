@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Bell, GraduationCap, Menu, X } from "lucide-react";
+import { Bell, CircleQuestionMark, GraduationCap, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { timeAgo } from "@/lib/utils";
 import { SEEN_KEY } from "@/components/tutorial/TutorialOverlay";
+import { normalisePage, stepsForPage } from "@/lib/tutorial";
 
 interface Notification {
   id: string;
@@ -29,6 +32,8 @@ interface HeaderProps {
 }
 
 export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: HeaderProps) {
+  const pathname = usePathname();
+  const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   // Nudge dot on the tour button until it's been opened once (read client-side to
@@ -41,6 +46,16 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
   function startTour() {
     setTourSeen(true);
     window.dispatchEvent(new Event("tutorial:start"));
+  }
+
+  // Help for this page only: the tour steps that live here, no demo records.
+  const role = (
+    session?.user as { memberships?: { society: { slug: string }; role: string }[] } | undefined
+  )?.memberships?.find((m) => m.society.slug === societySlug)?.role;
+  const pageStepCount = stepsForPage(role, normalisePage(pathname, societySlug)).length;
+
+  function startPageHelp() {
+    window.dispatchEvent(new CustomEvent("tutorial:start", { detail: { scope: "page" } }));
   }
 
   const fetchNotifications = useCallback(async () => {
@@ -75,6 +90,20 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
       </Button>
 
       <div className="flex-1" />
+
+      {/* Help for the current page. Hidden where the tour has nothing to say. */}
+      {pageStepCount > 0 && (
+        <Button
+          variant="ghost"
+          size="icon"
+          data-tour="page-help"
+          onClick={startPageHelp}
+          title={`Help for this page (${pageStepCount} step${pageStepCount === 1 ? "" : "s"})`}
+          className="rounded-lg text-muted-foreground hover:text-foreground"
+        >
+          <CircleQuestionMark className="h-[18px] w-[18px]" />
+        </Button>
+      )}
 
       {/* Guided tour */}
       <Button

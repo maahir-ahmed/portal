@@ -84,6 +84,13 @@ export const TOUR_STEPS: TourStep[] = [
       "Refreshes every 30 seconds. A red dot means unread. Each entry links straight to the request that changed, and most also go out by email. “Mark all read” clears the dot.",
   },
   {
+    id: "page-help",
+    target: "page-help",
+    title: "Help for one page",
+    body:
+      "The question mark runs just the steps for the page you're on, with no demo records created or deleted. It's there on every page the tour covers, and hidden on the few it doesn't.",
+  },
+  {
     id: "launcher",
     target: "tour-launcher-sidebar",
     title: "Restarting this tour",
@@ -753,6 +760,49 @@ export function tooltipBox(
   if (vw - rect.right > TOOLTIP_W + 2 * gap) return { ...beside, left: rect.right + gap };
   if (rect.left > TOOLTIP_W + 2 * gap) return { ...beside, left: rect.left - TOOLTIP_W - gap };
   return centred;
+}
+
+// ── Per-page help ─────────────────────────────────────────────────────────────
+// The same steps, filtered to one page. Steps declare the page they live on via
+// `path`; a step without one continues on the page the previous step set, which is
+// how the tour reads in sequence, so the page each step belongs to is resolved by
+// walking the list in order.
+const PLACEHOLDER_IDS: DemoIds = {
+  contentId: "[id]",
+  roomId: "[id]",
+  treasuryId: "[id]",
+  printingId: "[id]",
+};
+
+const PAGE_BY_STEP: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  let page = "/dashboard";
+  for (const step of TOUR_STEPS) {
+    const resolved = resolvePath(step, PLACEHOLDER_IDS);
+    if (resolved) page = resolved;
+    map[step.id] = page;
+  }
+  return map;
+})();
+
+// Record ids in a URL are cuids; every static segment in the app is far shorter.
+const ID_LIKE = /^[a-z0-9-]{16,}$/i;
+
+/** Turns a live pathname into the page key steps are indexed by. */
+export function normalisePage(pathname: string, slug?: string): string {
+  let path = pathname;
+  if (slug && (path === `/${slug}` || path.startsWith(`/${slug}/`))) {
+    path = path.slice(slug.length + 1) || "/";
+  }
+  return path
+    .split("/")
+    .map((segment) => (ID_LIKE.test(segment) ? "[id]" : segment))
+    .join("/");
+}
+
+/** Steps for one page only. Welcome and cleanup belong to the full tour. */
+export function stepsForPage(role: string | undefined, page: string): TourStep[] {
+  return stepsFor(role).filter((step) => !step.kind && PAGE_BY_STEP[step.id] === page);
 }
 
 export function stepsFor(role: string | undefined): TourStep[] {

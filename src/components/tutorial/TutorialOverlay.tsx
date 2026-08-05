@@ -6,11 +6,21 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { resolvePath, stepsFor, tooltipBox, type DemoIds, type TourStep } from "@/lib/tutorial";
+import {
+  normalisePage,
+  resolvePath,
+  stepsFor,
+  stepsForPage,
+  tooltipBox,
+  type DemoIds,
+  type TourStep,
+} from "@/lib/tutorial";
 
 // Guided tour. Mounted once in the society layout; started by dispatching
-// `tutorial:start` on window (the header button does that). Progress lives in
-// localStorage so a hard reload mid-tour resumes where you were.
+// `tutorial:start` on window (the header and sidebar buttons do that). Two scopes:
+// the full tour, which walks every page and creates demo records, and page help,
+// which runs only the steps belonging to the page you're on and touches nothing.
+// Full-tour progress lives in localStorage so a hard reload resumes where you were.
 
 const SAVE_KEY = "society-tutorial";
 export const SEEN_KEY = "society-tutorial-seen";
@@ -27,6 +37,8 @@ export function TutorialOverlay() {
   const { data: session } = useSession();
 
   const [active, setActive] = useState(false);
+  // Page help is scoped to the page it was opened on and never persists.
+  const [page, setPage] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [ids, setIds] = useState<DemoIds>({});
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -41,7 +53,7 @@ export function TutorialOverlay() {
     session?.user as { memberships?: { society: { slug: string }; role: string }[] } | undefined
   )?.memberships?.find((m) => m.society.slug === slug)?.role;
 
-  const steps = stepsFor(role);
+  const steps = page === null ? stepsFor(role) : stepsForPage(role, page);
   const step: TourStep | undefined = active ? steps[index] : undefined;
 
   // URLs are slug-prefixed normally, but slug-free in single-society mode.
@@ -60,6 +72,7 @@ export function TutorialOverlay() {
   const close = useCallback(
     (cleanup: boolean) => {
       setActive(false);
+      setPage(null);
       setRect(null);
       localStorage.removeItem(SAVE_KEY);
       localStorage.setItem(SEEN_KEY, "1");
@@ -73,18 +86,26 @@ export function TutorialOverlay() {
 
   // Start / resume ------------------------------------------------------------
   useEffect(() => {
-    function start() {
+    function start(event: Event) {
+      const scope = (event as CustomEvent<{ scope?: "page" }>).detail?.scope;
       const saved = localStorage.getItem(SAVE_KEY);
       localStorage.removeItem(SAVE_KEY);
       setIds({});
       setIndex(0);
+      setPage(scope === "page" ? normalisePage(pathname, slug) : null);
       setActive(true);
-      // A previous tour that never finished may have left demo records behind.
+      // A previous full tour that never finished may have left demo records behind.
       if (saved) void wipeDemo();
     }
     window.addEventListener("tutorial:start", start);
     return () => window.removeEventListener("tutorial:start", start);
-  }, [wipeDemo]);
+  }, [wipeDemo, pathname, slug]);
+
+  // Page help only makes sense on the page it was opened on.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reacts to a route change, which is external state
+    if (active && page !== null && normalisePage(pathname, slug) !== page) close(false);
+  }, [active, page, pathname, slug, close]);
 
   // Restores tour position from localStorage, which only exists on the client.
   useEffect(() => {
@@ -106,10 +127,10 @@ export function TutorialOverlay() {
   }, [role]);
 
   useEffect(() => {
-    if (active && step) {
+    if (active && step && page === null) {
       localStorage.setItem(SAVE_KEY, JSON.stringify({ stepId: step.id, ids } satisfies Saved));
     }
-  }, [active, step, ids]);
+  }, [active, step, ids, page]);
 
   // Navigate to the step's page ----------------------------------------------
   useEffect(() => {
@@ -212,23 +233,29 @@ export function TutorialOverlay() {
       toast.success("Tour finished, demo records deleted");
       return;
     }
+    // Page help creates nothing, so the last step just closes.
+    if (page !== null && index === steps.length - 1) {
+      close(false);
+      return;
+    }
     setIndex((i) => Math.min(steps.length - 1, i + 1));
-  }, [step, slug, steps.length, wipeDemo, close]);
+  }, [step, slug, steps.length, wipeDemo, close, page, index]);
 
   useEffect(() => {
     if (!active) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") close(true);
+      if (e.key === "Escape") close(page === null);
       else if (e.key === "ArrowRight") void next();
       else if (e.key === "ArrowLeft") back();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, next, back, close]);
+  }, [active, next, back, close, page]);
 
   if (!active || !step) return null;
 
-  const last = step.kind === "cleanup";
+  const onLastStep = index === steps.length - 1;
+  const finishes = step.kind === "cleanup" || (page !== null && onLastStep);
 
   return (
     <div className="fixed inset-0 z-[60] pointer-events-none">
@@ -260,13 +287,13 @@ export function TutorialOverlay() {
         <div className="flex items-start gap-2 px-4 pt-3.5">
           <div className="min-w-0 flex-1">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Step {index + 1} of {steps.length}
+              {page === null ? "Tour" : "Page help"} · step {index + 1} of {steps.length}
             </p>
             <h2 className="mt-1 text-[15px] font-semibold leading-snug">{step.title}</h2>
           </div>
           <button
-            onClick={() => close(true)}
-            title="Leave the tour (deletes the demo records)"
+            onClick={() => close(page === null)}
+            title={page === null ? "Leave the tour (deletes the demo records)" : "Close help"}
             className="-mr-1 rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
           >
             <X className="h-4 w-4" />
@@ -312,8 +339,14 @@ export function TutorialOverlay() {
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
           >
             {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {step.kind === "welcome" ? "Create demo records & start" : last ? "Finish & clean up" : "Next"}
-            {!last && step.kind !== "welcome" && <ChevronRight className="h-4 w-4" />}
+            {step.kind === "welcome"
+              ? "Create demo records & start"
+              : step.kind === "cleanup"
+                ? "Finish & clean up"
+                : finishes
+                  ? "Done"
+                  : "Next"}
+            {!finishes && step.kind !== "welcome" && <ChevronRight className="h-4 w-4" />}
           </button>
         </div>
       </div>
