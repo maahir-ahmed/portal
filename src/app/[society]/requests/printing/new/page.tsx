@@ -81,8 +81,12 @@ export default function NewPrintingRequestPage() {
     }
   }
 
+  // `relative` matters: the radio inside is sr-only, i.e. position: absolute. Without
+  // a positioned ancestor its containing block is the viewport, so its static position
+  // (below the fold on this form) stretched the document and let the whole window
+  // scroll down into empty space beneath the app.
   const radio = (checked: boolean) =>
-    `flex-1 cursor-pointer rounded-lg border px-3 py-2 text-sm text-center transition-colors ${
+    `relative flex-1 cursor-pointer rounded-lg border px-3 py-2 text-sm text-center transition-colors ${
       checked ? "border-blue-600 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 hover:border-gray-300"
     }`;
 
