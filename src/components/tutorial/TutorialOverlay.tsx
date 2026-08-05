@@ -5,6 +5,7 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { resolvePath, stepsFor, tooltipBox, type DemoIds, type TourStep } from "@/lib/tutorial";
 
 // Guided tour. Mounted once in the society layout; started by dispatching
@@ -29,6 +30,9 @@ export function TutorialOverlay() {
   const [index, setIndex] = useState(0);
   const [ids, setIds] = useState<DemoIds>({});
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // False while the next step's target is still being measured — the box waits it
+  // out rather than following the measurement around.
+  const [settled, setSettled] = useState(true);
   const [busy, setBusy] = useState(false);
   const navigatedFor = useRef<string | null>(null);
 
@@ -118,41 +122,75 @@ export function TutorialOverlay() {
   }, [step, ids, atPath, hrefFor, router]);
 
   // Track the highlighted element -------------------------------------------
-  // Mirrors a DOM measurement (getBoundingClientRect) into state.
+  // Nothing is committed to state until the target has stopped moving (two frames
+  // agreeing), so the highlight tweens once, straight from the previous box to the
+  // final one. Committing early is what made it look like it was resizing itself:
+  // the rect was measured while the page was still navigating and smooth-scrolling.
   useEffect(() => {
     if (!step) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- gates rendering on a DOM measurement that hasn't been taken yet
+    setSettled(false);
     if (!step.target) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- no element to measure for this step
       setRect(null);
+      setSettled(true);
       return;
     }
     // Open the tab/panel this step is about, if it isn't already.
     if (step.click) {
       (document.querySelector(`[data-tour="${step.click}"]`) as HTMLElement | null)?.click();
     }
+
+    const same = (a: DOMRect | null, b: DOMRect) =>
+      !!a && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height;
+
+    let frame = 0;
+    let poll = 0;
     let scrolled = false;
-    const tick = () => {
+    let previous: DOMRect | null = null;
+    let agreed = 0;
+    const deadline = performance.now() + 2500; // long enough to cover a page change
+
+    const settle = () => {
       const el = document.querySelector(`[data-tour="${step.target}"]`);
       if (!el) {
-        setRect(null);
+        // Give it up to the deadline to render, then fall back to the centred box.
+        if (performance.now() > deadline) {
+          setRect(null);
+          setSettled(true);
+          return;
+        }
+        frame = requestAnimationFrame(settle);
         return;
       }
       if (!scrolled) {
         scrolled = true;
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        // Instant, not smooth: a smooth scroll keeps changing the rect for ~400ms.
+        el.scrollIntoView({ block: "center", behavior: "instant" });
       }
       const r = el.getBoundingClientRect();
-      setRect((prev) =>
-        prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height
-          ? prev
-          : r
-      );
+      agreed = same(previous, r) ? agreed + 1 : 0;
+      previous = r;
+      if (agreed < 2 && performance.now() < deadline) {
+        frame = requestAnimationFrame(settle);
+        return;
+      }
+      setRect(r);
+      setSettled(true);
+      // Then stay glued to it — user scrolling, images loading, panels opening.
+      poll = window.setInterval(() => {
+        const live = document.querySelector(`[data-tour="${step.target}"]`);
+        if (!live) return;
+        const next = live.getBoundingClientRect();
+        setRect((prev) => (same(prev, next) ? prev : next));
+      }, 250);
     };
-    tick();
-    // Polling covers navigation, late renders, scrolling and resizes in one line.
-    const id = setInterval(tick, 250);
-    return () => clearInterval(id);
-  }, [step]);
+    settle();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      clearInterval(poll);
+    };
+  }, [step, pathname]);
 
   // Controls -----------------------------------------------------------------
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
@@ -197,7 +235,7 @@ export function TutorialOverlay() {
       {/* Dim everything except the highlighted element (one box-shadow, no cut-outs). */}
       {rect ? (
         <div
-          className="absolute rounded-xl transition-all duration-200"
+          className="absolute rounded-xl transition-[top,left,width,height] duration-300 ease-out"
           style={{
             top: rect.top - 6,
             left: rect.left - 6,
@@ -211,8 +249,12 @@ export function TutorialOverlay() {
         <div className="absolute inset-0 bg-zinc-950/55" />
       )}
 
+      {/* Fades in at its final position, so it never appears mid-measurement. */}
       <div
-        className="absolute pointer-events-auto overflow-y-auto rounded-xl border border-border bg-card shadow-2xl"
+        className={cn(
+          "absolute overflow-y-auto rounded-xl border border-border bg-card shadow-2xl transition-opacity duration-150",
+          settled ? "pointer-events-auto opacity-100" : "opacity-0"
+        )}
         style={{ ...tooltipBox(rect, window.innerWidth, window.innerHeight) }}
       >
         <div className="flex items-start gap-2 px-4 pt-3.5">
