@@ -1,7 +1,9 @@
-import type { Society, SocietyMembership } from "@prisma/client";
 import type { DefaultSession } from "next-auth";
+import type { SessionMembership } from "@/types";
 
-type Memberships = (SocietyMembership & { society: Society })[];
+// Narrowed on purpose: see SessionMembership. Never widen this to the Prisma
+// Society row, which carries the Rubric session ID.
+type Memberships = SessionMembership[];
 
 // The credentials provider hangs the user's memberships off the session, which
 // NextAuth's own types know nothing about them, so declare them once here instead of

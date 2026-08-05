@@ -59,7 +59,8 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
   async function handleTestConnection() {
     setTesting(true);
     try {
-      // Call Rubric directly from the browser: the session is IP-bound, so server-side testing doesn't work
+      // Goes through our proxy, which is also how every other Rubric call runs, so a
+      // pass here proves the server can reach Rubric with the stored session.
       await rubric.call({ type: "getSocietyPortalMembershipHomePage" });
       toast.success("Connected to Rubric successfully! Your session is working.");
     } catch (err: unknown) {
@@ -125,7 +126,8 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
               autoComplete="off"
             />
             <p className="text-xs text-muted-foreground">
-              Found in your browser DevTools (Network tab) when logged into the Rubric portal. Rotates automatically.
+              Found in your browser DevTools (Network tab) when logged into the Rubric portal. Stored server side
+              and never sent back to a browser; this app makes every Rubric call for you. Rotates automatically.
             </p>
           </div>
           <div className="space-y-2">

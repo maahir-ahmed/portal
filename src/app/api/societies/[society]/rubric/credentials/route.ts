@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -52,6 +53,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
 
   if (Object.keys(updateData).length > 0) {
     await prisma.society.update({ where: { id: membership!.societyId }, data: updateData });
+
+    // Replacing the Rubric credential is worth a trail: it is the app's most
+    // sensitive stored secret.
+    await createAuditLog({
+      societyId: membership!.societyId,
+      userId: session!.user.id,
+      action: "UPDATE",
+      entityType: "RubricCredentials",
+      entityId: membership!.societyId,
+      metadata: { sessionChanged: body.rubricSessionId !== undefined },
+    });
   }
 
   return NextResponse.json({ ok: true });

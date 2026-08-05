@@ -52,14 +52,21 @@ export default function RubricOverviewPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    rubric.getToken().then(() => {
-      return Promise.allSettled([
-        rubric.call({ type: "getSocietyPortalMembershipList", viewFilter: "active" }),
-        rubric.call({ type: "getSocietyPortalTicketingHomePage" }),
-        rubric.call({ type: "getSocietyPortalSettlementList" }),
-        rubric.call({ type: "getSocietyTeamMembers", complete: true }),
-      ]);
-    }).then(([membership, ticketing, settlement, team]) => {
+    Promise.allSettled([
+      rubric.call({ type: "getSocietyPortalMembershipList", viewFilter: "active" }),
+      rubric.call({ type: "getSocietyPortalTicketingHomePage" }),
+      rubric.call({ type: "getSocietyPortalSettlementList" }),
+      rubric.call({ type: "getSocietyTeamMembers", complete: true }),
+    ]).then(([membership, ticketing, settlement, team]) => {
+      // Each card tolerates a single failed call, but if every one failed because
+      // Rubric was never set up, show the setup prompt instead of empty stats.
+      const results = [membership, ticketing, settlement, team];
+      const reason = (r: PromiseSettledResult<unknown>) =>
+        r.status === "rejected" && r.reason instanceof Error ? r.reason.message : null;
+      if (results.every((r) => reason(r) === "not_configured")) {
+        setError("not_configured");
+        return;
+      }
       setData({
         membership: membership.status === "fulfilled" ? membership.value : null,
         ticketing: ticketing.status === "fulfilled" ? ticketing.value : null,

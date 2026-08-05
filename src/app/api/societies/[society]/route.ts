@@ -29,7 +29,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
-  const s = await prisma.society.findUnique({ where: { id: membership!.societyId } });
+  // Explicit field list, never the whole row: rubricSessionId and
+  // rubricUnionSessionId are credentials and must not leave the server. Their
+  // configured/not-configured state is exposed by the rubric/credentials route.
+  const s = await prisma.society.findUnique({
+    where: { id: membership!.societyId },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      logoUrl: true,
+      bannerUrl: true,
+      primaryColor: true,
+      secondaryColor: true,
+      contactEmail: true,
+      website: true,
+      facebookUrl: true,
+      instagramUrl: true,
+      discordUrl: true,
+      linkedinUrl: true,
+      description: true,
+      secretarialTier: true,
+      rubricSocietyId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
   return NextResponse.json(s);
 }
 
@@ -54,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       }
     }
     const body = updateSchema.parse(raw);
-    const updated = await prisma.society.update({
+    await prisma.society.update({
       where: { id: membership!.societyId },
       data: body,
     });
@@ -67,7 +92,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       entityId: membership!.societyId,
     });
 
-    return NextResponse.json(updated);
+    // Same reason as GET: reply with the accepted changes, not the stored row.
+    return NextResponse.json({ ok: true, ...body });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });

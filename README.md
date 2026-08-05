@@ -17,6 +17,8 @@ Web app for running a university society committee: content requests, room booki
 
 **Rubric portal**: reads events, ticket sales, members, grants, and settlements from Rubric, and submits events (including the Arc affiliation form). Executives see everything; directors see the Events tab only.
 
+Rubric credentials never leave the server. The browser calls `POST /api/societies/[society]/rubric/call`, which checks the request against an allowlist (`src/lib/rubricCalls.ts`) covering the call type, the minimum role, and the shape of its parameters, then makes the call with the stored session ID and the society ID from the database. Writes (publishing or archiving an event, lodging the affiliation form) are executive-only and audit logged.
+
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
@@ -72,6 +74,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run db:studio` | Prisma Studio |
 | `npm run lint` | ESLint |
 | `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
+| `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
 
 ## Deployment
 

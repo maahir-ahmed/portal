@@ -129,13 +129,11 @@ export function SubmitToRubricDialog({
 
       // Step 1: submit the Arc affiliation form under that UUID
       if (form && metaFormResponseUUID) {
-        const token = await rubric.getToken();
         await rubric.call({
           type: "submitFormResponse",
           form_id: form.form_id,
           draft: false,
           questions: buildQuestionsPayload(form, answers),
-          societyid: Number(token.societyID),
           metaFormResponseUUID,
         });
       }

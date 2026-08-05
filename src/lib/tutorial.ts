@@ -683,7 +683,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Rubric integration",
     body:
-      "Paste your Rubric session ID and numeric society ID to switch the Rubric portal on, then use Test Connection. Sessions are IP-bound and rotate, so this is checked from your browser rather than the server.",
+      "Paste your Rubric session ID and numeric society ID to switch the Rubric portal on, then use Test Connection. The session is stored server side and never handed to a browser: every Rubric call is made by this app on your behalf, against a fixed list of permitted calls.",
   },
 
   // ── Account ────────────────────────────────────────────────────────────────

@@ -24,12 +24,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         const email = (credentials.email as string).trim().toLowerCase();
+        // Only the fields the UI reads. Whole Society rows used to travel from here
+        // into the JWT and back out of /api/auth/session, which handed every logged-in
+        // member the society's Rubric session ID.
         const user = await prisma.user.findUnique({
           where: { email },
           include: {
             memberships: {
               where: { isActive: true },
-              include: { society: true },
+              select: {
+                id: true,
+                role: true,
+                societyId: true,
+                title: true,
+                society: {
+                  select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true },
+                },
+              },
             },
           },
         });
@@ -73,7 +84,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
-        session.user.memberships = token.memberships;
+        // JWTs issued before the session was narrowed still hold whole Society rows,
+        // Rubric credentials included. Rebuild the shape on the way out so those
+        // sessions stop leaking without everyone having to log in again.
+        session.user.memberships = (token.memberships ?? []).map((m) => ({
+          id: m.id,
+          role: m.role,
+          societyId: m.societyId,
+          title: m.title ?? null,
+          society: {
+            id: m.society.id,
+            name: m.society.name,
+            slug: m.society.slug,
+            logoUrl: m.society.logoUrl ?? null,
+            primaryColor: m.society.primaryColor,
+          },
+        }));
       }
       return session;
     },
