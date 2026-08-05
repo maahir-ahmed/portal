@@ -384,6 +384,13 @@ export const TOUR_STEPS: TourStep[] = [
       "Your Arc club tier sets the yearly pot (Bronze $150, Silver $225, Gold $405) and the bar tracks it. Only approved jobs are deducted, so pending requests don't eat the budget.",
   },
   {
+    id: "printing-rates",
+    target: "printing-rates",
+    title: "What printing costs",
+    body:
+      "Arc's per-page rates for every combination of size, sides and colour. The same table appears on the request form, with your current options highlighted.",
+  },
+  {
     id: "printing-card",
     target: "printing-card",
     title: "The job list",
@@ -408,7 +415,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "printing-cost",
     title: "Live cost estimate",
     body:
-      "Priced as you type from the per-page rates (10c for A4 mono, up to $1.75 for A3 double-sided colour) times pages times copies. That figure is what gets deducted if an exec approves it.",
+      "Priced as you type: the highlighted rate above, times pages per copy, times copies. That figure is what gets deducted from the allowance if an exec approves the job.",
   },
   {
     id: "printing-decision",

@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Printer, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { computePrintingCost, type PaperSize, type Sided, type Colour } from "@/lib/printing";
+import { PrintingRates } from "@/components/requests/PrintingRates";
 
 export default function NewPrintingRequestPage() {
   const params = useParams<{ society: string }>();
@@ -182,6 +183,11 @@ export default function NewPrintingRequestPage() {
             <div className="space-y-2">
               <Label htmlFor="additionalDetails">Any additional printing details</Label>
               <Textarea id="additionalDetails" name="additionalDetails" rows={3} placeholder="e.g. anything our team should know" />
+            </div>
+
+            <div data-tour="printing-rates" className="space-y-2">
+              <Label>Rates</Label>
+              <PrintingRates selected={{ paperSize, sided, colour }} />
             </div>
 
             <div data-tour="printing-cost" className="rounded-lg bg-gray-50 border p-3 flex items-center justify-between text-sm">

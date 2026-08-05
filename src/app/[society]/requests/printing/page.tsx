@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
+import { PrintingRates } from "@/components/requests/PrintingRates";
 import { Printer, Plus, FileText, Info } from "lucide-react";
 
 interface Props {
@@ -75,6 +76,17 @@ export default async function PrintingRequestsPage({ params }: Props) {
             <div className={`h-full rounded-full ${remaining < 0 ? "bg-red-500" : pct > 85 ? "bg-amber-500" : "bg-green-500"}`} style={{ width: `${pct}%` }} />
           </div>
           <p className="text-xs text-muted-foreground mt-2">Only approved requests are deducted.</p>
+        </CardContent>
+      </Card>
+
+      {/* Price list, so the cost of a job can be checked before starting one */}
+      <Card data-tour="printing-rates">
+        <CardContent className="p-5 space-y-3">
+          <div>
+            <p className="text-sm font-medium">Printing rates</p>
+            <p className="text-xs text-muted-foreground">What Arc charges per page, by size, sides and colour.</p>
+          </div>
+          <PrintingRates />
         </CardContent>
       </Card>
 
