@@ -186,16 +186,19 @@ model SocietyMembership {
   @@index([userId])
 }
 
-// A portfolio is the area of the society someone works in (Executive, Marketing,
-// Technical, ...). Executives sit in the Executive portfolio.
+// An area of the committee (Careers, Creatives, CTF, ...). Each one has a director
+// title and a subcom title; a member's portfolio follows from the title they hold,
+// so it is never set directly. Executives are grouped by role and hold none.
 model Portfolio {
   id        String   @id @default(cuid())
   societyId String
   name      String
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
   society     Society             @relation(fields: [societyId], references: [id], onDelete: Cascade)
   memberships SocietyMembership[]
+  titles      SocietyTitle[]
 
   @@unique([societyId, name])
 }
@@ -414,15 +417,19 @@ model BankAccount {
 
 // ─── Society Titles ───────────────────────────────────────────────────────────
 
+// The title a member holds, which is what puts them in a portfolio. Executive
+// titles have no portfolio.
 model SocietyTitle {
-  id        String   @id @default(cuid())
-  societyId String
-  name      String
-  roleLevel Role
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  societyId   String
+  portfolioId String?
+  name        String
+  roleLevel   Role
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
 
-  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  society   Society    @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  portfolio Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
 
   @@unique([societyId, name, roleLevel])
   @@index([societyId])

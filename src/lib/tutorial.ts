@@ -543,7 +543,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Who is on the committee",
     body:
-      "Head counts for executives, directors and subcommittee across the whole society. The list underneath is grouped by portfolio instead, with executives first inside each one, then directors, then subcommittee.",
+      "Head counts for executives, directors and subcommittee across the whole society. Underneath, the executive team comes first, then one section per portfolio (Careers, Conferences, Creatives, CTF, Education, Marketing, Projects, Socials, Media) with directors before subcommittee.",
   },
   {
     id: "member-invite",
@@ -551,7 +551,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Adding a member",
     body:
-      "Name, email, role, title and portfolio. Picking the Executive role preselects the Executive portfolio. A brand-new account comes back with a temporary password in the toast, so copy it before it disappears.",
+      "Name, email, role and title. There's no portfolio to pick: the title decides it, so \u201cCreative Subcom\u201d puts them in Creatives, and the dialog shows which portfolio the chosen title implies. A brand-new account comes back with a temporary password in the toast, so copy it before it disappears.",
   },
   {
     id: "member-edit",
@@ -559,7 +559,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Editing a member",
     body:
-      "The pencil on a member card changes their role, title, portfolio or phone number, or resets their password. Titles matter beyond decoration: a title containing “marketing” unlocks the marketing deliverables panel on content requests.",
+      "The pencil on a member card changes their role, title or phone number, or resets their password. Changing the title moves them to that title's portfolio; executives hold none. Titles matter beyond grouping too: one containing “marketing” unlocks the marketing deliverables panel on content requests.",
   },
 
   // ── Rubric portal ──────────────────────────────────────────────────────────
@@ -667,7 +667,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Portfolios",
     body:
-      "The areas the Members page groups people into. Add, rename and remove them here; deleting one leaves its members unassigned rather than removing them. The Executive portfolio is fixed, because executives are matched to it by name.",
+      "The nine areas the committee is split into. Add, rename and remove them here; deleting one unassigns its titles and members rather than removing them. Nobody is put in a portfolio directly, so each one needs its titles set up below.",
   },
   {
     id: "settings-titles",
@@ -675,7 +675,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Roles & titles",
     body:
-      "The title options offered when adding or editing a member, grouped by role level. Add, rename and remove them here.",
+      "The title options offered when adding or editing a member, grouped by role level. Each director and subcom title points at a portfolio, and that is what groups its holders on the Members page: move a title to another portfolio and everyone holding it moves too. Executive titles have no portfolio.",
   },
   {
     id: "settings-rubric",

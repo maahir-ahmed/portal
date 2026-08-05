@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
+import { portfolioForTitle } from "@/lib/titles";
 import { z } from "zod";
 
 type Params = { society: string; membershipId: string };
@@ -9,7 +10,6 @@ type Params = { society: string; membershipId: string };
 const patchSchema = z.object({
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]).optional(),
   title: z.string().nullable().optional(),
-  portfolioId: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
 });
 
@@ -29,13 +29,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   try {
     const body = patchSchema.parse(await req.json());
 
+    // Role and title both feed the portfolio, so recompute it when either moves.
+    const role = body.role ?? target.role;
+    const title = body.title !== undefined ? body.title : target.title;
+    const portfolioId =
+      body.role !== undefined || body.title !== undefined
+        ? await portfolioForTitle(membership!.societyId, title, role)
+        : undefined;
+
     const [updated] = await Promise.all([
       prisma.societyMembership.update({
         where: { id: membershipId },
         data: {
           ...(body.role !== undefined && { role: body.role }),
           ...(body.title !== undefined && { title: body.title }),
-          ...(body.portfolioId !== undefined && { portfolioId: body.portfolioId }),
+          ...(portfolioId !== undefined && { portfolioId }),
         },
       }),
       body.phone !== undefined

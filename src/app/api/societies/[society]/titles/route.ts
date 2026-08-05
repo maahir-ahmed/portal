@@ -6,6 +6,9 @@ import { z } from "zod";
 const createSchema = z.object({
   name: z.string().min(1).max(60),
   roleLevel: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]),
+  // Executive titles have no portfolio; director and subcom titles are how a
+  // member ends up in one.
+  portfolioId: z.string().nullable().optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -19,6 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
   const titles = await prisma.societyTitle.findMany({
     where: { societyId: membership!.societyId },
     orderBy: [{ roleLevel: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+    include: { portfolio: { select: { id: true, name: true } } },
   });
 
   return NextResponse.json(titles);
@@ -45,6 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         societyId: membership!.societyId,
         name: body.name,
         roleLevel: body.roleLevel,
+        portfolioId: body.roleLevel === "EXECUTIVE" ? null : (body.portfolioId ?? null),
         sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
       },
     });

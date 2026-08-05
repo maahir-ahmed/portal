@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
-import { DEFAULT_PORTFOLIOS, EXEC_PORTFOLIO } from "@/lib/portfolios";
+import { BASE_PORTFOLIOS } from "@/lib/portfolios";
 
 interface Portfolio {
   id: string;
   name: string;
   memberCount: number;
+  titleCount: number;
 }
 
 export function PortfoliosManager({ societySlug }: { societySlug: string }) {
@@ -81,8 +82,8 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   }
 
   async function remove(p: Portfolio) {
-    const warning = p.memberCount > 0
-      ? `Delete "${p.name}"? ${p.memberCount} member${p.memberCount === 1 ? "" : "s"} will be left without a portfolio.`
+    const warning = p.memberCount > 0 || p.titleCount > 0
+      ? `Delete "${p.name}"? ${p.memberCount} member${p.memberCount === 1 ? "" : "s"} and ${p.titleCount} title${p.titleCount === 1 ? "" : "s"} will be left unassigned.`
       : `Delete "${p.name}"?`;
     if (!confirm(warning)) return;
     if (await send(`${base}/${p.id}`, { method: "DELETE" }, "Could not delete portfolio")) {
@@ -95,8 +96,9 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
       <CardHeader>
         <CardTitle className="text-base">Portfolios</CardTitle>
         <CardDescription>
-          The areas members are grouped into on the Members page. Executives belong to the{" "}
-          {EXEC_PORTFOLIO} portfolio, which can&apos;t be renamed or removed.
+          The areas the committee is split into. A member is grouped by the title they hold, so each
+          portfolio needs a director title and a subcom title in Roles &amp; Titles below. Executives
+          are grouped by role and hold no portfolio.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -105,16 +107,19 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
         ) : portfolios.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              No portfolios yet, so everyone shows under &quot;No portfolio&quot;.
+              No portfolios yet, so everyone outside the executive team shows under &quot;No
+              portfolio&quot;.
             </p>
             <Button size="sm" onClick={addDefaults} disabled={busy} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Add {DEFAULT_PORTFOLIOS.join(", ")}
+              <Plus className="h-3.5 w-3.5" /> Add the {BASE_PORTFOLIOS.length} committee portfolios
             </Button>
+            <p className="text-xs text-muted-foreground">
+              {BASE_PORTFOLIOS.map((p) => p.name).join(", ")}
+            </p>
           </div>
         ) : (
           <div className="space-y-1.5">
             {portfolios.map((p) => {
-              const locked = p.name === EXEC_PORTFOLIO;
               return (
                 <div key={p.id} className="flex items-center gap-2">
                   {editingId === p.id ? (
@@ -140,20 +145,19 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
                     <>
                       <span className="flex-1 rounded bg-muted/50 px-2 py-1 text-sm">{p.name}</span>
                       <span className="tabnums text-xs text-muted-foreground">
-                        {p.memberCount} member{p.memberCount === 1 ? "" : "s"}
+                        {p.memberCount} member{p.memberCount === 1 ? "" : "s"} · {p.titleCount} title
+                        {p.titleCount === 1 ? "" : "s"}
                       </span>
                       <Button
                         size="icon" variant="ghost" className="h-7 w-7"
-                        disabled={locked}
-                        title={locked ? `The ${EXEC_PORTFOLIO} portfolio can't be renamed` : "Rename"}
+                        title="Rename"
                         onClick={() => { setEditingId(p.id); setEditValue(p.name); }}
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
                       <Button
                         size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600"
-                        disabled={locked}
-                        title={locked ? `The ${EXEC_PORTFOLIO} portfolio can't be removed` : "Delete"}
+                        title="Delete"
                         onClick={() => remove(p)}
                       >
                         <Trash2 className="h-3 w-3" />

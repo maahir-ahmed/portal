@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { EXEC_PORTFOLIO } from "../src/lib/portfolios";
+import { BASE_PORTFOLIOS, EXEC_TITLES, directorTitle, subcomTitle } from "../src/lib/portfolios";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -25,16 +25,17 @@ async function main() {
     },
   });
 
-  // Portfolios. Executive is the one execs are assigned to; every society gets it.
-  const [executive, marketing, technical] = await Promise.all(
-    [EXEC_PORTFOLIO, "Marketing", "Technical", "Events"].map((name) =>
+  // The nine committee portfolios, in committee order.
+  const portfolios = await Promise.all(
+    BASE_PORTFOLIOS.map((p, i) =>
       prisma.portfolio.upsert({
-        where: { societyId_name: { societyId: society.id, name } },
-        update: {},
-        create: { societyId: society.id, name },
+        where: { societyId_name: { societyId: society.id, name: p.name } },
+        update: { sortOrder: i + 1 },
+        create: { societyId: society.id, name: p.name, sortOrder: i + 1 },
       })
     )
   );
+  const portfolioByName = new Map(portfolios.map((p) => [p.name, p]));
 
   // Create demo users
   const password = await bcrypt.hash("password123", 12);
@@ -87,49 +88,58 @@ async function main() {
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: maahir.id, societyId: society.id } },
       update: {},
-      create: { userId: maahir.id, societyId: society.id, role: "EXECUTIVE", title: "President & Treasurer", portfolioId: executive.id },
+      create: { userId: maahir.id, societyId: society.id, role: "EXECUTIVE", title: "President" },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: alice.id, societyId: society.id } },
       update: {},
-      create: { userId: alice.id, societyId: society.id, role: "EXECUTIVE", title: "Secretary", portfolioId: executive.id },
+      create: { userId: alice.id, societyId: society.id, role: "EXECUTIVE", title: "Secretary" },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: bob.id, societyId: society.id } },
       update: {},
-      create: { userId: bob.id, societyId: society.id, role: "DIRECTOR", title: "Technical Director", portfolioId: technical.id },
+      create: { userId: bob.id, societyId: society.id, role: "DIRECTOR", title: "CTF Director", portfolioId: portfolioByName.get("CTF")!.id },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: charlie.id, societyId: society.id } },
       update: {},
-      create: { userId: charlie.id, societyId: society.id, role: "SUBCOMMITTEE", title: "Marketing Subcom", portfolioId: marketing.id },
+      create: { userId: charlie.id, societyId: society.id, role: "SUBCOMMITTEE", title: "Creative Subcom", portfolioId: portfolioByName.get("Creatives")!.id },
     }),
   ]);
 
-  // Default titles
-  const defaultTitles: { name: string; roleLevel: "EXECUTIVE" | "DIRECTOR" | "SUBCOMMITTEE"; sortOrder: number }[] = [
-    { name: "President", roleLevel: "EXECUTIVE", sortOrder: 0 },
-    { name: "Vice President", roleLevel: "EXECUTIVE", sortOrder: 1 },
-    { name: "Secretary", roleLevel: "EXECUTIVE", sortOrder: 2 },
-    { name: "Treasurer", roleLevel: "EXECUTIVE", sortOrder: 3 },
-    { name: "Arc Delegate", roleLevel: "EXECUTIVE", sortOrder: 4 },
-    { name: "Welfare Officer", roleLevel: "EXECUTIVE", sortOrder: 5 },
-    { name: "Marketing Director", roleLevel: "DIRECTOR", sortOrder: 0 },
-    { name: "Technical Director", roleLevel: "DIRECTOR", sortOrder: 1 },
-    { name: "Events Director", roleLevel: "DIRECTOR", sortOrder: 2 },
-    { name: "Sponsorship Director", roleLevel: "DIRECTOR", sortOrder: 3 },
-    { name: "Education Director", roleLevel: "DIRECTOR", sortOrder: 4 },
-    { name: "Competitions Director", roleLevel: "DIRECTOR", sortOrder: 5 },
-    { name: "Outreach Director", roleLevel: "DIRECTOR", sortOrder: 6 },
-    { name: "Marketing Subcom", roleLevel: "SUBCOMMITTEE", sortOrder: 0 },
-    { name: "Technical Subcom", roleLevel: "SUBCOMMITTEE", sortOrder: 1 },
-    { name: "Events Subcom", roleLevel: "SUBCOMMITTEE", sortOrder: 2 },
-    { name: "General Subcom", roleLevel: "SUBCOMMITTEE", sortOrder: 3 },
+  // Titles. Each portfolio has a director and a subcom title, which is what puts a
+  // member in that portfolio. Executive titles belong to no portfolio.
+  const defaultTitles: {
+    name: string;
+    roleLevel: "EXECUTIVE" | "DIRECTOR" | "SUBCOMMITTEE";
+    sortOrder: number;
+    portfolioId: string | null;
+  }[] = [
+    ...EXEC_TITLES.map((name, i) => ({
+      name,
+      roleLevel: "EXECUTIVE" as const,
+      sortOrder: i,
+      portfolioId: null,
+    })),
+    ...BASE_PORTFOLIOS.flatMap((p, i) => [
+      {
+        name: directorTitle(p),
+        roleLevel: "DIRECTOR" as const,
+        sortOrder: i,
+        portfolioId: portfolioByName.get(p.name)!.id,
+      },
+      {
+        name: subcomTitle(p),
+        roleLevel: "SUBCOMMITTEE" as const,
+        sortOrder: i,
+        portfolioId: portfolioByName.get(p.name)!.id,
+      },
+    ]),
   ];
   for (const t of defaultTitles) {
     await prisma.societyTitle.upsert({
       where: { societyId_name_roleLevel: { societyId: society.id, name: t.name, roleLevel: t.roleLevel } },
-      update: {},
+      update: { portfolioId: t.portfolioId, sortOrder: t.sortOrder },
       create: { societyId: society.id, ...t },
     });
   }
@@ -153,8 +163,8 @@ async function main() {
   console.log("Demo accounts (password: password123):");
   console.log("  maahir@unswsecurity.com    Executive (President & Treasurer)");
   console.log("  alice@secsoc.unsw.edu.au   Executive (Secretary)");
-  console.log("  bob@secsoc.unsw.edu.au     Director");
-  console.log("  charlie@secsoc.unsw.edu.au Subcommittee");
+  console.log("  bob@secsoc.unsw.edu.au     Director (CTF)");
+  console.log("  charlie@secsoc.unsw.edu.au Subcommittee (Creatives)");
   console.log("");
   console.log("Visit: http://localhost:3000/secsoc/dashboard");
 }

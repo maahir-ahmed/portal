@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
+import { portfolioForTitle } from "@/lib/titles";
 import { z } from "zod";
 
 const schema = z.object({
@@ -10,7 +11,6 @@ const schema = z.object({
   name: z.string().min(1),
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]),
   title: z.string().nullable().optional(),
-  portfolioId: z.string().nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -23,6 +23,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
 
   try {
     const body = schema.parse(await req.json());
+
+    const portfolioId = await portfolioForTitle(membership!.societyId, body.title, body.role);
 
     let user = await prisma.user.findUnique({ where: { email: body.email } });
     let tempPassword: string | null = null;
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       }
       await prisma.societyMembership.update({
         where: { id: existing.id },
-        data: { isActive: true, role: body.role, title: body.title ?? null, portfolioId: body.portfolioId ?? null },
+        data: { isActive: true, role: body.role, title: body.title ?? null, portfolioId },
       });
     } else {
       await prisma.societyMembership.create({
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           societyId: membership!.societyId,
           role: body.role,
           title: body.title ?? null,
-          portfolioId: body.portfolioId ?? null,
+          portfolioId,
         },
       });
     }

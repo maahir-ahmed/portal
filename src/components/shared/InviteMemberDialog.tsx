@@ -11,24 +11,25 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
-import { EXEC_PORTFOLIO } from "@/lib/portfolios";
 
-interface Portfolio { id: string; name: string }
-interface SocietyTitle { id: string; name: string; roleLevel: string }
+interface SocietyTitle {
+  id: string;
+  name: string;
+  roleLevel: string;
+  portfolio: { id: string; name: string } | null;
+}
 
 interface InviteMemberDialogProps {
   societySlug: string;
-  portfolios: Portfolio[];
 }
 
-export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDialogProps) {
+export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [titles, setTitles] = useState<SocietyTitle[]>([]);
   const [role, setRole] = useState("SUBCOMMITTEE");
   const [title, setTitle] = useState("__none__");
-  const [portfolioId, setPortfolioId] = useState("__none__");
 
   useEffect(() => {
     if (open) {
@@ -42,10 +43,6 @@ export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDial
   function handleRoleChange(newRole: string) {
     setRole(newRole);
     setTitle("__none__");
-    // Executives belong to the Executive portfolio, so preselect it for them.
-    const execPortfolio = portfolios.find((p) => p.name === EXEC_PORTFOLIO);
-    if (newRole === "EXECUTIVE" && execPortfolio) setPortfolioId(execPortfolio.id);
-    else if (portfolioId === execPortfolio?.id) setPortfolioId("__none__");
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -61,7 +58,6 @@ export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDial
         email: form.get("email"),
         role,
         title: title === "__none__" ? null : title,
-        portfolioId: portfolioId === "__none__" ? null : portfolioId,
       }),
     });
 
@@ -77,7 +73,6 @@ export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDial
       setOpen(false);
       setRole("SUBCOMMITTEE");
       setTitle("__none__");
-      setPortfolioId("__none__");
       router.refresh();
     } else {
       toast.error(data.error ?? "Failed to add member");
@@ -85,6 +80,9 @@ export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDial
   }
 
   const titleOptions = titles.filter((t) => t.roleLevel === role);
+  // Executives hold no portfolio; everyone else inherits their title's.
+  const selectedPortfolio =
+    role === "EXECUTIVE" ? null : titles.find((t) => t.name === title)?.portfolio?.name ?? null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -125,19 +123,10 @@ export function InviteMemberDialog({ societySlug, portfolios }: InviteMemberDial
               </SelectContent>
             </Select>
           </div>
-          {portfolios.length > 0 && (
-            <div className="space-y-2">
-              <Label>Portfolio</Label>
-              <Select value={portfolioId} onValueChange={setPortfolioId}>
-                <SelectTrigger><SelectValue placeholder="Select a portfolio…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">(No portfolio)</SelectItem>
-                  {portfolios.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {selectedPortfolio && (
+            <p className="text-xs text-muted-foreground">
+              Portfolio: <span className="font-medium text-foreground">{selectedPortfolio}</span>, from the title.
+            </p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

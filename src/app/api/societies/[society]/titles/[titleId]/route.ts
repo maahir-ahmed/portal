@@ -5,7 +5,10 @@ import { z } from "zod";
 
 type Params = { society: string; titleId: string };
 
-const patchSchema = z.object({ name: z.string().min(1).max(60) });
+const patchSchema = z.object({
+  name: z.string().min(1).max(60).optional(),
+  portfolioId: z.string().nullable().optional(),
+});
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -21,8 +24,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   }
 
   try {
-    const { name } = patchSchema.parse(await req.json());
-    const updated = await prisma.societyTitle.update({ where: { id: titleId }, data: { name } });
+    const body = patchSchema.parse(await req.json());
+    const updated = await prisma.societyTitle.update({
+      where: { id: titleId },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.portfolioId !== undefined && {
+          portfolioId: title.roleLevel === "EXECUTIVE" ? null : body.portfolioId,
+        }),
+      },
+    });
+
+    // Members holding this title follow it to its new portfolio.
+    await prisma.societyMembership.updateMany({
+      where: { societyId: membership!.societyId, title: updated.name, role: { not: "EXECUTIVE" } },
+      data: { portfolioId: updated.portfolioId },
+    });
+
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {

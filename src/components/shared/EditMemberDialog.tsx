@@ -12,8 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
 
-interface Portfolio { id: string; name: string }
-interface SocietyTitle { id: string; name: string; roleLevel: string }
+interface SocietyTitle {
+  id: string;
+  name: string;
+  roleLevel: string;
+  portfolio: { id: string; name: string } | null;
+}
 
 interface EditMemberDialogProps {
   societySlug: string;
@@ -22,8 +26,6 @@ interface EditMemberDialogProps {
   memberPhone: string | null;
   currentRole: string;
   currentTitle: string | null;
-  currentPortfolioId: string | null;
-  portfolios: Portfolio[];
 }
 
 export function EditMemberDialog({
@@ -33,8 +35,6 @@ export function EditMemberDialog({
   memberPhone,
   currentRole,
   currentTitle,
-  currentPortfolioId,
-  portfolios,
 }: EditMemberDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -45,7 +45,6 @@ export function EditMemberDialog({
   const [titles, setTitles] = useState<SocietyTitle[]>([]);
   const [role, setRole] = useState(currentRole);
   const [title, setTitle] = useState(currentTitle ?? "__none__");
-  const [portfolioId, setPortfolioId] = useState(currentPortfolioId ?? "__none__");
   const [phone, setPhone] = useState(memberPhone ?? "");
 
   useEffect(() => {
@@ -70,7 +69,6 @@ export function EditMemberDialog({
       body: JSON.stringify({
         role,
         title: title === "__none__" ? null : title,
-        portfolioId: portfolioId === "__none__" ? null : portfolioId,
         phone: phone.trim() || null,
       }),
     });
@@ -114,6 +112,9 @@ export function EditMemberDialog({
   }
 
   const titleOptions = titles.filter((t) => t.roleLevel === role);
+  // Executives hold no portfolio; everyone else inherits their title's.
+  const derivedPortfolio =
+    role === "EXECUTIVE" ? null : titles.find((t) => t.name === title)?.portfolio?.name ?? null;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTempPassword(null); }}>
@@ -148,20 +149,11 @@ export function EditMemberDialog({
               </SelectContent>
             </Select>
           </div>
-          {portfolios.length > 0 && (
-            <div className="space-y-2">
-              <Label>Portfolio</Label>
-              <Select value={portfolioId} onValueChange={setPortfolioId}>
-                <SelectTrigger><SelectValue placeholder="Select a portfolio…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">(No portfolio)</SelectItem>
-                  {portfolios.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">
+            Portfolio:{" "}
+            <span className="font-medium text-foreground">{derivedPortfolio ?? "none"}</span>
+            {role === "EXECUTIVE" ? ", executives are grouped by role" : ", from the title"}
+          </p>
           <div className="space-y-2">
             <Label>Phone (contact details)</Label>
             <Input

@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { InviteMemberDialog } from "@/components/shared/InviteMemberDialog";
 import { EditMemberDialog } from "@/components/shared/EditMemberDialog";
-import { EXEC_PORTFOLIO } from "@/lib/portfolios";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -52,7 +51,7 @@ export default async function MembersPage({ params }: Props) {
     }),
     prisma.portfolio.findMany({
       where: { societyId: membership.societyId },
-      orderBy: { name: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     }),
   ]);
 
@@ -63,17 +62,17 @@ export default async function MembersPage({ params }: Props) {
     SUBCOMMITTEE: members.filter((m) => m.role === "SUBCOMMITTEE").length,
   };
 
-  const portfolioList = portfolios.map((d) => ({ id: d.id, name: d.name }));
-
-  // Executive portfolio first, then the rest alphabetically, then anyone unassigned.
+  // Executives are grouped by role and hold no portfolio; everyone else sits in the
+  // portfolio their title belongs to, in committee order.
+  const nonExec = members.filter((m) => m.role !== "EXECUTIVE");
   const groups = [
-    ...portfolios
-      .slice()
-      .sort((a, b) =>
-        a.name === EXEC_PORTFOLIO ? -1 : b.name === EXEC_PORTFOLIO ? 1 : a.name.localeCompare(b.name)
-      )
-      .map((p) => ({ key: p.id, name: p.name, members: members.filter((m) => m.portfolioId === p.id) })),
-    { key: "none", name: "No portfolio", members: members.filter((m) => !m.portfolioId) },
+    { key: "execs", name: "Executives", members: members.filter((m) => m.role === "EXECUTIVE") },
+    ...portfolios.map((p) => ({
+      key: p.id,
+      name: p.name,
+      members: nonExec.filter((m) => m.portfolioId === p.id),
+    })),
+    { key: "none", name: "No portfolio", members: nonExec.filter((m) => !m.portfolioId) },
   ]
     .filter((g) => g.members.length > 0)
     // Within a portfolio: executives, then directors, then subcommittee, by name.
@@ -91,7 +90,7 @@ export default async function MembersPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Members</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{members.length} active members</p>
         </div>
-        {isExec && <InviteMemberDialog societySlug={societySlug} portfolios={portfolioList} />}
+        {isExec && <InviteMemberDialog societySlug={societySlug} />}
       </div>
 
       {/* Role totals across the whole committee */}
@@ -108,9 +107,10 @@ export default async function MembersPage({ params }: Props) {
 
       {portfolios.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
-          This society has no portfolios yet, so everyone is listed as unassigned. Create them in{" "}
-          <Link href={`/${societySlug}/settings`} className="font-medium underline">Settings</Link>, then
-          assign people with the pencil on their card.
+          This society has no portfolios yet, so everyone outside the executive team is listed as
+          unassigned. Create them in{" "}
+          <Link href={`/${societySlug}/settings`} className="font-medium underline">Settings</Link>, give
+          each one a director and subcom title, and members will be grouped by the title they hold.
         </div>
       )}
 
@@ -137,8 +137,6 @@ export default async function MembersPage({ params }: Props) {
                             memberPhone={m.user.phone ?? null}
                             currentRole={m.role}
                             currentTitle={m.title}
-                            currentPortfolioId={m.portfolioId}
-                            portfolios={portfolioList}
                           />
                         )}
                       </div>
