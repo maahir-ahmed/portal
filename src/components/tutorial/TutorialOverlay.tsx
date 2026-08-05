@@ -64,10 +64,14 @@ export function TutorialOverlay() {
     [pathname, slug]
   );
 
+  // Lists and counters are server-rendered, so they keep showing the demo records
+  // until the router refetches them. Same on the way in, hence the refresh after
+  // creating them too.
   const wipeDemo = useCallback(async () => {
     if (!slug) return;
     await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "DELETE" }).catch(() => {});
-  }, [slug]);
+    router.refresh();
+  }, [slug, router]);
 
   const close = useCallback(
     (cleanup: boolean) => {
@@ -222,7 +226,10 @@ export function TutorialOverlay() {
       setBusy(true);
       const res = await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
       setBusy(false);
-      if (res?.ok) setIds(await res.json());
+      if (res?.ok) {
+        setIds(await res.json());
+        router.refresh();
+      }
       else toast.error("Couldn't create the demo records. The tour still works, some pages will just be empty.");
     }
     if (step.kind === "cleanup") {
@@ -239,7 +246,7 @@ export function TutorialOverlay() {
       return;
     }
     setIndex((i) => Math.min(steps.length - 1, i + 1));
-  }, [step, slug, steps.length, wipeDemo, close, page, index]);
+  }, [step, slug, steps.length, wipeDemo, close, page, index, router]);
 
   useEffect(() => {
     if (!active) return;
