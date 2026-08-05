@@ -146,10 +146,10 @@ async function main() {
   console.log("✅ Seeding complete!");
   console.log("");
   console.log("Demo accounts (password: password123):");
-  console.log("  maahir@unswsecurity.com   — Executive (President & Treasurer)");
-  console.log("  alice@secsoc.unsw.edu.au  — Executive (Secretary)");
-  console.log("  bob@secsoc.unsw.edu.au    — Director");
-  console.log("  charlie@secsoc.unsw.edu.au — Subcommittee");
+  console.log("  maahir@unswsecurity.com    Executive (President & Treasurer)");
+  console.log("  alice@secsoc.unsw.edu.au   Executive (Secretary)");
+  console.log("  bob@secsoc.unsw.edu.au     Director");
+  console.log("  charlie@secsoc.unsw.edu.au Subcommittee");
   console.log("");
   console.log("Visit: http://localhost:3000/secsoc/dashboard");
 }

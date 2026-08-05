@@ -5,7 +5,7 @@ import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { serialiseCategory } from "@/lib/budget";
 
-// List budget categories (any member — the treasury form needs them too).
+// List budget categories (any member, the treasury form needs them too).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;

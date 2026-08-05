@@ -45,7 +45,7 @@ export default async function PrintingRequestDetailPage({ params }: Props) {
           action: "mark_submitted" as const,
           blurb: (
             <>
-              Approved — submit this job on the{" "}
+              Approved. Submit this job on the{" "}
               <Link href={`/${societySlug}/rubric/web?type=printing&id=${request.id}`} className="text-blue-600 hover:underline">
                 Arc web portal
               </Link>
@@ -57,7 +57,7 @@ export default async function PrintingRequestDetailPage({ params }: Props) {
         ? {
             border: "border-blue-200 bg-blue-50/50",
             action: "mark_ready" as const,
-            blurb: <>Submitted to Arc — mark it once it&apos;s ready to collect from the Front Desk.</>,
+            blurb: <>Submitted to Arc. Mark it once it&apos;s ready to collect from the Front Desk.</>,
           }
         : null;
   const detail = (label: string, value: React.ReactNode) => (

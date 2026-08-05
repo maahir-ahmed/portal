@@ -30,7 +30,7 @@ export function TutorialOverlay() {
   const [index, setIndex] = useState(0);
   const [ids, setIds] = useState<DemoIds>({});
   const [rect, setRect] = useState<DOMRect | null>(null);
-  // False while the next step's target is still being measured — the box waits it
+  // False while the next step's target is still being measured, the box waits it
   // out rather than following the measurement around.
   const [settled, setSettled] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -176,7 +176,7 @@ export function TutorialOverlay() {
       }
       setRect(r);
       setSettled(true);
-      // Then stay glued to it — user scrolling, images loading, panels opening.
+      // Then stay glued to it as the page changes: scrolling, images loading, panels opening.
       poll = window.setInterval(() => {
         const live = document.querySelector(`[data-tour="${step.target}"]`);
         if (!live) return;
@@ -202,14 +202,14 @@ export function TutorialOverlay() {
       const res = await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
       setBusy(false);
       if (res?.ok) setIds(await res.json());
-      else toast.error("Couldn't create the demo records — the tour still works, some pages will just be empty.");
+      else toast.error("Couldn't create the demo records. The tour still works, some pages will just be empty.");
     }
     if (step.kind === "cleanup") {
       setBusy(true);
       await wipeDemo();
       setBusy(false);
       close(false);
-      toast.success("Tour finished — demo records deleted");
+      toast.success("Tour finished, demo records deleted");
       return;
     }
     setIndex((i) => Math.min(steps.length - 1, i + 1));
@@ -277,7 +277,7 @@ export function TutorialOverlay() {
 
         {!rect && step.target && (
           <p className="mx-4 mt-3 rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
-            Nothing to point at on this page right now — it only appears when there is something in that state.
+            Nothing to point at on this page right now; it only appears when there is something in that state.
           </p>
         )}
 

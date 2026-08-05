@@ -20,7 +20,7 @@ if [ "$LOCAL" = "$REMOTE" ]; then
   exit 0   # up to date, nothing to do
 fi
 
-echo "$(date -Is) new commit $REMOTE — deploying"
+echo "$(date -Is) new commit $REMOTE, deploying"
 git reset --hard "origin/$BRANCH"
 
 docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build --remove-orphans

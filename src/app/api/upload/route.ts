@@ -11,7 +11,7 @@ const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 // The saved extension decides the Content-Type at serve time, and both the
-// filename and file.type are attacker-controlled — so whitelist the extension
+// filename and file.type are attacker-controlled, so whitelist the extension
 // too (no svg/html: they execute script when rendered same-origin).
 const ALLOWED_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "pdf", "doc", "docx"];
 

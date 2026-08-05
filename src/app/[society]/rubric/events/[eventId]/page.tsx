@@ -72,7 +72,7 @@ export default function RubricEventDetailPage() {
 
   const allTickets = (tickets?.allTickets ?? []) as Record<string, unknown>[];
 
-  // Names that appear on more than one ticket — likely duplicate/multi purchases.
+  // Names that appear on more than one ticket, likely duplicate/multi purchases.
   const nameKey = (t: Record<string, unknown>) => ((t.fullname as string) ?? "").trim().toLowerCase();
   const nameCounts = allTickets.reduce<Record<string, number>>((acc, t) => {
     const k = nameKey(t);
@@ -94,7 +94,7 @@ export default function RubricEventDetailPage() {
 
   const revenue = allTickets.reduce((acc, t) => acc + parseBill(t.totalbill), 0);
 
-  // Attendance/ticket export — required when submitting activity grants on the Arc
+  // Attendance/ticket export, required when submitting activity grants on the Arc
   // portal. Exports every field Rubric provides, with Rubric's own field names.
   function exportAttendanceCsv() {
     if (allTickets.length === 0) return;
@@ -201,7 +201,7 @@ export default function RubricEventDetailPage() {
                             <tr key={(t.ticketid as number) ?? i} className={`border-b last:border-0 ${isDup ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"}`}>
                               {columns.map((c) => (
                                 <td key={c} className={`py-2 pr-3 ${c === "fullname" ? "font-medium" : "text-muted-foreground"}`}>
-                                  {fmt(t[c]) || "—"}
+                                  {fmt(t[c]) || "-"}
                                   {c === "fullname" && isDup && (
                                     <span className="ml-1.5 text-xs text-amber-700">×{nameCounts[nameKey(t)]}</span>
                                   )}

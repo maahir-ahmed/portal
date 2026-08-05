@@ -526,7 +526,7 @@ model BudgetCategory {
   id           String   @id @default(cuid())
   societyId    String
   name         String
-  group        String   @default("PORTFOLIO") // "PORTFOLIO" | "OTHER" — for subtotals
+  group        String   @default("PORTFOLIO") // "PORTFOLIO" | "OTHER", for subtotals
   yearlyBudget Decimal  @default(0) @db.Decimal(10, 2) // the current-year (2026) budget
   budget2024   Decimal? @db.Decimal(10, 2)
   budget2024v2 Decimal? @db.Decimal(10, 2)

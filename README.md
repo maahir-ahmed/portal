@@ -5,23 +5,23 @@ Web app for running a university society committee: content requests, room booki
 ## Features
 
 **Requests**
-- **Content requests** — marketing workflow. The list is ordered by event date, colour-coded by how close the event is, and each status tab shows a count. Marketing directors upload finished graphics, paste the event blurb, and tick items done. Rubric event links generate a transparent QR code automatically.
-- **Room bookings** — Arc booking requests, with a warning when external guests need 7 business days' notice.
-- **Treasury** — reimbursement claims with amount-based multi-executive approval (≥ $50 needs the treasurer). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts while a claim is still pending. Bank details saved per user.
-- **Printing** — club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold), approved by execs; approved requests draw down the budget.
+- **Content requests**: marketing workflow. The list is ordered by event date, colour-coded by how close the event is, and each status tab shows a count. Marketing directors upload finished graphics, paste the event blurb, and tick items done. Rubric event links generate a transparent QR code automatically.
+- **Room bookings**: Arc booking requests, with a warning when external guests need 7 business days' notice.
+- **Treasury**: reimbursement claims with amount-based multi-executive approval (≥ $50 needs the treasurer). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts while a claim is still pending. Bank details saved per user.
+- **Printing**: club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold), approved by execs; approved requests draw down the budget.
 
-**Spending budget** (exec-only tab) — the yearly budget tracker, replacing the committee's spreadsheet:
-- **Current Year** — each category's 2026 budget vs live spend (summed from classified treasury claims), with % used/left bars and an unclassified bucket.
-- **History** — archival 2024/2025 budgets, 2025 usage, worst case, and the reasoning/notes behind each figure. Everything is editable in-app.
+**Spending budget** (exec-only tab) is the yearly budget tracker that replaced the committee's spreadsheet:
+- **Current Year**: each category's 2026 budget vs live spend (summed from classified treasury claims), with % used/left bars and an unclassified bucket.
+- **History**: archival 2024/2025 budgets, 2025 usage, worst case, and the reasoning/notes behind each figure. Everything is editable in-app.
 - Submitters pick the category on the treasury form; execs can reclassify any claim from the budget tab.
 
-**Rubric portal** — reads events, ticket sales, members, grants, and settlements from Rubric, and submits events (including the Arc affiliation form). Executives see everything; directors see the Events tab only.
+**Rubric portal**: reads events, ticket sales, members, grants, and settlements from Rubric, and submits events (including the Arc affiliation form). Executives see everything; directors see the Events tab only.
 
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action.
 - Per-society branding (logo/banner upload, colours), member directory, titles, notifications, and an audit log.
 - Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
-- **Guided tour** — the mortarboard button in the header walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
+- **Guided tour**: the mortarboard button in the header walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
 
 ## Stack
 
@@ -89,7 +89,7 @@ deploy/           Docker compose, env templates, deploy scripts
 
 ## Notes
 
-Rubric integration talks to [hellorubric.com](https://hellorubric.com) with per-society credentials entered in Settings and stored in your own database — nothing is committed to this repo, and the Rubric API is undocumented, so those endpoints may break without warning. Not affiliated with or endorsed by Rubric, Arc UNSW, or UNSW.
+Rubric integration talks to [hellorubric.com](https://hellorubric.com) with per-society credentials entered in Settings and stored in your own database. Nothing is committed to this repo, and the Rubric API is undocumented, so those endpoints may break without warning. Not affiliated with or endorsed by Rubric, Arc UNSW, or UNSW.
 
 Built for one society's committee rather than as a general product: expect UNSW/Arc-specific assumptions (room booking rules, Arc grant flow, printing tiers). Issues and PRs are welcome, but there's no support commitment. Found a security bug? Open an issue with no exploit detail and I'll follow up.
 

@@ -39,7 +39,7 @@ interface Txn {
 }
 
 const UNCLASSIFIED = "__none__";
-const money = (v: number | null) => (v == null ? "—" : formatCurrency(v));
+const money = (v: number | null) => (v == null ? "-" : formatCurrency(v));
 
 type SumField = "budget2024" | "budget2024v2" | "budget2025" | "usage2025" | "yearlyBudget" | "usage2026" | "worstCase";
 function sumOf(cats: Category[], field: SumField): number {

@@ -2,7 +2,7 @@
 -- can be remapped (see ...-2-remap.sql) before db push drops the old APPROVED
 -- value. Idempotent: no-ops once the values exist, and skips entirely on a
 -- fresh database where the type doesn't exist yet.
--- NOTE: must run in its own `prisma db execute` — new enum values can't be
+-- NOTE: must run in its own `prisma db execute`; new enum values can't be
 -- used in the same transaction that adds them.
 DO $$
 BEGIN

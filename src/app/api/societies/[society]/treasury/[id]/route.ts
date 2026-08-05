@@ -160,7 +160,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
     return NextResponse.json({ error: "This claim can no longer be deleted" }, { status: 403 });
   }
 
-  // Re-enforce the predicate atomically at delete time — the status may have
+  // Re-enforce the predicate atomically at delete time: the status may have
   // changed since the check above (e.g. an exec approved the claim mid-flight).
   const deleteWhere = {
     id,

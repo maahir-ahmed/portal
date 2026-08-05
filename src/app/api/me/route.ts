@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest) {
     if (data.email) {
       const email = data.email.trim().toLowerCase();
       if (email !== user.email) {
-        // Changing the email is sensitive — confirm with the account password.
+        // Changing the email is sensitive, so confirm with the account password.
         if (!user.passwordHash) {
           return NextResponse.json({ error: "Password not set on this account" }, { status: 400 });
         }

@@ -5,7 +5,7 @@ import { QRCodeCanvas } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Download, Contrast } from "lucide-react";
 
-// Auto-generates a transparent QR code from the Rubric event link — no upload needed.
+// Auto-generates a transparent QR code from the Rubric event link, no upload needed.
 export function RubricQrCode({ value }: { value: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dark, setDark] = useState(true); // true = black modules on transparent

@@ -67,7 +67,7 @@ export function RubricCopyPanel({
       await navigator.clipboard.writeText(text);
       toast.success("Copied");
     } catch {
-      toast.error("Copy failed — select and copy manually");
+      toast.error("Copy failed: select and copy manually");
     }
   }
 
@@ -178,7 +178,7 @@ export function RubricCopyPanel({
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{f.label}</p>
-                  <p className="whitespace-pre-wrap break-words text-sm">{f.value || "—"}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm">{f.value || "-"}</p>
                 </div>
                 <Copy className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
               </button>

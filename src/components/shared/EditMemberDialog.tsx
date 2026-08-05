@@ -141,7 +141,7 @@ export function EditMemberDialog({
             <Select value={title} onValueChange={setTitle}>
               <SelectTrigger><SelectValue placeholder="Select a title…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">— No title —</SelectItem>
+                <SelectItem value="__none__">(No title)</SelectItem>
                 {titleOptions.map((t) => (
                   <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
                 ))}
@@ -154,7 +154,7 @@ export function EditMemberDialog({
               <Select value={departmentId} onValueChange={setDepartmentId}>
                 <SelectTrigger><SelectValue placeholder="Select a department…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">— No department —</SelectItem>
+                  <SelectItem value="__none__">(No department)</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
@@ -175,7 +175,7 @@ export function EditMemberDialog({
             <Label>Password</Label>
             {tempPassword ? (
               <div className="rounded-md border bg-muted/40 p-2">
-                <p className="text-xs text-muted-foreground mb-1.5">Temporary password — copy and share it now, it won&apos;t be shown again.</p>
+                <p className="text-xs text-muted-foreground mb-1.5">Temporary password: copy and share it now, it won&apos;t be shown again.</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded bg-background px-2 py-1 text-sm">{tempPassword}</code>
                   <Button type="button" size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(tempPassword); toast.success("Copied"); }}>

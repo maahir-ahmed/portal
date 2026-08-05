@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
   return NextResponse.json({
     configured: !!(soc?.rubricSessionId && soc?.rubricSocietyId),
     rubricSocietyId: soc?.rubricSocietyId ?? null,
-    // Never expose the full session ID — just indicate it's set
+    // Never expose the full session ID, just indicate it's set
     sessionConfigured: !!soc?.rubricSessionId,
     unionSessionConfigured: !!soc?.rubricUnionSessionId,
   });

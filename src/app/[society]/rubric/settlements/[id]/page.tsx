@@ -46,19 +46,19 @@ export default function RubricSettlementDetailPage() {
             <Card>
               <CardContent className="p-5 text-center">
                 <DollarSign className="h-5 w-5 mx-auto text-green-600 mb-1" />
-                <p className="text-2xl font-bold text-green-700">${data.finalamount as string ?? "—"}</p>
+                <p className="text-2xl font-bold text-green-700">${data.finalamount as string ?? "-"}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Final Amount</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5 text-center">
-                <p className="text-2xl font-bold">{data.societyname as string ?? "—"}</p>
+                <p className="text-2xl font-bold">{data.societyname as string ?? "-"}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Society</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5 text-center">
-                <p className="text-2xl font-bold capitalize">{data.settlementtype as string ?? "—"}</p>
+                <p className="text-2xl font-bold capitalize">{data.settlementtype as string ?? "-"}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Type</p>
               </CardContent>
             </Card>
@@ -88,7 +88,7 @@ export default function RubricSettlementDetailPage() {
                         <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
                           {Object.entries(row).slice(0, 6).map(([k, v]) => (
                             <td key={k} className="py-2 pr-4">
-                              {typeof v === "boolean" ? (v ? "Yes" : "No") : String(v ?? "—")}
+                              {typeof v === "boolean" ? (v ? "Yes" : "No") : String(v ?? "-")}
                             </td>
                           ))}
                         </tr>

@@ -59,7 +59,7 @@ export default async function PrintingRequestsPage({ params }: Props) {
         </Button>
       </div>
 
-      {/* Secretarial budget — visible to everyone */}
+      {/* Secretarial budget: visible to everyone */}
       <Card data-tour="printing-allowance">
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-2">

@@ -209,7 +209,7 @@ export default function NewTreasuryPage() {
                 <Select value={categoryId} onValueChange={setCategoryId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={UNCLASSIFIED}>Not sure — let an exec classify it</SelectItem>
+                    <SelectItem value={UNCLASSIFIED}>Not sure, let an exec classify it</SelectItem>
                     {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

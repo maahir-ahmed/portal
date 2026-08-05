@@ -148,7 +148,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
             </CardContent>
           </Card>
 
-          {/* Marketing deliverables — editable for marketing/exec, read-only otherwise */}
+          {/* Marketing deliverables, editable for marketing/exec, read-only otherwise */}
           {isMarketing && (request.bannerRequired || request.blurbRequired) ? (
             <MarketingContentPanel
               societySlug={societySlug}

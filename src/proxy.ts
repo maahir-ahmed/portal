@@ -33,7 +33,7 @@ export default auth((req) => {
   if (SOCIETY_SLUG && !isPublic) {
     const slugPrefix = `/${SOCIETY_SLUG}`;
 
-    // Already slug-prefixed — either a real /slug/... request OR the internal rewrite
+    // Already slug-prefixed: either a real /slug/... request OR the internal rewrite
     // re-entering middleware (which happens in the standalone production server). Render
     // as-is. Do NOT redirect to a clean URL here: combined with the rewrite below it
     // creates an infinite /dashboard ⇄ /slug/dashboard loop.

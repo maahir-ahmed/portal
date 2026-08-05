@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     await createNotification({
       userId: request.submittedById,
       type: "APPROVAL_REQUIRED",
-      title: "Reimbursement Approved — Processing Soon",
+      title: "Reimbursement Approved, Processing Soon",
       body: `Your claim for $${amount.toFixed(2)} has been fully approved and is now pending reimbursement.`,
       link: `/requests/treasury/${id}`,
     });

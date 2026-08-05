@@ -15,7 +15,7 @@ Two stacks behind your existing cloudflared tunnel:
    # fill AUTH_SECRET, DB_PASSWORD (openssl rand -base64 32 / 24), etc. Different secrets per stack.
    ```
 
-3. **Tunnel ingress** — the apps publish host ports (3000 prod, 3001 dev); cloudflared
+3. **Tunnel ingress**: the apps publish host ports (3000 prod, 3001 dev); cloudflared
    reaches them via `host.docker.internal`. Add to your cloudflared `config.yml` ingress
    (above the `http_status:404` line) and restart cloudflared:
    ```yaml
@@ -50,4 +50,4 @@ crontab -e
 
 ## Notes
 - Schema is applied with `prisma db push` (no migrations dir). Fine for now; add a migrations history later for safe prod schema changes.
-- App ports are NOT published to the host — only cloudflared (via the `edge` network) can reach them.
+- App ports are NOT published to the host; only cloudflared (via the `edge` network) can reach them.

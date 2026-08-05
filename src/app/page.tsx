@@ -8,7 +8,7 @@ export default async function RootPage() {
 
   // Single-society mode: go to the clean /dashboard (middleware rewrites it to
   // /slug/dashboard internally). Guard on membership using the SAME session data the
-  // dashboard checks — otherwise a member-less/stale session loops /dashboard → / → …
+  // dashboard checks; otherwise a member-less/stale session loops /dashboard → / → …
   const envSlug = process.env.SOCIETY_SLUG;
   if (envSlug) {
     const hasMembership = (session.user as { memberships?: { society: { slug: string } }[] })

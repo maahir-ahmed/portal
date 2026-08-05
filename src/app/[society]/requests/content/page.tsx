@@ -15,7 +15,7 @@ interface Props {
   searchParams: Promise<{ status?: string }>;
 }
 
-// Tab order — ASSIGNED / Awaiting exec action removed; "Need more information" sits before In Progress.
+// Tab order: ASSIGNED / Awaiting exec action removed; "Need more information" sits before In Progress.
 const TABS: ContentRequestStatus[] = [
   "SUBMITTED",
   "AWAITING_INFORMATION",

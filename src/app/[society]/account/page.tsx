@@ -168,7 +168,7 @@ export default function AccountPage() {
         </Card>
       </form>
 
-      {/* Bank details — used to prefill reimbursement claims */}
+      {/* Bank details, used to prefill reimbursement claims */}
       <form onSubmit={handleBank}>
         <Card data-tour="account-bank">
           <CardHeader>

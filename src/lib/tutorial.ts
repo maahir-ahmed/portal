@@ -49,7 +49,7 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/dashboard",
     title: "Tour of the platform",
     body:
-      "This walks through every part of the dashboard — requests, approvals, the budget, the Rubric portal and your account.\n\n" +
+      "This walks through every part of the dashboard: requests, approvals, the budget, the Rubric portal and your account.\n\n" +
       "To make the pages worth looking at, it first creates a handful of demo records (a content request, a room booking, a reimbursement claim and a printing job) all tagged “[Tutorial demo]”. They are deleted again when the tour ends.\n\n" +
       "Arrow keys move between steps; Esc leaves and cleans up.",
   },
@@ -68,7 +68,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "sidebar-society",
     title: "Society + your role",
     body:
-      "Your society's name, logo and colours (set in Settings), with your own role underneath. One account can belong to several societies — each has its own space.",
+      "Your society's name, logo and colours (set in Settings), with your own role underneath. One account can belong to several societies; each has its own space.",
   },
   {
     id: "sidebar-user",
@@ -128,7 +128,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "content-tabs",
     title: "Status tabs with counts",
     body:
-      "Filter by status — Submitted, Need more information, In Progress, Completed, Cancelled — with a live count on each. “All” shows everything.",
+      "Filter by status (Submitted, Need more information, In Progress, Completed, Cancelled) with a live count on each. “All” shows everything.",
   },
   {
     id: "content-card",
@@ -136,7 +136,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Reading a request at a glance",
     body:
       "Cards are colour-coded by how close the content deadline is: green with plenty of time, yellow inside two weeks, amber inside a week, red inside two days, deep red overdue. Open requests sort soonest-deadline-first; finished ones drop to the bottom.\n\n" +
-      "The little chips show what was asked for — Banner, Blurb, Rubric — and turn green as each is delivered.",
+      "The little chips show what was asked for (Banner, Blurb, Rubric) and turn green as each is delivered.",
   },
   {
     id: "content-new",
@@ -150,7 +150,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "content-form",
     title: "The request form",
     body:
-      "Event name, start (and optional end), location, key points, and the content deadline — the date the card's colour is based on. Key points are what marketing writes the blurb from, so bullet points beat a sentence.",
+      "Event name, start (and optional end), location, key points, and the content deadline, which is the date the card's colour is based on. Key points are what marketing writes the blurb from, so bullet points beat a sentence.",
   },
   {
     id: "content-required",
@@ -164,7 +164,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "content-submit",
     title: "Submit or save as draft",
     body:
-      "Submit notifies the executives immediately. Save as draft keeps it private to you until you're ready — drafts never appear in anyone's queue.",
+      "Submit notifies the executives immediately. Save as draft keeps it private to you until you're ready; drafts never appear in anyone's queue.",
   },
   {
     id: "content-details",
@@ -185,7 +185,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Marketing deliverables",
     body:
-      "Visible to executives and anyone whose title mentions marketing. Upload the finished graphics (they become downloads for the requester), paste the final blurb, tick “banner done” / “blurb done”, then Save — or “Mark content complete” to close the request out.",
+      "Visible to executives and anyone whose title mentions marketing. Upload the finished graphics (they become downloads for the requester), paste the final blurb, tick “banner done” / “blurb done”, then Save. “Mark content complete” closes the request out.",
   },
   {
     id: "content-rubric",
@@ -214,7 +214,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "content-edit",
     title: "Editing",
     body:
-      "The submitter, any director or any exec can edit a request until it's completed or cancelled — the same form you filled in, prefilled.",
+      "The submitter, any director or any exec can edit a request until it's completed or cancelled. It's the same form you filled in, prefilled.",
   },
 
   // ── Room bookings ──────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "room-new",
     target: "room-new",
     title: "New booking",
-    body: "Onward to the form — it mirrors what Arc asks for, so it can be copy-pasted straight across.",
+    body: "Onward to the form. It mirrors what Arc asks for, so it can be copy-pasted straight across.",
   },
   {
     id: "room-notice",
@@ -250,7 +250,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "room-external",
     title: "External guests",
     body:
-      "Answering “yes” opens two required fields — who they are and how many — and raises the late-submission warning. This is the single most common reason a booking gets bounced.",
+      "Answering “yes” opens two required fields (who they are and how many) and raises the late-submission warning. This is the single most common reason a booking gets bounced.",
   },
   {
     id: "room-safety",
@@ -263,7 +263,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "room-submit",
     title: "Submit",
     body:
-      "Room requirements (building, AV, accessibility) go in the box above, then submit — the executives get notified, with an urgency flag if the seven-day rule is already broken.",
+      "Room requirements (building, AV, accessibility) go in the box above, then submit. The executives get notified, with an urgency flag if the seven-day rule is already broken.",
   },
   {
     id: "room-detail",
@@ -278,7 +278,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "delete-button",
     title: "Deleting a booking",
     body:
-      "The submitter or any exec can delete a booking. It takes the comment thread and stale notifications with it — and if Arc already has it, you still need to cancel it there.",
+      "The submitter or any exec can delete a booking. It takes the comment thread and stale notifications with it. If Arc already has the booking, you still need to cancel it there.",
   },
 
   // ── Treasury ───────────────────────────────────────────────────────────────
@@ -288,14 +288,14 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-treasury",
     title: "Treasury",
     body:
-      "Reimbursement claims. A claim is visible only to the person who submitted it and to executives — even directors don't see other people's money.",
+      "Reimbursement claims. A claim is visible only to the person who submitted it and to executives; even directors don't see other people's money.",
   },
   {
     id: "treasury-card",
     target: "treasury-card",
     title: "The claim list",
     body:
-      "Amount, supplier and expense date per row. Claims awaiting approval show filled dots — one per approval still needed — so you can see how far along each is without opening it.",
+      "Amount, supplier and expense date per row. Claims awaiting approval show filled dots, one per approval still needed, so you can see how far along each is without opening it.",
   },
   {
     id: "treasury-new",
@@ -323,7 +323,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "treasury-category",
     title: "Budget category",
     body:
-      "Which pot the money comes out of — this is what the Spending Budget tab totals up. “Not sure” is a fine answer; an exec can classify it later.",
+      "Which pot the money comes out of. This is what the Spending Budget tab totals up. “Not sure” is a fine answer; an exec can classify it later.",
   },
   {
     id: "treasury-receipts",
@@ -343,7 +343,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "treasury-submit",
     title: "Submit or draft",
     body:
-      "Submitting alerts every exec with the number of approvals needed. A draft can be incomplete — the app only enforces the full field set at submission.",
+      "Submitting alerts every exec with the number of approvals needed. A draft can be incomplete; the app only enforces the full field set at submission.",
   },
   {
     id: "approval-panel",
@@ -364,7 +364,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "claim-category",
     minRole: "EXECUTIVE",
     title: "Reclassifying",
-    body: "Executives can move a claim between budget categories — or unclassify it — at any point. The budget page updates immediately.",
+    body: "Executives can move a claim between budget categories (or unclassify it) at any point. The budget page updates immediately.",
   },
   {
     id: "claim-actions",
@@ -387,7 +387,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "printing-allowance",
     title: "Secretarial allowance",
     body:
-      "Your Arc club tier sets the yearly pot — Bronze $150, Silver $225, Gold $405 — and the bar tracks it. Only approved jobs are deducted, so pending requests don't eat the budget.",
+      "Your Arc club tier sets the yearly pot (Bronze $150, Silver $225, Gold $405) and the bar tracks it. Only approved jobs are deducted, so pending requests don't eat the budget.",
   },
   {
     id: "printing-card",
@@ -414,7 +414,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "printing-cost",
     title: "Live cost estimate",
     body:
-      "Priced as you type from the per-page rates — 10c for A4 mono, up to $1.75 for A3 double-sided colour — times pages times copies. That figure is what gets deducted if an exec approves it.",
+      "Priced as you type from the per-page rates (10c for A4 mono, up to $1.75 for A3 double-sided colour) times pages times copies. That figure is what gets deducted if an exec approves it.",
   },
   {
     id: "printing-decision",
@@ -423,7 +423,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Approving a print job",
     body:
-      "Approve deducts the cost from the allowance and moves the job to “pending Arc submission”. From there an exec submits it on the Arc portal, marks it submitted, and finally marks it ready for pickup — each step notifies the requester. Rejection is final.",
+      "Approve deducts the cost from the allowance and moves the job to “pending Arc submission”. From there an exec submits it on the Arc portal, marks it submitted, and finally marks it ready for pickup. Each step notifies the requester. Rejection is final.",
   },
 
   // ── Spending budget ────────────────────────────────────────────────────────
@@ -440,7 +440,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "budget-totals",
     title: "Budget vs spend",
     body:
-      "This year's budget, what's been spent, and what's left. Spend is summed live from treasury claims that have actually been committed — drafts and rejected claims are excluded.",
+      "This year's budget, what's been spent, and what's left. Spend is summed live from treasury claims that have actually been committed; drafts and rejected claims are excluded.",
   },
   {
     id: "budget-categories",
@@ -468,7 +468,7 @@ export const TOUR_STEPS: TourStep[] = [
     click: "budget-tab-comparison",
     title: "Year-by-year",
     body:
-      "2024, the 2024 revision, 2025 budget and actual usage, this year's budget and a worst case — with a totals row. Rows with reasoning or notes expand, which is where the “why is this number this number” lives.",
+      "2024, the 2024 revision, 2025 budget and actual usage, this year's budget and a worst case, plus a totals row. Rows with reasoning or notes expand, which is where the “why is this number this number” lives.",
   },
   {
     id: "budget-add",
@@ -476,7 +476,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Editing the budget",
     body:
-      "Add a category, or click the pencil on any row to edit its figures, reasoning and notes — previous years are tucked behind a collapsible section. The same dialog deletes a category. Current-year usage is computed, never typed.",
+      "Add a category, or click the pencil on any row to edit its figures, reasoning and notes. Previous years are tucked behind a collapsible section. The same dialog deletes a category. Current-year usage is computed, never typed.",
   },
 
   // ── Executive queue ────────────────────────────────────────────────────────
@@ -516,7 +516,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Printing in flight",
     body:
-      "Everything not yet collected: waiting on approval, waiting to be lodged with Arc, or at Arc. The button changes to match the stage — Review, Submit on Rubric, Ready for pickup.",
+      "Everything not yet collected: waiting on approval, waiting to be lodged with Arc, or at Arc. The button changes to match the stage: Review, Submit on Rubric, Ready for pickup.",
   },
   {
     id: "queue-reimburse",
@@ -542,7 +542,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Adding a member",
     body:
-      "Name, email, role, title and department. A brand-new account comes back with a temporary password in the toast — copy it before it disappears.",
+      "Name, email, role, title and department. A brand-new account comes back with a temporary password in the toast, so copy it before it disappears.",
   },
   {
     id: "member-edit",
@@ -561,7 +561,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Rubric portal",
     body:
-      "A window onto hellorubric.com — your events, ticket sales, members, grants and settlements, read live. Executives see all of it; directors get the Events tab only.",
+      "A window onto hellorubric.com: your events, ticket sales, members, grants and settlements, read live. Executives see all of it; directors get the Events tab only.",
   },
   {
     id: "rubric-tabs",
@@ -585,7 +585,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Events",
     body:
-      "Every event on Rubric with tickets sold, scanned-in count and revenue. Open one for per-ticket detail, jump to its public page, or archive it. The button up here submits a new event — including the Arc affiliation questions — straight from this app.",
+      "Every event on Rubric with tickets sold, scanned-in count and revenue. Open one for per-ticket detail, jump to its public page, or archive it. The button up here submits a new event (including the Arc affiliation questions) straight from this app.",
   },
   {
     id: "rubric-members",
@@ -612,7 +612,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Web portal",
     body:
-      "Rubric's own site embedded, with a details panel beside it. Pick a room booking, printing job or activity grant and click any field to copy it — the browser won't let us type into someone else's site, so this is the next best thing. The Submit-on-Rubric buttons elsewhere in the app land you here with the right record already selected.",
+      "Rubric's own site embedded, with a details panel beside it. Pick a room booking, printing job or activity grant and click any field to copy it. The browser won't let us type into someone else's site, so this is the next best thing. The Submit-on-Rubric buttons elsewhere in the app land you here with the right record already selected.",
   },
 
   // ── Settings ───────────────────────────────────────────────────────────────
@@ -675,7 +675,7 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/account",
     target: "nav-account",
     title: "My account",
-    body: "Your own settings — available to everyone, whatever your role.",
+    body: "Your own settings, available to everyone whatever your role.",
   },
   {
     id: "account-profile",
@@ -703,7 +703,7 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/dashboard",
     title: "That's the whole thing",
     body:
-      "Finishing deletes the demo records the tour created — the content request, room booking, claim, printing job, demo budget category and demo notification. Leaving early (Esc) cleans up too, and starting the tour again always clears anything left behind first.",
+      "Finishing deletes the demo records the tour created: the content request, room booking, claim, printing job, demo budget category and demo notification. Leaving early (Esc) cleans up too, and starting the tour again always clears anything left behind first.",
   },
 ];
 
@@ -720,8 +720,8 @@ export interface TooltipBox {
 
 /**
  * Where to put the hovering box for a highlighted rect. Below the target if it
- * fits, else above, else beside it (vertically centred) — a full-height target
- * like the sidebar has room in neither direction — else centred on screen.
+ * fits, else above, else beside it (vertically centred; a full-height target
+ * like the sidebar has room in neither direction), else centred on screen.
  * Every branch has to land inside the viewport; see scripts/check-tutorial.ts.
  */
 export function tooltipBox(

@@ -202,7 +202,7 @@ export function SubmitToRubricDialog({
           <DialogDescription>
             {step === 1
               ? "Event details that will appear on the Rubric student portal."
-              : "Arc affiliation questions — required by your union before the event can be published."}
+              : "Arc affiliation questions, required by your union before the event can be published."}
           </DialogDescription>
         </DialogHeader>
 

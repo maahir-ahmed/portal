@@ -30,7 +30,7 @@ export function ImageUploadField({ name, label, defaultValue, shape = "wide", hi
       setUrl(data.url);
     } else {
       const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Upload failed — images only, max 10MB");
+      toast.error(d.error ?? "Upload failed: images only, max 10MB");
     }
   }
 

@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       membership!.societyId,
       "APPROVAL_REQUIRED",
       `New Printing Request from ${session!.user.name}`,
-      `${body.quantity}× ${body.pages}pp ${body.paperSize} ${body.colour === "BW" ? "B&W" : "Colour"} — est. $${cost.toFixed(2)}.`,
+      `${body.quantity}× ${body.pages}pp ${body.paperSize} ${body.colour === "BW" ? "B&W" : "Colour"}, est. $${cost.toFixed(2)}.`,
       `/requests/printing/${request.id}`
     );
 

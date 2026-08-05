@@ -81,7 +81,7 @@ export default function RubricMerchPage() {
                       <div>
                         <p className="font-semibold text-sm">{item.name ?? "Unnamed item"}</p>
                         <p className="text-lg font-bold text-green-700 mt-0.5">
-                          {item.price != null ? `$${item.price}` : "—"}
+                          {item.price != null ? `$${item.price}` : "-"}
                         </p>
                       </div>
                       <div className="text-right text-xs text-muted-foreground">
@@ -126,15 +126,15 @@ export default function RubricMerchPage() {
                 <tbody>
                   {orders.map((o, i) => (
                     <tr key={String(o.orderid ?? i)} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="px-4 py-2.5 font-medium">{o.name ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{o.email ?? "—"}</td>
-                      <td className="px-4 py-2.5">{o.itemname ?? "—"}</td>
-                      <td className="px-4 py-2.5">{o.quantity ?? "—"}</td>
+                      <td className="px-4 py-2.5 font-medium">{o.name ?? "-"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{o.email ?? "-"}</td>
+                      <td className="px-4 py-2.5">{o.itemname ?? "-"}</td>
+                      <td className="px-4 py-2.5">{o.quantity ?? "-"}</td>
                       <td className="px-4 py-2.5 font-medium text-green-700">
-                        {o.total != null ? `$${o.total}` : "—"}
+                        {o.total != null ? `$${o.total}` : "-"}
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">
-                        {o.orderdate ? new Date(o.orderdate).toLocaleDateString("en-AU") : "—"}
+                        {o.orderdate ? new Date(o.orderdate).toLocaleDateString("en-AU") : "-"}
                       </td>
                       <td className="px-4 py-2.5">
                         {o.collected ? (

@@ -136,14 +136,14 @@ export default function RubricMembersPage() {
             <tbody>
               {members.map((m, i) => (
                 <tr key={m.membershipid ?? i} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-2.5 font-medium">{m.fullname ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{m.email ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{m.responses?.["Student Number"] ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{m.responses?.["Degree"] || "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{m.responses?.["Study Year"] ?? "—"}</td>
-                  <td className="px-4 py-2.5">{m.membershiptype?.trim() ?? "—"}</td>
+                  <td className="px-4 py-2.5 font-medium">{m.fullname ?? "-"}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{m.email ?? "-"}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{m.responses?.["Student Number"] ?? "-"}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{m.responses?.["Degree"] || "-"}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{m.responses?.["Study Year"] ?? "-"}</td>
+                  <td className="px-4 py-2.5">{m.membershiptype?.trim() ?? "-"}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">
-                    {m.created ? new Date(m.created).toLocaleDateString("en-AU") : "—"}
+                    {m.created ? new Date(m.created).toLocaleDateString("en-AU") : "-"}
                   </td>
                 </tr>
               ))}

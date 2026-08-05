@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Monochrome base — soft off-white app, true-white cards, near-black ink */
+  /* Monochrome base, soft off-white app, true-white cards, near-black ink */
   --background: 240 5% 98%;
   --foreground: 240 6% 10%;
   --card: 0 0% 100%;
@@ -26,9 +26,9 @@
   --border: 240 6% 90%;
   --input: 240 6% 90%;
 
-  /* Teal — the single accent. Used for focus + active states only. */
+  /* Teal, the single accent. Used for focus + active states only. */
   --ring: 174 78% 36%;
-  --brand: 169 100% 50%;        /* #00ffd1 — for dark surfaces */
+  --brand: 169 100% 50%;        /* #00ffd1, for dark surfaces */
   --brand-deep: 174 78% 31%;    /* readable teal on white */
 
   --radius: 0.5rem;

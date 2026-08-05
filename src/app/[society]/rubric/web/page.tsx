@@ -7,7 +7,7 @@ import { formatDate, formatDateTime } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 
 // Rubric's site allows framing (no X-Frame-Options / CSP frame-ancestors), so it
-// embeds here. We can't auto-fill its forms (they're a different origin — the browser
+// embeds here. We can't auto-fill its forms (they're a different origin: the browser
 // blocks touching a cross-origin frame's DOM), so instead we show the room-booking /
 // printing details alongside it to copy-paste in.
 const RUBRIC_URL = "https://portal.hellorubric.com/";
@@ -35,7 +35,7 @@ export default async function RubricWebPage({
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: society }, isActive: true },
   });
-  // Execs only — this tab isn't shown to anyone else, and the guard blocks direct access.
+  // Execs only: this tab isn't shown to anyone else, and the guard blocks direct access.
   if (!membership || membership.role !== "EXECUTIVE") notFound();
 
   const societyId = membership.societyId;
@@ -55,7 +55,7 @@ export default async function RubricWebPage({
       include: { submittedBy: { select: { name: true } } },
     }),
     prisma.contentRequest.findMany({
-      // Events with a Rubric event attached — the pool activity grants are submitted for.
+      // Events with a Rubric event attached: the pool activity grants are submitted for.
       where: {
         societyId,
         OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
@@ -131,7 +131,7 @@ export default async function RubricWebPage({
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Fill Rubric&apos;s forms using the details panel — click any field to copy it, then paste into the form.
+            Fill Rubric&apos;s forms using the details panel, click any field to copy it, then paste into the form.
           </p>
           <a
             href={RUBRIC_URL}

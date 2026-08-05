@@ -116,7 +116,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       entityId: request.id,
     });
 
-    // Drafts aren't in the queue yet — only alert execs on a real submission.
+    // Drafts aren't in the queue yet; only alert execs on a real submission.
     if (isSubmitting) {
       const amt = body.amount ?? 0;
       const needed = treasuryApprovalsNeeded(amt);

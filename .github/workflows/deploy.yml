@@ -1,6 +1,6 @@
 # Self-hosted runner on the mini PC. push to main -> prod, push to dev -> dev.
 # Deploys from the PERSISTENT clone (~/containers/society-project) which holds the
-# gitignored .env files and the named volumes — NOT the runner's throwaway checkout.
+# gitignored .env files and the named volumes, NOT the runner's throwaway checkout.
 name: Deploy
 on:
   push:

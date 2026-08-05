@@ -94,7 +94,7 @@ export default function SettingsPage() {
             >
               {Object.entries(SECRETARIAL_ALLOWANCE).map(([tier, amount]) => (
                 <option key={tier} value={tier}>
-                  {tier.charAt(0) + tier.slice(1).toLowerCase()} — ${amount}
+                  {tier.charAt(0) + tier.slice(1).toLowerCase()} (${amount})
                 </option>
               ))}
             </select>

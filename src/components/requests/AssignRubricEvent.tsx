@@ -19,7 +19,7 @@ interface Props {
 
 // Links a content request to an event that already exists on Rubric (fetched
 // live from the portal), enabling the attendance list and activity grants.
-// Also used to correct an accidental assignment — re-picking overwrites the link.
+// Also used to correct an accidental assignment; re-picking overwrites the link.
 export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assign existing Rubric event" }: Props) {
   const router = useRouter();
   const rubric = useRubricClient(societySlug);
@@ -84,7 +84,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
         <DialogHeader>
           <DialogTitle>Assign a Rubric event</DialogTitle>
           <DialogDescription>
-            Link this request to an event already on Rubric — enables the attendance list and activity grant tracking.
+            Link this request to an event already on Rubric; enables the attendance list and activity grant tracking.
           </DialogDescription>
         </DialogHeader>
         {error ? (
@@ -102,7 +102,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
             {events.map((e) => (
               <option key={String(e.eventid)} value={String(e.eventid)}>
                 {e.eventname ?? `Event ${e.eventid}`}
-                {e.eventTime ? ` — ${new Date(e.eventTime).toLocaleDateString("en-AU")}` : ""}
+                {e.eventTime ? `, ${new Date(e.eventTime).toLocaleDateString("en-AU")}` : ""}
               </option>
             ))}
           </select>

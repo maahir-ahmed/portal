@@ -113,7 +113,7 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
             <Select value={title} onValueChange={setTitle}>
               <SelectTrigger><SelectValue placeholder="Select a title…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">— No title —</SelectItem>
+                <SelectItem value="__none__">(No title)</SelectItem>
                 {titleOptions.map((t) => (
                   <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
                 ))}
@@ -126,7 +126,7 @@ export function InviteMemberDialog({ societySlug, departments }: InviteMemberDia
               <Select value={departmentId} onValueChange={setDepartmentId}>
                 <SelectTrigger><SelectValue placeholder="Select a department…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">— No department —</SelectItem>
+                  <SelectItem value="__none__">(No department)</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}

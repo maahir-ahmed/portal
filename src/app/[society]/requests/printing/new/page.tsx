@@ -105,7 +105,7 @@ export default function NewPrintingRequestPage() {
         <CardContent className="p-4 text-sm text-amber-900 space-y-1.5">
           <p>Requests with less than two full business days&apos; notice may not be processed at all.</p>
           <p>Collect from <strong>Arc Front Desk, 10AM–4PM on business days</strong>. Uncollected prints are disposed of one week after the requested collection date.</p>
-          <p>Prepare your file print-ready (PDF or Word). We can&apos;t trim, cut, or staple — resources for that are at Arc Reception.</p>
+          <p>Prepare your file print-ready (PDF or Word). We can&apos;t trim, cut, or staple; resources for that are at Arc Reception.</p>
         </CardContent>
       </Card>
 
@@ -117,7 +117,7 @@ export default function NewPrintingRequestPage() {
               <Label htmlFor="pickupAt">Latest pick-up date &amp; time *</Label>
               <DateTimeField id="pickupAt" name="pickupAt" required />
               <p className="text-xs text-muted-foreground">
-                Submitted on behalf of your society — your name and email are taken from your account.
+                Submitted on behalf of your society; your name and email are taken from your account.
               </p>
             </div>
           </CardContent>

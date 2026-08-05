@@ -4,7 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { TUTORIAL_MARKER as MARK } from "@/lib/tutorial";
 
 // Demo records for the guided tour. Everything created here is prefixed with the
-// tutorial marker and owned by the caller, which is also how it gets cleaned up —
+// tutorial marker and owned by the caller, which is also how it gets cleaned up:
 // no schema flag needed. POST wipes first, so a tour abandoned mid-way (browser
 // closed, no DELETE) leaves nothing behind the next time someone starts one.
 
@@ -57,8 +57,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
   const userId = session!.user.id;
   await wipe(societyId, userId);
 
-  // A budget category is an executive-level object, so only make one for an exec —
-  // the tour explains the budget page either way.
+  // A budget category is an executive-level object, so only make one for an exec.
+  // The tour explains the budget page either way.
   const category =
     membership!.role === "EXECUTIVE"
       ? await prisma.budgetCategory.create({
@@ -71,7 +71,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
             usage2025: 380,
             worstCase: 700,
             reasoning: "Demo category created by the guided tour. Deleted when the tour ends.",
-            notes: "Rows with reasoning or notes expand in the Comparison view — this is what that looks like.",
+            notes: "Rows with reasoning or notes expand in the Comparison view. This is what that looks like.",
             sortOrder: 999,
           },
         })
@@ -100,7 +100,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
     data: {
       threadId: contentThread.id,
       authorId: userId,
-      content: "Demo comment — this is what the discussion thread looks like on a request.",
+      content: "Demo comment. This is what the discussion thread looks like on a request.",
     },
   });
 
@@ -116,7 +116,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
       maxAttendees: 60,
       hasExternalGuests: true,
       numExternalGuests: 2,
-      externalGuestsDesc: "Two guest speakers from a partner company, presenting only — no payment involved.",
+      externalGuestsDesc: "Two guest speakers from a partner company, presenting only; no payment involved.",
       preferredLocation: "SECLAB",
       safetyOfficerName: session!.user.name ?? "Demo Officer",
       safetyOfficerZid: "z0000000",
@@ -157,7 +157,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
       paperSize: "A4",
       sided: "SINGLE",
       colour: "BW",
-      fileUrl: "/uploads/tutorial-demo-placeholder.pdf", // placeholder — no real file
+      fileUrl: "/uploads/tutorial-demo-placeholder.pdf", // placeholder, no real file
       fileName: `${MARK} flyer.pdf`,
       additionalDetails: "Demo record created by the guided tour. The attached file is a placeholder.",
       cost: 10, // 50 copies × 2 pages × $0.10

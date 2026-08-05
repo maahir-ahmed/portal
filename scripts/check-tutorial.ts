@@ -70,6 +70,6 @@ for (const [label, r] of cases) {
 }
 
 console.log(
-  `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors, ${cases.length} placement cases — ` +
+  `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors, ${cases.length} placement cases | ` +
     `exec ${stepsFor("EXECUTIVE").length}, director ${stepsFor("DIRECTOR").length}, subcom ${stepsFor("SUBCOMMITTEE").length}`
 );

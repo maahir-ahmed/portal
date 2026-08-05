@@ -155,12 +155,12 @@ export default async function ExecutiveQueuePage({ params }: Props) {
         </section>
       )}
 
-      {/* Treasury — Awaiting Approval */}
+      {/* Treasury, Awaiting Approval */}
       {treasuryApproving.length > 0 && (
         <section data-tour="queue-treasury">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
             <Wallet className="h-4 w-4 text-green-600" />
-            Treasury — Awaiting Approval
+            Treasury, Awaiting Approval
             <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">{treasuryApproving.length}</span>
           </h2>
           <div className="space-y-2">
@@ -214,7 +214,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
         </section>
       )}
 
-      {/* Printing — in flight (approval → Arc submission → pickup readiness) */}
+      {/* Printing, in flight (approval → Arc submission → pickup readiness) */}
       {printingPending.length > 0 && (
         <section data-tour="queue-printing">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
@@ -263,7 +263,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
         </section>
       )}
 
-      {/* Treasury — Pending Reimbursement */}
+      {/* Treasury, Pending Reimbursement */}
       {reimbursementPending.length > 0 && (
         <section data-tour="queue-reimburse">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">

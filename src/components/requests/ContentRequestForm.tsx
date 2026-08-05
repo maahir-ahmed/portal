@@ -42,7 +42,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
     e.preventDefault();
     setLoading(true);
     // Pass the submitter so the clicked button's action (submit vs draft) is
-    // captured — FormData(form) alone omits it, which defaulted everything to DRAFT.
+    // captured, FormData(form) alone omits it, which defaulted everything to DRAFT.
     const form = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter);
 
     const body = {

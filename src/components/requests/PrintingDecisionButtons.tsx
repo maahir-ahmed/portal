@@ -25,7 +25,7 @@ export function PrintingDecisionButtons({ societySlug, requestId }: Props) {
     });
     setBusy(null);
     if (res.ok) {
-      toast.success(action === "approve" ? "Approved — awaiting Arc submission (budget deducted)" : "Request rejected");
+      toast.success(action === "approve" ? "Approved, awaiting Arc submission (budget deducted)" : "Request rejected");
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));

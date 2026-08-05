@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const data = schema.parse(body);
 
     // Normalise the email so it matches the lookup done at login time
-    // (Postgres equality is case-sensitive — otherwise "John@x" can't sign in as "john@x").
+    // (Postgres equality is case-sensitive; otherwise "John@x" can't sign in as "john@x").
     const email = data.email.trim().toLowerCase();
     const zId = data.zId?.trim() || undefined;
 

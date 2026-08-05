@@ -173,7 +173,7 @@ export function Sidebar({ user, societyName, societySlug, userRole, primaryColor
             })}
         </div>
 
-        {/* Guided tour — same launcher as the header button, just findable. */}
+        {/* Guided tour, same launcher as the header button, just findable. */}
         <p className="px-3 pt-6 pb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-600">Help</p>
         <button
           data-tour="tour-launcher-sidebar"
