@@ -9,8 +9,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
 import { PrintingStageButton } from "@/components/requests/PrintingStageButton";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { treasuryApprovalsNeeded } from "@/lib/permissions";
-import { Shield, QrCode, Building2, Wallet, Banknote, CheckCircle, Printer } from "lucide-react";
+import { Shield, QrCode, Building2, Banknote, CheckCircle, Printer } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -28,7 +27,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
   const societyId = membership.societyId;
 
-  const [rubricPending, roomPending, treasuryApproving, reimbursementPending, printingPending] = await Promise.all([
+  const [rubricPending, roomPending, reimbursementPending, printingPending] = await Promise.all([
     prisma.contentRequest.findMany({
       where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
@@ -38,14 +37,6 @@ export default async function ExecutiveQueuePage({ params }: Props) {
       where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { preferredDate: "asc" },
-    }),
-    prisma.treasuryRequest.findMany({
-      where: { societyId, status: "AWAITING_APPROVAL" },
-      include: {
-        submittedBy: { select: { id: true, name: true, avatarUrl: true } },
-        approvals: true,
-      },
-      orderBy: { createdAt: "asc" },
     }),
     prisma.treasuryRequest.findMany({
       where: { societyId, status: "REIMBURSEMENT_PENDING" },
@@ -65,8 +56,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   ]);
 
   const totalPending =
-    rubricPending.length + roomPending.length + treasuryApproving.length +
-    reimbursementPending.length + printingPending.length;
+    rubricPending.length + roomPending.length + reimbursementPending.length + printingPending.length;
 
   return (
     <div className="space-y-6">
@@ -155,66 +145,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
         </section>
       )}
 
-      {/* Treasury, Awaiting Approval */}
-      {treasuryApproving.length > 0 && (
-        <section data-tour="queue-treasury">
-          <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
-            <Wallet className="h-4 w-4 text-green-600" />
-            Treasury, Awaiting Approval
-            <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">{treasuryApproving.length}</span>
-          </h2>
-          <div className="space-y-2">
-            {treasuryApproving.map((t) => {
-              const amount = Number(t.amount);
-              const needed = treasuryApprovalsNeeded(amount);
-              const approved = t.approvals.length;
-              return (
-                <Link key={t.id} href={`/${societySlug}/requests/treasury/${t.id}`}>
-                  <Card className="hover:border-green-300 transition-colors cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <UserAvatar name={t.submittedBy.name} avatarUrl={t.submittedBy.avatarUrl} size="sm" />
-                          <div className="min-w-0">
-                            <p className="font-semibold truncate">{t.description}</p>
-                            <div className="text-xs text-muted-foreground flex gap-2 items-center mt-0.5">
-                              <span className="font-medium text-green-700">{formatCurrency(amount)}</span>
-                              <span>·</span>
-                              <span>{t.locationSupplier}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <div className="flex items-center gap-1.5">
-                            {Array.from({ length: needed }).map((_, i) => (
-                              <div
-                                key={i}
-                                className={`h-5 w-5 rounded-full flex items-center justify-center ${
-                                  i < approved ? "bg-green-100" : "bg-gray-100"
-                                }`}
-                              >
-                                {i < approved ? (
-                                  <CheckCircle className="h-3 w-3 text-green-600" />
-                                ) : (
-                                  <span className="text-[8px] text-gray-400">○</span>
-                                )}
-                              </div>
-                            ))}
-                            <span className="text-xs text-muted-foreground">{approved}/{needed}</span>
-                          </div>
-                          <Button size="sm" className="text-xs">Approve</Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Printing, in flight (approval → Arc submission → pickup readiness) */}
+      {/* Printing: in flight (approval → Arc submission → pickup readiness) */}
       {printingPending.length > 0 && (
         <section data-tour="queue-printing">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
@@ -263,7 +194,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
         </section>
       )}
 
-      {/* Treasury, Pending Reimbursement */}
+      {/* Treasury: pending reimbursement */}
       {reimbursementPending.length > 0 && (
         <section data-tour="queue-reimburse">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-3">

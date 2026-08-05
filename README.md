@@ -7,18 +7,18 @@ Web app for running a university society committee: content requests, room booki
 **Requests**
 - **Content requests**: marketing workflow. The list is ordered by event date, colour-coded by how close the event is, and each status tab shows a count. Marketing directors upload finished graphics, paste the event blurb, and tick items done. Rubric event links generate a transparent QR code automatically.
 - **Room bookings**: Arc booking requests, with a warning when external guests need 7 business days' notice.
-- **Treasury**: reimbursement claims with amount-based multi-executive approval (≥ $50 needs the treasurer). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts while a claim is still pending. Bank details saved per user.
+- **Treasury**: reimbursement claims. Spending approval happens in the committee Discord before the purchase, so the site only records the claim and tracks the payout: submit, then an exec marks it reimbursed (or rejects it). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts until the claim is paid out. Bank details saved per user.
 - **Printing**: club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold), approved by execs; approved requests draw down the budget.
 
 **Spending budget** (exec-only tab) is the yearly budget tracker that replaced the committee's spreadsheet:
-- **Current Year**: each category's 2026 budget vs live spend (summed from classified treasury claims), with % used/left bars and an unclassified bucket.
+- **Current Year**: each category's 2026 budget vs live spend (summed from classified claims that are awaiting reimbursement or already reimbursed), with % used/left bars and an unclassified bucket.
 - **History**: archival 2024/2025 budgets, 2025 usage, worst case, and the reasoning/notes behind each figure. Everything is editable in-app.
 - Submitters pick the category on the treasury form; execs can reclassify any claim from the budget tab.
 
 **Rubric portal**: reads events, ticket sales, members, grants, and settlements from Rubric, and submits events (including the Arc affiliation form). Executives see everything; directors see the Events tab only.
 
 **Platform**
-- Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action.
+- Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
 - Per-society branding (logo/banner upload, colours), member directory, titles, notifications, and an audit log.
 - Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
 - **Guided tour**: the mortarboard button in the header walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.

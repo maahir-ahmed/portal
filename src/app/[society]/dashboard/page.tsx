@@ -68,9 +68,9 @@ export default async function DashboardPage({ params }: Props) {
     }),
   ]);
 
-  const pendingTreasuryApprovals = isExec
+  const awaitingReimbursement = isExec
     ? await prisma.treasuryRequest.count({
-        where: { societyId, status: "AWAITING_APPROVAL" },
+        where: { societyId, status: "REIMBURSEMENT_PENDING" },
       })
     : 0;
 
@@ -108,7 +108,7 @@ export default async function DashboardPage({ params }: Props) {
         <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />
         <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} color="green" />
         {isExec && (
-          <StatsCard title="Awaiting Your Approval" value={pendingTreasuryApprovals} icon={AlertCircle} color="yellow" />
+          <StatsCard title="Awaiting Reimbursement" value={awaitingReimbursement} icon={AlertCircle} color="yellow" />
         )}
       </div>
 

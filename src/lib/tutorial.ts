@@ -49,7 +49,7 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/dashboard",
     title: "Tour of the platform",
     body:
-      "This walks through every part of the dashboard: requests, approvals, the budget, the Rubric portal and your account.\n\n" +
+      "This walks through every part of the dashboard: requests, the budget, the Rubric portal, members and your account.\n\n" +
       "To make the pages worth looking at, it first creates a handful of demo records (a content request, a room booking, a reimbursement claim and a printing job) all tagged “[Tutorial demo]”. They are deleted again when the tour ends.\n\n" +
       "Arrow keys move between steps; Esc leaves and cleans up.",
   },
@@ -98,7 +98,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "dash-stats",
     title: "Your counters",
     body:
-      "Open content requests, pending room bookings and active reimbursements. Executives get a fourth card counting claims sitting on their approval. Reimbursement counts are yours alone unless you're an exec, because claims are private to their submitter.",
+      "Open content requests, pending room bookings and active reimbursements. Executives get a fourth card counting claims still waiting to be paid out. Reimbursement counts are yours alone unless you're an exec, because claims are private to their submitter.",
   },
   {
     id: "dash-actions",
@@ -295,7 +295,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "treasury-card",
     title: "The claim list",
     body:
-      "Amount, supplier and expense date per row. Claims awaiting approval show filled dots, one per approval still needed, so you can see how far along each is without opening it.",
+      "Amount, supplier and expense date per row, with the status on the right: draft, awaiting reimbursement, reimbursed, or rejected.",
   },
   {
     id: "treasury-new",
@@ -309,14 +309,14 @@ export const TOUR_STEPS: TourStep[] = [
     target: "treasury-rules",
     title: "The policy gate",
     body:
-      "No alcohol, no personal transport without written pre-approval, nothing older than three weeks, bonding money only once returned. You can save a draft without ticking the box, but you can't submit.",
+      "Approval for the spend is a Discord conversation and has to happen before you buy. The rest still applies: no alcohol, no personal transport without written pre-approval, nothing older than three weeks, bonding money only once returned. You can save a draft without ticking the box, but you can't submit.",
   },
   {
     id: "treasury-amount",
     target: "treasury-amount",
-    title: "Amount sets the approval bar",
+    title: "Amount and supplier",
     body:
-      "Under $50 needs one executive. $50 and over needs three, and one of them must be the Treasurer. The amount you type here decides which rule applies.",
+      "What you actually paid, and who you paid. Approval for the spend happens in the committee Discord before you buy, so nothing here is waiting on a sign-off: this is the record that gets you paid back.",
   },
   {
     id: "treasury-category",
@@ -343,21 +343,15 @@ export const TOUR_STEPS: TourStep[] = [
     target: "treasury-submit",
     title: "Submit or draft",
     body:
-      "Submitting alerts every exec with the number of approvals needed. A draft can be incomplete; the app only enforces the full field set at submission.",
+      "Submitting puts the claim straight into the payout queue and alerts the executives. A draft can be incomplete; the app only enforces the full field set at submission.",
   },
   {
-    id: "approval-panel",
+    id: "claim-payout",
     path: detail("treasuryId", "/requests/treasury", "/requests/treasury"),
-    target: "approval-panel",
-    title: "Approvals",
+    target: "claim-payout",
+    title: "Getting paid out",
     body:
-      "The rule for this amount, spelled out, with one dot per approval required. Executives approve, revoke their own approval, or reject outright. When the last approval lands the claim flips to “reimbursement pending”.",
-  },
-  {
-    id: "approval-progress",
-    target: "approval-progress",
-    title: "Who has signed off",
-    body: "Named approvers, with the Treasurer requirement tracked separately for claims of $50 and over.",
+      "Because the spend was approved on Discord, a submitted claim is already in the payout queue. An executive transfers the money and hits “Mark reimbursed”, which notifies you. Rejecting a claim (from Manage Request) is how a no on Discord gets recorded here.",
   },
   {
     id: "claim-category",
@@ -371,7 +365,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "claim-edit",
     title: "Editing, submitting and deleting",
     body:
-      "While a claim is draft or pending, its owner can edit the details, add or remove receipts, submit a draft for approval, and delete it. Executives can do all of that at any stage; deleting a claim removes its receipts, approvals and comments with it.",
+      "Until a claim is paid out, its owner can edit the details, add or remove receipts, submit a draft, and delete it. Executives can do all of that at any stage; deleting a claim removes its receipts and comments with it.",
   },
 
   // ── Printing ───────────────────────────────────────────────────────────────
@@ -440,7 +434,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "budget-totals",
     title: "Budget vs spend",
     body:
-      "This year's budget, what's been spent, and what's left. Spend is summed live from treasury claims that have actually been committed; drafts and rejected claims are excluded.",
+      "This year's budget, what's been spent, and what's left. Spend is summed live from claims that are awaiting reimbursement or already reimbursed; drafts and rejected claims are excluded.",
   },
   {
     id: "budget-categories",
@@ -487,7 +481,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Executive queue",
     body:
-      "One page with everything waiting on an executive, across every request type, with a total count in the header. When it's empty you get “All clear”.",
+      "One page with everything waiting on an executive: Rubric events to create, room bookings to lodge with Arc, printing to move along, and claims to pay out. There's a total count in the header, and “All clear” when it's empty.",
   },
   {
     id: "queue-rubric",
@@ -504,13 +498,6 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Bookings still submitted or under review, each with a shortcut into the embedded Arc portal with its details ready to paste.",
   },
   {
-    id: "queue-treasury",
-    target: "queue-treasury",
-    minRole: "EXECUTIVE",
-    title: "Claims awaiting approval",
-    body: "Oldest first, with the approval dots inline so you can see which claims are one signature away.",
-  },
-  {
     id: "queue-printing",
     target: "queue-printing",
     minRole: "EXECUTIVE",
@@ -524,7 +511,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Pending reimbursement",
     body:
-      "Fully approved claims waiting to be paid, with the recipient's BSB and account number right there, and a “Mark reimbursed” button to close them once the transfer is done.",
+      "Claims waiting to be paid, with the recipient's BSB and account number right there, and a “Mark reimbursed” button to close them once the transfer is done.",
   },
 
   // ── Members ────────────────────────────────────────────────────────────────

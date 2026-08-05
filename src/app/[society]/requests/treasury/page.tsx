@@ -7,8 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { treasuryApprovalsNeeded } from "@/lib/permissions";
-import { Plus, Wallet, CheckCircle } from "lucide-react";
+import { Plus, Wallet } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -34,7 +33,6 @@ export default async function TreasuryPage({ params }: Props) {
     },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true } },
-      approvals: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -67,8 +65,6 @@ export default async function TreasuryPage({ params }: Props) {
         <div className="space-y-3">
           {requests.map((r, i) => {
             const amount = Number(r.amount);
-            const needed = treasuryApprovalsNeeded(amount);
-            const approved = r.approvals.length;
             return (
               <Link key={r.id} href={`/${societySlug}/requests/treasury/${r.id}`} data-tour={i === 0 ? "treasury-card" : undefined}>
                 <Card className="hover:border-blue-300 transition-colors cursor-pointer">
@@ -83,26 +79,10 @@ export default async function TreasuryPage({ params }: Props) {
                             <span>🏪 {r.locationSupplier}</span>
                             <span className="font-medium text-green-700">{formatCurrency(amount)}</span>
                           </div>
-                          {r.status === "AWAITING_APPROVAL" && (
-                            <div className="flex items-center gap-1.5 mt-2">
-                              {Array.from({ length: needed }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className={`h-5 w-5 rounded-full flex items-center justify-center ${i < approved ? "bg-green-100" : "bg-gray-100"}`}
-                                >
-                                  {i < approved ? <CheckCircle className="h-3 w-3 text-green-600" /> : <span className="text-gray-400 text-xs">·</span>}
-                                </div>
-                              ))}
-                              <span className="text-xs text-muted-foreground">{approved}/{needed} approvals</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                       <div className="flex-shrink-0">
-                        <StatusBadge
-                          status={r.status}
-                          detail={r.status === "AWAITING_APPROVAL" ? `${approved}/${needed} approved` : undefined}
-                        />
+                        <StatusBadge status={r.status} />
                       </div>
                     </div>
                   </CardContent>

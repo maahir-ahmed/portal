@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
 
-// Moves a DRAFT claim to AWAITING_APPROVAL. The owner may submit their own draft;
+// Moves a DRAFT claim into the payout queue. The owner may submit their own draft;
 // the API enforces that transition (and alerts the execs).
 export function SubmitClaimButton({ societySlug, requestId }: { societySlug: string; requestId: string }) {
   const router = useRouter();
@@ -17,11 +17,11 @@ export function SubmitClaimButton({ societySlug, requestId }: { societySlug: str
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "AWAITING_APPROVAL" }),
+      body: JSON.stringify({ status: "REIMBURSEMENT_PENDING" }),
     });
     setLoading(false);
     if (res.ok) {
-      toast.success("Submitted for approval");
+      toast.success("Submitted for reimbursement");
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));
@@ -32,7 +32,7 @@ export function SubmitClaimButton({ societySlug, requestId }: { societySlug: str
   return (
     <Button size="sm" onClick={submit} disabled={loading} className="gap-1.5">
       {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-      Submit for approval
+      Submit for reimbursement
     </Button>
   );
 }

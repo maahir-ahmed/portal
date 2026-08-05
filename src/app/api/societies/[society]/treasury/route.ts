@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
-import { treasuryApprovalsNeeded } from "@/lib/permissions";
 import { z } from "zod";
 
 // Fields are optional so a partial claim can be saved as a DRAFT; the full set
@@ -22,7 +21,7 @@ const schema = z.object({
   acknowledgedRules: z.boolean().optional(),
   receiptUrls: z.array(z.string()).optional(),
   budgetCategoryId: z.string().nullable().optional(),
-  status: z.enum(["DRAFT", "AWAITING_APPROVAL"]).default("AWAITING_APPROVAL"),
+  status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING"]).default("REIMBURSEMENT_PENDING"),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -36,14 +35,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   try {
     const body = schema.parse(await req.json());
 
-    // A draft can be saved partial; submitting for approval requires the full claim.
-    const isSubmitting = body.status === "AWAITING_APPROVAL";
+    // A draft can be saved partial; submitting for reimbursement requires the full claim.
+    const isSubmitting = body.status === "REIMBURSEMENT_PENDING";
     if (isSubmitting) {
       if (!body.acknowledgedRules) {
         return NextResponse.json({ error: "Must acknowledge reimbursement rules" }, { status: 400 });
       }
       if (!body.contactEmail || !body.locationSupplier?.trim() || !body.description?.trim() || !body.expenseDate || !body.amount || body.amount <= 0) {
-        return NextResponse.json({ error: "Complete all fields before submitting for approval" }, { status: 400 });
+        return NextResponse.json({ error: "Complete all fields before submitting the claim" }, { status: 400 });
       }
     }
 
@@ -90,7 +89,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         bankAccountId,
         budgetCategoryId: body.budgetCategoryId ?? null,
         acknowledgedRules: body.acknowledgedRules ?? false,
-        status: body.status, // "DRAFT" or "AWAITING_APPROVAL"
+        status: body.status, // "DRAFT" or "REIMBURSEMENT_PENDING"
       },
     });
 
@@ -119,12 +118,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     // Drafts aren't in the queue yet; only alert execs on a real submission.
     if (isSubmitting) {
       const amt = body.amount ?? 0;
-      const needed = treasuryApprovalsNeeded(amt);
       await notifyExecs(
         membership!.societyId,
-        "APPROVAL_REQUIRED",
-        `New Reimbursement: $${amt.toFixed(2)} from ${session!.user.name}`,
-        `Requires ${needed} approval${needed > 1 ? "s" : ""}${amt >= 50 ? " including the Treasurer" : ""}.`,
+        "EXECUTIVE_ACTION_REQUIRED",
+        `Reimbursement to pay: $${amt.toFixed(2)} to ${session!.user.name}`,
+        "Ready to pay out. Spending approval happens in the committee Discord.",
         `/requests/treasury/${request.id}`
       );
     }

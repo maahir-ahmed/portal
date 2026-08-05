@@ -135,10 +135,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
       expenseDate: at(-2, 12),
       locationSupplier: "Demo Pizza Co, Kingsford",
       description: `${MARK} Pizza for CTF night`,
-      amount: 120.5, // ≥ $50 → three approvals including the Treasurer
+      amount: 120.5,
       budgetCategoryId: category?.id ?? null,
       acknowledgedRules: true,
-      status: "AWAITING_APPROVAL",
+      status: "REIMBURSEMENT_PENDING",
     },
   });
   await prisma.thread.create({ data: { treasuryRequestId: claim.id } });

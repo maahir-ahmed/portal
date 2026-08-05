@@ -10,7 +10,7 @@ interface Props {
 
 // Statuses that represent money the society has actually committed. Drafts aren't
 // submitted; rejected claims are never paid. Neither counts toward live spend.
-const COUNTS_TOWARD_SPEND = ["SUBMITTED", "AWAITING_APPROVAL", "APPROVED", "REIMBURSEMENT_PENDING", "REIMBURSED"];
+const COUNTS_TOWARD_SPEND = ["REIMBURSEMENT_PENDING", "REIMBURSED"];
 
 export default async function BudgetPage({ params }: Props) {
   const { society: societySlug } = await params;

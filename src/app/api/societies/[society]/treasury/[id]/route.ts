@@ -3,13 +3,12 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification, notifyExecs } from "@/lib/notifications";
-import { treasuryApprovalsNeeded } from "@/lib/permissions";
 import type { TreasuryStatus } from "@prisma/client";
 
 type Params = { society: string; id: string };
 
-// Claims are editable/deletable by the submitter while still DRAFT/AWAITING_APPROVAL, and by execs.
-const EDITABLE_STATUSES: TreasuryStatus[] = ["DRAFT", "AWAITING_APPROVAL"];
+// Claims are editable/deletable by the submitter until they've been paid out, and by execs.
+const EDITABLE_STATUSES: TreasuryStatus[] = ["DRAFT", "REIMBURSEMENT_PENDING"];
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -31,17 +30,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (!isExec && !isOwner) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const canEdit = isExec || (isOwner && EDITABLE_STATUSES.includes(request.status));
 
-  // Owners may submit their own draft (DRAFT -> AWAITING_APPROVAL); every other
+  // Owners may submit their own draft (DRAFT -> REIMBURSEMENT_PENDING); every other
   // status change is exec-only.
   const isOwnerSubmit =
-    isOwner && !isExec && request.status === "DRAFT" && body.status === "AWAITING_APPROVAL";
+    isOwner && !isExec && request.status === "DRAFT" && body.status === "REIMBURSEMENT_PENDING";
   if (body.status !== undefined && !isExec && !isOwnerSubmit) {
     return NextResponse.json({ error: "Only executives can change status" }, { status: 403 });
   }
 
   // A draft can only be submitted once it's a complete claim. Checks the stored
   // values (submit requests carry only { status }, not field edits).
-  if (body.status === "AWAITING_APPROVAL" && request.status === "DRAFT") {
+  if (body.status === "REIMBURSEMENT_PENDING" && request.status === "DRAFT") {
     if (Number(request.amount) <= 0 || !request.description.trim() || !request.locationSupplier.trim() || !request.contactEmail.trim()) {
       return NextResponse.json(
         { error: "Complete the claim (amount, description, supplier, contact email) before submitting." },
@@ -112,16 +111,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     ...(body.status ? { metadata: { from: request.status, to: body.status } } : {}),
   });
 
-  // Entering approval (a draft being submitted) alerts the execs, exactly like a
-  // brand-new claim does.
-  if (body.status === "AWAITING_APPROVAL" && request.status === "DRAFT") {
+  // Joining the payout queue (a draft being submitted) alerts the execs, exactly
+  // like a brand-new claim does.
+  if (body.status === "REIMBURSEMENT_PENDING" && request.status === "DRAFT") {
     const amt = Number(updated.amount);
-    const needed = treasuryApprovalsNeeded(amt);
     await notifyExecs(
       membership!.societyId,
-      "APPROVAL_REQUIRED",
-      `New Reimbursement: $${amt.toFixed(2)} from ${session!.user.name}`,
-      `Requires ${needed} approval${needed > 1 ? "s" : ""}${amt >= 50 ? " including the Treasurer" : ""}.`,
+      "EXECUTIVE_ACTION_REQUIRED",
+      `Reimbursement to pay: $${amt.toFixed(2)} to ${session!.user.name}`,
+      "Ready to pay out. Spending approval happens in the committee Discord.",
       `/requests/treasury/${id}`
     );
   }
@@ -171,8 +169,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   const NOT_DELETABLE = "CLAIM_NOT_DELETABLE";
   try {
     await prisma.$transaction(async (tx) => {
-      // Approvals and receipts cascade; the comment thread's FK would only be
-      // nulled out, so remove it explicitly. Stale notification links would
+      // Receipts cascade; the comment thread's FK would only be nulled out, so
+      // remove it explicitly. Stale notification links would
       // 404 once the claim is gone, so clear those too.
       await tx.thread.deleteMany({ where: { treasuryRequest: { is: deleteWhere } } });
       const deleted = await tx.treasuryRequest.deleteMany({ where: deleteWhere });

@@ -13,7 +13,7 @@ import { ArrowLeft, AlertCircle, CheckCircle, Upload, Building } from "lucide-re
 import Link from "next/link";
 
 const RULES = [
-  "Purchases under $50 require approval from at least 1 Executive. Purchases $50 or over require approval from at least 3 Executives, including the Treasurer.",
+  "Get the spend approved in the committee Discord BEFORE you buy. This form is only for claiming the money back.",
   "Alcohol and alcoholic beverages are NOT reimbursable under any circumstances.",
   "Personal transport (Uber, taxi, fuel) is NOT reimbursable unless explicitly pre-approved in writing.",
   "Claims submitted more than 3 weeks after the purchase date may not be reimbursed.",
@@ -66,10 +66,10 @@ export default function NewTreasuryPage() {
       .catch(() => setCategories([]));
   }, [params.society]);
 
-  async function submit(status: "DRAFT" | "AWAITING_APPROVAL") {
+  async function submit(status: "DRAFT" | "REIMBURSEMENT_PENDING") {
     if (!formRef.current) return;
     // The rules acknowledgement is only required to actually submit, not to draft.
-    if (status === "AWAITING_APPROVAL" && !acknowledged) {
+    if (status === "REIMBURSEMENT_PENDING" && !acknowledged) {
       toast.error("You must acknowledge the reimbursement rules");
       return;
     }
@@ -117,7 +117,7 @@ export default function NewTreasuryPage() {
     setLoading(false);
     if (res.ok) {
       const data = await res.json();
-      toast.success(status === "DRAFT" ? "Draft saved" : "Reimbursement claim submitted!");
+      toast.success(status === "DRAFT" ? "Draft saved" : "Claim submitted for reimbursement!");
       router.push(`/${params.society}/requests/treasury/${data.id}`);
     } else {
       const data = await res.json();
@@ -169,7 +169,7 @@ export default function NewTreasuryPage() {
         </CardContent>
       </Card>
 
-      <form ref={formRef} onSubmit={(e) => { e.preventDefault(); submit("AWAITING_APPROVAL"); }} className="space-y-6">
+      <form ref={formRef} onSubmit={(e) => { e.preventDefault(); submit("REIMBURSEMENT_PENDING"); }} className="space-y-6">
         {/* Expense Details */}
         <Card>
           <CardHeader><CardTitle className="text-base">Expense Details</CardTitle></CardHeader>

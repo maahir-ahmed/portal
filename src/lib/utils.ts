@@ -59,7 +59,6 @@ export function statusColor(status: string): string {
     SUBMITTED_TO_ARC: "bg-blue-100 text-blue-700",
     APPROVED: "bg-green-100 text-green-700",
     REJECTED: "bg-red-100 text-red-700",
-    AWAITING_APPROVAL: "bg-yellow-100 text-yellow-700",
     REIMBURSEMENT_PENDING: "bg-blue-100 text-blue-700",
     REIMBURSED: "bg-green-100 text-green-700",
     PENDING_APPROVAL: "bg-amber-100 text-amber-700",

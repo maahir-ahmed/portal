@@ -43,11 +43,12 @@ enum RoomBookingStatus {
   COMPLETED
 }
 
+// Spending is approved in the committee Discord, not here. A submitted claim goes
+// straight into the payout queue; the website only tracks the reimbursement.
 enum TreasuryStatus {
   DRAFT
-  AWAITING_APPROVAL
-  REJECTED
   REIMBURSEMENT_PENDING
+  REJECTED
   REIMBURSED
 }
 
@@ -160,7 +161,6 @@ model User {
   roomBookings      RoomBooking[]        @relation("RoomBookingSubmitter")
   assignedRooms     RoomBooking[]        @relation("RoomBookingAssignee")
   treasuryRequests  TreasuryRequest[]    @relation("TreasurySubmitter")
-  treasuryApprovals TreasuryApproval[]
   printingRequests  PrintingRequest[]    @relation("PrintingSubmitter")
   bankAccounts      BankAccount[]
   auditLogs         AuditLog[]
@@ -343,26 +343,12 @@ model TreasuryRequest {
   submittedBy    User                 @relation("TreasurySubmitter", fields: [submittedById], references: [id])
   bankAccount    BankAccount?         @relation(fields: [bankAccountId], references: [id])
   budgetCategory BudgetCategory?      @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
-  approvals      TreasuryApproval[]
   receipts       TreasuryAttachment[]
   thread         Thread?
 
   @@index([societyId])
   @@index([status])
   @@index([budgetCategoryId])
-}
-
-model TreasuryApproval {
-  id                String   @id @default(cuid())
-  treasuryRequestId String
-  approvedById      String
-  approvedAt        DateTime @default(now())
-  isTreasurer       Boolean  @default(false)
-
-  treasuryRequest TreasuryRequest @relation(fields: [treasuryRequestId], references: [id], onDelete: Cascade)
-  approvedBy      User            @relation(fields: [approvedById], references: [id])
-
-  @@unique([treasuryRequestId, approvedById])
 }
 
 model TreasuryAttachment {

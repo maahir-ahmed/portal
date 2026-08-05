@@ -7,24 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
-import { TreasuryApprovalPanel } from "@/components/requests/TreasuryApprovalPanel";
 import { EditTreasuryClaim } from "@/components/requests/EditTreasuryClaim";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
 import { ClaimCategoryCard } from "@/components/requests/ClaimCategoryCard";
 import { SubmitClaimButton } from "@/components/requests/SubmitClaimButton";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
+import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
-import { treasuryApprovalsNeeded, treasuryNeedsTreasurer, isTreasuryApproved } from "@/lib/permissions";
-import { ArrowLeft, Receipt, CheckCircle, XCircle, FileText } from "lucide-react";
+import { ArrowLeft, Receipt, FileText, MessagesSquare } from "lucide-react";
 import type { TreasuryStatus } from "@prisma/client";
 
 interface Props {
   params: Promise<{ society: string; id: string }>;
 }
 
-const STATUSES: TreasuryStatus[] = [
-  "DRAFT", "AWAITING_APPROVAL", "REJECTED", "REIMBURSEMENT_PENDING", "REIMBURSED",
-];
+const STATUSES: TreasuryStatus[] = ["DRAFT", "REIMBURSEMENT_PENDING", "REJECTED", "REIMBURSED"];
 
 export default async function TreasuryDetailPage({ params }: Props) {
   const { society: societySlug, id } = await params;
@@ -42,9 +39,6 @@ export default async function TreasuryDetailPage({ params }: Props) {
       where: { id },
       include: {
         submittedBy: { select: { id: true, name: true, avatarUrl: true, email: true } },
-        approvals: {
-          include: { approvedBy: { select: { id: true, name: true, avatarUrl: true } } },
-        },
         receipts: true,
         bankAccount: true,
         budgetCategory: { select: { id: true, name: true } },
@@ -71,12 +65,8 @@ export default async function TreasuryDetailPage({ params }: Props) {
   const isOwner = request.submittedById === session.user.id;
   // A claim is viewable only by its submitter and execs.
   if (!isExec && !isOwner) notFound();
-  const canEdit = isExec || (isOwner && ["DRAFT", "AWAITING_APPROVAL"].includes(request.status));
+  const canEdit = isExec || (isOwner && ["DRAFT", "REIMBURSEMENT_PENDING"].includes(request.status));
   const amount = Number(request.amount);
-  const neededApprovals = treasuryApprovalsNeeded(amount);
-  const needsTreasurer = treasuryNeedsTreasurer(amount);
-  const isApproved = isTreasuryApproved(amount, request.approvals);
-  const hasUserApproved = request.approvals.some((a) => a.approvedById === session.user?.id);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -89,10 +79,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold truncate">{request.description}</h1>
-            <StatusBadge
-              status={request.status}
-              detail={request.status === "AWAITING_APPROVAL" ? `${request.approvals.length}/${neededApprovals} approved` : undefined}
-            />
+            <StatusBadge status={request.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
             Submitted by {request.submittedBy.name} · {formatDateTime(request.createdAt)}
@@ -119,7 +106,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
               endpoint={`/api/societies/${societySlug}/treasury/${request.id}`}
               redirect={`/${societySlug}/requests/treasury`}
               title="Delete this claim?"
-              description="This permanently removes the claim along with its receipts, approvals and comments. This cannot be undone."
+              description="This permanently removes the claim along with its receipts and comments. This cannot be undone."
               successMessage="Claim deleted"
               confirmLabel="Delete claim"
             />
@@ -186,19 +173,22 @@ export default async function TreasuryDetailPage({ params }: Props) {
             </Card>
           )}
 
-          {/* Approval panel */}
-          <TreasuryApprovalPanel
-            requestId={request.id}
-            societySlug={societySlug}
-            amount={amount}
-            approvals={request.approvals}
-            neededApprovals={neededApprovals}
-            needsTreasurer={needsTreasurer}
-            isApproved={isApproved}
-            isExec={isExec}
-            hasUserApproved={hasUserApproved}
-            currentStatus={request.status}
-          />
+          {/* Spending approval happens in Discord; this page only tracks the payout. */}
+          {request.status === "REIMBURSEMENT_PENDING" && (
+            <Card data-tour="claim-payout">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessagesSquare className="h-4 w-4" /> Approval
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Spending is approved in the committee Discord. This claim is waiting to be paid out.
+                </p>
+                {isExec && <MarkReimbursedButton societySlug={societySlug} requestId={request.id} />}
+              </CardContent>
+            </Card>
+          )}
 
           <ThreadView
             comments={request.thread?.comments ?? []}
@@ -221,43 +211,6 @@ export default async function TreasuryDetailPage({ params }: Props) {
                   <p className="text-sm font-medium">{request.submittedBy.name}</p>
                   <p className="text-xs text-muted-foreground">{request.submittedBy.email}</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Approval Progress */}
-          <Card data-tour="approval-progress">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Approval Progress</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Required approvals</span>
-                <span className="font-medium">{request.approvals.length} / {neededApprovals}</span>
-              </div>
-              {needsTreasurer && (
-                <div className="flex items-center gap-2 text-sm">
-                  {request.approvals.some((a) => a.isTreasurer) ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-400" />
-                  )}
-                  <span className={request.approvals.some((a) => a.isTreasurer) ? "text-green-700" : "text-muted-foreground"}>
-                    Treasurer approval required
-                  </span>
-                </div>
-              )}
-              <div className="space-y-2">
-                {request.approvals.map((a) => (
-                  <div key={a.id} className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                    <UserAvatar name={a.approvedBy.name} avatarUrl={a.approvedBy.avatarUrl} size="sm" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium">{a.approvedBy.name}</p>
-                      {a.isTreasurer && <p className="text-xs text-muted-foreground">Treasurer</p>}
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
