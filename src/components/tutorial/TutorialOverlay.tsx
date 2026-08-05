@@ -5,7 +5,7 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
-import { resolvePath, stepsFor, type DemoIds, type TourStep } from "@/lib/tutorial";
+import { resolvePath, stepsFor, tooltipBox, type DemoIds, type TourStep } from "@/lib/tutorial";
 
 // Guided tour. Mounted once in the society layout; started by dispatching
 // `tutorial:start` on window (the header button does that). Progress lives in
@@ -13,20 +13,10 @@ import { resolvePath, stepsFor, type DemoIds, type TourStep } from "@/lib/tutori
 
 const SAVE_KEY = "society-tutorial";
 export const SEEN_KEY = "society-tutorial-seen";
-const BOX_W = 360;
 
 interface Saved {
   stepId: string;
   ids: DemoIds;
-}
-
-function boxStyle(rect: DOMRect | null): React.CSSProperties {
-  if (!rect) return { top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: BOX_W };
-  const gap = 14;
-  const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - BOX_W - 12));
-  return window.innerHeight - rect.bottom > 300
-    ? { top: rect.bottom + gap, left, width: BOX_W }
-    : { bottom: window.innerHeight - rect.top + gap, left, width: BOX_W };
 }
 
 export function TutorialOverlay() {
@@ -222,8 +212,8 @@ export function TutorialOverlay() {
       )}
 
       <div
-        className="absolute pointer-events-auto rounded-xl border border-border bg-card shadow-2xl"
-        style={boxStyle(rect)}
+        className="absolute pointer-events-auto overflow-y-auto rounded-xl border border-border bg-card shadow-2xl"
+        style={{ ...tooltipBox(rect, window.innerWidth, window.innerHeight) }}
       >
         <div className="flex items-start gap-2 px-4 pt-3.5">
           <div className="min-w-0 flex-1">

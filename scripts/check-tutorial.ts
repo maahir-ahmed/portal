@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { TOUR_STEPS, stepsFor } from "../src/lib/tutorial";
+import { TOUR_STEPS, TOOLTIP_W, stepsFor, tooltipBox } from "../src/lib/tutorial";
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -46,7 +46,30 @@ for (const role of ["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]) {
   assert.equal(steps.at(-1)?.kind, "cleanup", `${role} tour must end on the cleanup step`);
 }
 
+// The hovering box must always land on screen. A full-height target (the sidebar)
+// has room neither above nor below, which is how it went off-screen once.
+const VW = 1440;
+const VH = 900;
+const rect = (top: number, left: number, right: number, bottom: number) => ({ top, left, right, bottom });
+const cases: [string, ReturnType<typeof rect> | null][] = [
+  ["no target", null],
+  ["sidebar (full height, left)", rect(0, 0, 256, VH)],
+  ["bell (top right)", rect(20, VW - 60, VW - 20, 56)],
+  ["card near the bottom", rect(VH - 120, 400, 900, VH - 40)],
+  ["full-height panel on the right", rect(0, VW - 320, VW, VH)],
+  ["target filling the viewport", rect(0, 0, VW, VH)],
+];
+for (const [label, r] of cases) {
+  const box = tooltipBox(r, VW, VH);
+  const centred = box.transform === "translate(-50%,-50%)";
+  const left = typeof box.left === "number" ? box.left : NaN;
+  assert.ok(centred || (left >= 0 && left + TOOLTIP_W <= VW), `${label}: box off-screen horizontally (left ${box.left})`);
+  const topOk = box.top === "50%" || (typeof box.top === "number" && box.top >= 0 && box.top < VH);
+  const bottomOk = typeof box.bottom === "number" && box.bottom >= 0 && box.bottom < VH;
+  assert.ok(topOk || bottomOk, `${label}: box off-screen vertically (top ${box.top}, bottom ${box.bottom})`);
+}
+
 console.log(
-  `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors — ` +
+  `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors, ${cases.length} placement cases — ` +
     `exec ${stepsFor("EXECUTIVE").length}, director ${stepsFor("DIRECTOR").length}, subcom ${stepsFor("SUBCOMMITTEE").length}`
 );

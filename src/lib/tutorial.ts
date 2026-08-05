@@ -707,6 +707,44 @@ export const TOUR_STEPS: TourStep[] = [
   },
 ];
 
+export const TOOLTIP_W = 360;
+
+export interface TooltipBox {
+  top?: number | string;
+  bottom?: number;
+  left?: number | string;
+  transform?: string;
+  width: number;
+  maxHeight: string;
+}
+
+/**
+ * Where to put the hovering box for a highlighted rect. Below the target if it
+ * fits, else above, else beside it (vertically centred) — a full-height target
+ * like the sidebar has room in neither direction — else centred on screen.
+ * Every branch has to land inside the viewport; see scripts/check-tutorial.ts.
+ */
+export function tooltipBox(
+  rect: { top: number; left: number; right: number; bottom: number } | null,
+  vw: number,
+  vh: number
+): TooltipBox {
+  const base = { width: TOOLTIP_W, maxHeight: "80vh" } as const;
+  const centred = { ...base, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
+  if (!rect) return centred;
+
+  const gap = 14;
+  const room = 320; // enough for a typical box; the 80vh cap handles the rest
+  const clampX = (x: number) => Math.min(Math.max(12, x), Math.max(12, vw - TOOLTIP_W - 12));
+
+  if (vh - rect.bottom > room) return { ...base, top: rect.bottom + gap, left: clampX(rect.left) };
+  if (rect.top > room) return { ...base, bottom: vh - rect.top + gap, left: clampX(rect.left) };
+  const beside = { ...base, top: "50%", transform: "translateY(-50%)" };
+  if (vw - rect.right > TOOLTIP_W + 2 * gap) return { ...beside, left: rect.right + gap };
+  if (rect.left > TOOLTIP_W + 2 * gap) return { ...beside, left: rect.left - TOOLTIP_W - gap };
+  return centred;
+}
+
 export function stepsFor(role: string | undefined): TourStep[] {
   const rank = ROLE_RANK[(role ?? "SUBCOMMITTEE") as TourRole] ?? 1;
   return TOUR_STEPS.filter((s) => !s.minRole || rank >= ROLE_RANK[s.minRole]);

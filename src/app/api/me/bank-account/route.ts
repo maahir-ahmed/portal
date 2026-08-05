@@ -23,7 +23,7 @@ const schema = z.object({
 
 // Saves the user's bank details as a fresh default row. Old rows are left
 // intact so claims referencing them keep the details they were paid to.
-// ponytail: one row per save; prune old unreferenced rows if it ever matters
+// Note: one row per save; prune old unreferenced rows if it ever matters
 export async function PUT(req: NextRequest) {
   const { session, error } = await requireAuth();
   if (error) return error;

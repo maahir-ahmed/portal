@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
     # Sync schema (idempotent) then start the server — no separate migrate container to clean up.
     # $$ escapes compose interpolation so sh expands the runtime DATABASE_URL.
-    # ponytail: db push + --accept-data-loss; ceiling = destructive schema change applies silently.
+    # Note: db push + --accept-data-loss; ceiling = destructive schema change applies silently.
     # One-time data fixes (e.g. the PrintingStatus enum remap) are applied out-of-band via
     # psql — `prisma db execute` can't run in this image (no CLI shipped; npx-fetched prisma
     # can't load the TS config). db push alone reconciles fresh DBs correctly.

@@ -9,7 +9,7 @@ type Params = { society: string; membershipId: string };
 
 // Exec resets a member's password to a random temp value, returned once so the
 // exec can hand it over. The user changes it in My Account after logging in.
-// ponytail: doesn't invalidate existing sessions; add if a reset must force logout
+// Note: doesn't invalidate existing sessions; add if a reset must force logout
 export async function POST(_req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
