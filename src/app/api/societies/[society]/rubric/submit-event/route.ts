@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { z } from "zod";
 
-// The actual Rubric submitEvent call is made client-side (browser → Rubric API directly)
-// because Rubric sessions are IP-bound. This route only stamps the DB record.
+// The Rubric submitEvent call itself goes through the server proxy
+// (/rubric/call, allowlisted and executive-only). This route only stamps the
+// resulting event id and link onto our own content request.
 const schema = z.object({
   contentRequestId: z.string().optional(),
   rubricEventId: z.string().optional(),

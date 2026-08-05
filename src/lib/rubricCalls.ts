@@ -15,6 +15,12 @@ export interface RubricCallSpec {
   minRole: Role;
   /** Writes change data on Rubric: executive only, and audit logged. */
   write?: boolean;
+  /**
+   * Returns personal data about members or ticket holders (names, student emails,
+   * zIDs, phone numbers, gender identity). The reported impact of the old design
+   * was bulk PII exfiltration, so these reads are audit logged the same as writes.
+   */
+  pii?: boolean;
   /** Client-supplied parameters. Anything not described here is dropped. */
   params?: z.ZodType<Record<string, unknown>>;
   /** Calls that want the numeric society id under their own key. */
@@ -41,20 +47,24 @@ export const RUBRIC_CALLS: Record<string, RubricCallSpec> = {
   // ── Reads: Events tab, which directors can see ──────────────────────────────
   getSocietyPortalTicketingHomePage: { minRole: "DIRECTOR", params: none },
   getEventDetails: { minRole: "DIRECTOR", params: eventId },
-  getSocietyPortalEventTicketList: { minRole: "DIRECTOR", params: eventId },
+  // Ticket holders' names, kept at DIRECTOR because whoever runs the event needs
+  // the door list. Logged, since it is the one PII read below executive.
+  getSocietyPortalEventTicketList: { minRole: "DIRECTOR", pii: true, params: eventId },
 
   // ── Reads: executive-only tabs ─────────────────────────────────────────────
   getSocietyPortalMembershipHomePage: { minRole: "EXECUTIVE", params: none },
   getSocietyPortalMembershipList: {
     minRole: "EXECUTIVE",
+    pii: true,
     params: z.object({ viewFilter: z.enum(["active", "expired", "pending"]) }).strict(),
   },
   getSocietyTeamMembers: {
     minRole: "EXECUTIVE",
+    pii: true,
     params: z.object({ complete: z.boolean().optional() }).strict(),
   },
   getMerchListings: { minRole: "EXECUTIVE", params: none },
-  getMerchOrders: { minRole: "EXECUTIVE", params: none },
+  getMerchOrders: { minRole: "EXECUTIVE", pii: true, params: none },
   getSocietyPortalSettlementList: { minRole: "EXECUTIVE", params: none },
   getSocietyPortalSettlementDetail: {
     minRole: "EXECUTIVE",

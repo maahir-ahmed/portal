@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 const SOCIETY_SLUG = process.env.SOCIETY_SLUG ?? "";
 
 // Paths that are never rewritten (they exist at the root level)
-const ROOT_PATHS = ["/login", "/register", "/setup", "/api/", "/_next", "/uploads", "/favicon.ico"];
+const ROOT_PATHS = ["/login", "/setup", "/api/", "/_next", "/uploads", "/favicon.ico"];
 
 function isRootPath(pathname: string) {
   return ROOT_PATHS.some((p) => pathname.startsWith(p));
@@ -17,7 +17,9 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuth = !!req.auth;
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
+  // Login is the only unauthenticated page. There is no self-registration: an
+  // account only exists because an executive created it from the Members tab.
+  const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
   const isPublic =
     isAuthPage || isApiAuth || pathname.startsWith("/_next") || pathname.startsWith("/uploads");

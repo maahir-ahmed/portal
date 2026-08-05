@@ -17,10 +17,11 @@ Web app for running a university society committee: content requests, room booki
 
 **Rubric portal**: reads events, ticket sales, members, grants, and settlements from Rubric, and submits events (including the Arc affiliation form). Executives see everything; directors see the Events tab only.
 
-Rubric credentials never leave the server. The browser calls `POST /api/societies/[society]/rubric/call`, which checks the request against an allowlist (`src/lib/rubricCalls.ts`) covering the call type, the minimum role, and the shape of its parameters, then makes the call with the stored session ID and the society ID from the database. Writes (publishing or archiving an event, lodging the affiliation form) are executive-only and audit logged.
+Rubric credentials never leave the server. The browser calls `POST /api/societies/[society]/rubric/call`, which checks the request against an allowlist (`src/lib/rubricCalls.ts`) covering the call type, the minimum role, and the shape of its parameters, then makes the call with the stored session ID and the society ID from the database. Writes (publishing or archiving an event, lodging the affiliation form) are executive-only and audit logged, as are the reads that return member or ticket-holder personal data. Calls are rate limited per user so a single account cannot quietly drain the member list. The stored session is encrypted at rest when `RUBRIC_SECRET_KEY` is set, shows its age in Settings (Rubric expires sessions after about a month), and can be revoked there with **Disconnect**.
 
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
+- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a temporary password. Login is the only unauthenticated page.
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
 - Nine portfolios (Careers, Conferences, Creatives, CTF, Education, Marketing, Projects, Socials, Media), each with a director title and a subcom title. A member's portfolio follows their title, so "Creative Subcom" groups them under Creatives; it is never set by hand. Executives are grouped by role and hold no portfolio.
 - Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Portfolios and titles are both managed in Settings.
@@ -62,6 +63,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `SOCIETY_SLUG` | Single-society mode (blank = multi-society) |
 | `SMTP_*`, `EMAIL_FROM` | Email notifications (optional) |
 | `MAX_FILE_SIZE_MB` | Upload size cap (default 10) |
+| `RUBRIC_SECRET_KEY` | Encrypts the stored Rubric session at rest (optional; `openssl rand -base64 32`) |
 
 ## Scripts
 

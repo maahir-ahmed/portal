@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { getRubricCredentials } from "@/lib/rubric";
+import { getRubricCredentials, setRubricSession } from "@/lib/rubric";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "@/lib/rubricCalls";
 import { z } from "zod";
 
@@ -21,6 +20,25 @@ const bodySchema = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
 });
 
+// The allowlist stops a member reaching a call they shouldn't; this stops them
+// draining a call they may reach. Loading the Rubric tabs costs a handful of calls,
+// so a minute's worth of ordinary use sits well under the cap, while scraping the
+// membership or ticket lists hits it immediately.
+// ponytail: per-process counter, no store. Correct for the single-container
+// deployment and resets on restart; needs a shared store only if this ever runs
+// more than one replica. The map is bounded by the number of committee members.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 60;
+const recentCalls = new Map<string, number[]>();
+
+function rateLimited(userId: string): boolean {
+  const now = Date.now();
+  const recent = (recentCalls.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  recent.push(now);
+  recentCalls.set(userId, recent);
+  return recent.length > RATE_MAX;
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
@@ -28,6 +46,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   const { society } = await params;
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
+
+  if (rateLimited(session!.user.id)) {
+    return NextResponse.json({ error: "Too many Rubric requests, try again shortly" }, { status: 429 });
+  }
 
   // Rejecting non-JSON keeps HTML form posts (the only cross-site shape that can
   // reach here without a CORS preflight) out, on top of the SameSite session cookie.
@@ -93,20 +115,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   // Rubric hands back a replacement session on some calls. Persist it here; it must
   // not reach the browser, which is what scrubResponse guarantees below.
   if (typeof data.rotating_session_ID === "string" && data.rotating_session_ID.length > 0) {
-    await prisma.society.update({
-      where: { id: membership!.societyId },
-      data: { rubricSessionId: data.rotating_session_ID },
-    });
+    await setRubricSession(membership!.societyId, data.rotating_session_ID);
   }
 
-  if (spec.write) {
+  // Writes, and reads that return personal data. The impact of the old design was
+  // bulk PII exfiltration, so who read what has to be answerable after the fact.
+  if (spec.write || spec.pii) {
     await createAuditLog({
       societyId: membership!.societyId,
       userId: session!.user.id,
-      action: parsed.data.type === "archiveEvent" ? "DELETE" : "CREATE",
+      action: !spec.write ? "READ" : parsed.data.type === "archiveEvent" ? "DELETE" : "CREATE",
       entityType: "RubricCall",
       entityId: parsed.data.type,
-      metadata: { succeeded: data.success !== false },
+      metadata: { succeeded: data.success !== false, ...(spec.pii ? { pii: true } : {}) },
     });
   }
 

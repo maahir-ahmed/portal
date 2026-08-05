@@ -5,6 +5,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "../src/lib/rubricCalls";
+import { encryptSecret, decryptSecret } from "../src/lib/secrets";
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -90,8 +91,37 @@ assert.equal(scrubbed.event.sessions[0].id, 1, "scrubResponse ate legitimate dat
 assert.equal(scrubbed.list[0].keep, 2, "scrubResponse ate legitimate data");
 assert.equal(scrubbed.success, true);
 
+// 5. Calls that return personal data are flagged, and the proxy logs them. The
+// reported impact was bulk PII exfiltration, so "who read what" must be answerable.
+const piiCalls = Object.entries(RUBRIC_CALLS).filter(([, s]) => s.pii);
+assert.ok(piiCalls.length > 0, "no call is marked pii — the flag has been dropped");
+const proxySource = files.find(([f]) => f.replace(/\\/g, "/") === PROXY)?.[1] ?? "";
+assert.match(proxySource, /spec\.write \|\| spec\.pii/, "the proxy must audit log pii reads, not just writes");
+
+// 6. Bulk reads are rate limited: the allowlist decides what a member may call,
+// this decides how often, which is what stops a slow scrape of the member list.
+assert.match(proxySource, /rateLimited\(/, "the proxy must rate limit Rubric calls");
+assert.match(proxySource, /status:\s*429/, "the rate limiter must answer 429");
+
+// 7. The stored session survives a round trip and the ciphertext does not contain it.
+// Both key states matter: unset (existing deployments) and set.
+const SESSION = "s3ss10n-abcdef0123456789";
+delete process.env.RUBRIC_SECRET_KEY;
+assert.equal(decryptSecret(encryptSecret(SESSION)), SESSION, "plaintext fallback must round-trip");
+process.env.RUBRIC_SECRET_KEY = Buffer.alloc(32, 7).toString("base64");
+const sealed = encryptSecret(SESSION);
+assert.equal(sealed.includes(SESSION), false, "encryptSecret left the session readable");
+assert.equal(decryptSecret(sealed), SESSION, "decryptSecret did not recover the session");
+assert.equal(decryptSecret(SESSION), SESSION, "a session stored before a key was set must stay readable");
+assert.notEqual(encryptSecret(SESSION), sealed, "encryptSecret must not reuse an IV");
+assert.throws(
+  () => decryptSecret(sealed.slice(0, -4) + "AAAA"),
+  "a tampered ciphertext must not decrypt (GCM tag)"
+);
+
 const writes = Object.entries(RUBRIC_CALLS).filter(([, s]) => s.write).length;
 console.log(
-  `✅ rubric: ${Object.keys(RUBRIC_CALLS).length} allowlisted calls (${writes} writes, exec-only), ` +
-    `${used.size} used by the UI, session ID confined to the server`
+  `✅ rubric: ${Object.keys(RUBRIC_CALLS).length} allowlisted calls (${writes} writes, exec-only, ` +
+    `${piiCalls.length} pii reads audited), ${used.size} used by the UI, ` +
+    `session ID confined to the server and encrypted at rest`
 );

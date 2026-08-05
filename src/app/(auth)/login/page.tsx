@@ -3,7 +3,6 @@
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,11 +66,10 @@ function LoginForm() {
           </CardContent>
         </Card>
 
+        {/* No self-registration: accounts are created by an executive from the
+            Members tab, which is the only thing that makes membership meaningful. */}
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-foreground font-medium underline underline-offset-4 decoration-zinc-300 hover:decoration-foreground transition-colors">
-            Register
-          </Link>
+          Accounts are created by the executive team. Ask an exec to add you.
         </p>
       </div>
     </div>

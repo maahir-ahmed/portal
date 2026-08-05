@@ -89,6 +89,7 @@ enum NotificationType {
 
 enum AuditAction {
   CREATE
+  READ
   UPDATE
   DELETE
   APPROVE
@@ -117,9 +118,13 @@ model Society {
   discordUrl           String?
   linkedinUrl          String?
   description          String?
-  rubricSessionId      String?
-  rubricSocietyId      String?
-  rubricUnionSessionId String?
+  // Encrypted at rest when RUBRIC_SECRET_KEY is set (src/lib/rubric.ts). Never
+  // selected into an API response; the credentials route reports only whether it
+  // is configured, and how old it is (Rubric expires sessions after ~a month).
+  rubricSessionId        String?
+  rubricSessionUpdatedAt DateTime?
+  rubricSocietyId        String?
+  rubricUnionSessionId   String?
   secretarialTier      SecretarialTier @default(BRONZE)
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt

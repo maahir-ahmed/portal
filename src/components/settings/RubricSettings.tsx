@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
 
 interface RubricStatus {
   configured: boolean;
   rubricSocietyId: string | null;
   sessionConfigured: boolean;
+  sessionAgeDays: number | null;
+  sessionMaxAgeDays: number;
+  sessionExpiring: boolean;
 }
 
 interface RubricSettingsProps {
@@ -26,13 +29,20 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
   const [societyId, setSocietyId] = useState("");
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const loadStatus = useCallback(
+    () =>
+      fetch(`/api/societies/${societySlug}/rubric/credentials`)
+        .then((r) => r.json())
+        .then(setStatus)
+        .catch(() => {}),
+    [societySlug]
+  );
 
   useEffect(() => {
-    fetch(`/api/societies/${societySlug}/rubric/credentials`)
-      .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => {});
-  }, [societySlug]);
+    loadStatus();
+  }, [loadStatus]);
 
   async function handleSave() {
     if (!sessionId || !societyId) {
@@ -50,9 +60,28 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
       toast.success("Rubric credentials saved");
       setSessionId("");
       setSocietyId("");
-      setStatus((prev) => prev ? { ...prev, configured: true, sessionConfigured: true, rubricSocietyId: societyId } : prev);
+      await loadStatus();
     } else {
       toast.error("Failed to save credentials");
+    }
+  }
+
+  // Revocation. Rubric expires a session after about a month and rotation keeps it
+  // alive, so "wait it out" is not an incident response; this is the kill switch.
+  async function handleDisconnect() {
+    if (!confirm("Disconnect Rubric? The stored session is deleted and every Rubric tab stops working until a new one is saved.")) return;
+    setDisconnecting(true);
+    const res = await fetch(`/api/societies/${societySlug}/rubric/credentials`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rubricSessionId: null }),
+    });
+    setDisconnecting(false);
+    if (res.ok) {
+      toast.success("Rubric disconnected. The stored session has been deleted.");
+      await loadStatus();
+    } else {
+      toast.error("Failed to disconnect");
     }
   }
 
@@ -96,10 +125,25 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : status.configured ? (
             <>
-              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              {status.sessionExpiring ? (
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+              ) : (
+                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              )}
               <div className="text-sm">
-                <p className="font-medium text-green-800">Rubric credentials saved</p>
-                <p className="text-muted-foreground">Society ID: {status.rubricSocietyId}</p>
+                <p className={`font-medium ${status.sessionExpiring ? "text-amber-800" : "text-green-800"}`}>
+                  Rubric credentials saved
+                </p>
+                <p className="text-muted-foreground">
+                  Society ID: {status.rubricSocietyId}
+                  {status.sessionAgeDays !== null && (
+                    <>
+                      {" · session saved "}
+                      {status.sessionAgeDays === 0 ? "today" : `${status.sessionAgeDays} day${status.sessionAgeDays === 1 ? "" : "s"} ago`}
+                      {status.sessionExpiring && ` — Rubric expires sessions after about ${status.sessionMaxAgeDays} days, save a fresh one`}
+                    </>
+                  )}
+                </p>
               </div>
             </>
           ) : (
@@ -149,9 +193,14 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
             {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…</> : "Save Credentials"}
           </Button>
           {status?.configured && (
-            <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
-              {testing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Testing…</> : "Test Connection"}
-            </Button>
+            <>
+              <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
+                {testing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Testing…</> : "Test Connection"}
+              </Button>
+              <Button variant="outline" onClick={handleDisconnect} disabled={disconnecting} className="text-destructive hover:text-destructive">
+                {disconnecting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Disconnecting…</> : "Disconnect"}
+              </Button>
+            </>
           )}
         </div>
       </CardContent>
