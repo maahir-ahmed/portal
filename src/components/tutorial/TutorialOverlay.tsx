@@ -45,6 +45,10 @@ export function TutorialOverlay() {
   // False while the next step's target is still being measured, the box waits it
   // out rather than following the measurement around.
   const [settled, setSettled] = useState(true);
+  // Shown only once a transition is slow enough to notice, so ordinary steps don't
+  // flash a spinner. Going back a step is the usual cause: it re-renders the page
+  // the previous step lives on.
+  const [waiting, setWaiting] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigatedFor = useRef<string | null>(null);
 
@@ -217,6 +221,16 @@ export function TutorialOverlay() {
     };
   }, [step, pathname]);
 
+  useEffect(() => {
+    if (settled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the indicator once the measurement lands
+      setWaiting(false);
+      return;
+    }
+    const id = window.setTimeout(() => setWaiting(true), 150);
+    return () => clearTimeout(id);
+  }, [settled]);
+
   // Controls -----------------------------------------------------------------
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
@@ -281,6 +295,13 @@ export function TutorialOverlay() {
         />
       ) : (
         <div className="absolute inset-0 bg-zinc-950/55" />
+      )}
+
+      {waiting && (
+        <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-sm text-muted-foreground shadow-lg">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {page === null ? "Loading step" : "Loading"}…
+        </div>
       )}
 
       {/* Fades in at its final position, so it never appears mid-measurement. */}
