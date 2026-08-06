@@ -3,12 +3,30 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification, notifyExecs } from "@/lib/notifications";
+import { z } from "zod";
 import type { TreasuryStatus } from "@prisma/client";
 
 type Params = { society: string; id: string };
 
 // Claims are editable/deletable by the submitter until they've been paid out, and by execs.
 const EDITABLE_STATUSES: TreasuryStatus[] = ["DRAFT", "REIMBURSEMENT_PENDING"];
+
+// Every field is optional: callers send only what they're changing (a status flip,
+// a reclassification, or a full field edit). Who may change what is enforced below.
+const patchSchema = z.object({
+  status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING", "REJECTED", "REIMBURSED"]).optional(),
+  budgetCategoryId: z.string().min(1).nullable().optional(),
+  contactEmail: z.string().email().optional(),
+  // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
+  // new Date() would turn into an Invalid Date.
+  expenseDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date").optional(),
+  locationSupplier: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  // .finite() matters: JSON.parse turns 1e999 into Infinity, which reaches Decimal as junk.
+  amount: z.number().nonnegative().finite().optional(),
+  addReceipts: z.array(z.object({ fileName: z.string().optional(), fileUrl: z.string().min(1) })).optional(),
+  removeReceiptIds: z.array(z.string()).optional(),
+});
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -18,7 +36,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
-  const body = await req.json();
+  const parsed = patchSchema.safeParse(await req.json());
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Validation error" }, { status: 400 });
+  }
+  const body = parsed.data;
+
   const request = await prisma.treasuryRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership!.societyId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -63,7 +86,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   }
 
   const editsFields =
-    ["contactEmail", "expenseDate", "locationSupplier", "description", "amount"].some((k) => body[k] !== undefined) ||
+    [body.contactEmail, body.expenseDate, body.locationSupplier, body.description, body.amount]
+      .some((v) => v !== undefined) ||
     Array.isArray(body.addReceipts) || Array.isArray(body.removeReceiptIds);
   if (editsFields && !canEdit) {
     return NextResponse.json({ error: "This claim can no longer be edited" }, { status: 403 });
@@ -77,22 +101,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
       ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
       ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
-      ...(canEdit && body.amount !== undefined ? { amount: Number(body.amount) } : {}),
+      ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
       ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
     },
   });
 
   if (canEdit && Array.isArray(body.addReceipts) && body.addReceipts.length > 0) {
     await prisma.treasuryAttachment.createMany({
-      data: body.addReceipts
-        .filter((r: { fileUrl?: string }) => r?.fileUrl)
-        .map((r: { fileName?: string; fileUrl: string }) => ({
-          treasuryRequestId: id,
-          fileName: r.fileName || r.fileUrl.split("/").pop() || "receipt",
-          fileUrl: r.fileUrl,
-          fileSize: 0,
-          mimeType: "application/octet-stream",
-        })),
+      data: body.addReceipts.map((r) => ({
+        treasuryRequestId: id,
+        fileName: r.fileName || r.fileUrl.split("/").pop() || "receipt",
+        fileUrl: r.fileUrl,
+        fileSize: 0,
+        mimeType: "application/octet-stream",
+      })),
     });
   }
 
