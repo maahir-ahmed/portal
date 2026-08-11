@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Poll the repo; if origin/main moved, pull and recreate both stacks.
 # Cron (every 2 min):
-#   */2 * * * * /home/maahir/containers/society-project/deploy/auto-deploy.sh >> /home/maahir/containers/auto-deploy.log 2>&1
+#   */2 * * * * /path/to/society-project/deploy/auto-deploy.sh >> /path/to/auto-deploy.log 2>&1
 set -euo pipefail
 
-REPO="/home/maahir/containers/society-project"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BRANCH="main"
 cd "$REPO"
 

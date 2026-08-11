@@ -21,7 +21,7 @@ async function main() {
       logoUrl: "/secsoc-logo.png",
       primaryColor: "#00ffd1",
       secondaryColor: "#007869",
-      contactEmail: "contact@secsoc.unsw.edu.au",
+      contactEmail: "contact@example.com",
     },
   });
 
@@ -37,45 +37,47 @@ async function main() {
   );
   const portfolioByName = new Map(portfolios.map((p) => [p.name, p]));
 
-  // Create demo users
-  const password = await bcrypt.hash("password123", 12);
+  // Create demo users. Emails are example.com (RFC 2606) so a demo database can
+  // never mail a real person. DEMO_PASSWORD lets the public demo stack set its own.
+  const demoPassword = process.env.DEMO_PASSWORD || "password123";
+  const password = await bcrypt.hash(demoPassword, 12);
 
-  const [maahir, alice, bob, charlie] = await Promise.all([
+  const [demo, alice, bob, charlie] = await Promise.all([
     prisma.user.upsert({
-      where: { email: "maahir@unswsecurity.com" },
+      where: { email: "demo@example.com" },
       update: {},
       create: {
-        email: "maahir@unswsecurity.com",
-        name: "Maahir Ahmed",
+        email: "demo@example.com",
+        name: "Demo Executive",
         passwordHash: password,
         zId: "z1234567",
       },
     }),
     prisma.user.upsert({
-      where: { email: "alice@secsoc.unsw.edu.au" },
+      where: { email: "alice@example.com" },
       update: {},
       create: {
-        email: "alice@secsoc.unsw.edu.au",
+        email: "alice@example.com",
         name: "Alice Chen",
         passwordHash: password,
         zId: "z2345678",
       },
     }),
     prisma.user.upsert({
-      where: { email: "bob@secsoc.unsw.edu.au" },
+      where: { email: "bob@example.com" },
       update: {},
       create: {
-        email: "bob@secsoc.unsw.edu.au",
+        email: "bob@example.com",
         name: "Bob Nguyen",
         passwordHash: password,
         zId: "z3456789",
       },
     }),
     prisma.user.upsert({
-      where: { email: "charlie@secsoc.unsw.edu.au" },
+      where: { email: "charlie@example.com" },
       update: {},
       create: {
-        email: "charlie@secsoc.unsw.edu.au",
+        email: "charlie@example.com",
         name: "Charlie Park",
         passwordHash: password,
         zId: "z4567890",
@@ -86,9 +88,9 @@ async function main() {
   // Create memberships
   await Promise.all([
     prisma.societyMembership.upsert({
-      where: { userId_societyId: { userId: maahir.id, societyId: society.id } },
+      where: { userId_societyId: { userId: demo.id, societyId: society.id } },
       update: {},
-      create: { userId: maahir.id, societyId: society.id, role: "EXECUTIVE", title: "President" },
+      create: { userId: demo.id, societyId: society.id, role: "EXECUTIVE", title: "President" },
     }),
     prisma.societyMembership.upsert({
       where: { userId_societyId: { userId: alice.id, societyId: society.id } },
@@ -151,7 +153,7 @@ async function main() {
     create: {
       id: "ann-welcome",
       societyId: society.id,
-      authorId: maahir.id,
+      authorId: demo.id,
       title: "Welcome to the Society Platform! 🎉",
       content: "This is your centralised society management platform. Use the sidebar to navigate to content requests, room bookings, and treasury reimbursements.",
       isPinned: true,
@@ -160,11 +162,11 @@ async function main() {
 
   console.log("✅ Seeding complete!");
   console.log("");
-  console.log("Demo accounts (password: password123):");
-  console.log("  maahir@unswsecurity.com    Executive (President & Treasurer)");
-  console.log("  alice@secsoc.unsw.edu.au   Executive (Secretary)");
-  console.log("  bob@secsoc.unsw.edu.au     Director (CTF)");
-  console.log("  charlie@secsoc.unsw.edu.au Subcommittee (Creatives)");
+  console.log(`Demo accounts (password: ${demoPassword}):`);
+  console.log("  demo@example.com    Executive (President & Treasurer)");
+  console.log("  alice@example.com   Executive (Secretary)");
+  console.log("  bob@example.com     Director (CTF)");
+  console.log("  charlie@example.com Subcommittee (Creatives)");
   console.log("");
   console.log("Visit: http://localhost:3000/secsoc/dashboard");
 }

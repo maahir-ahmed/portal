@@ -26,6 +26,7 @@ services:
     command: sh -c "npx tsx prisma/seed.ts"
     environment:
       DATABASE_URL: postgresql://society_user:${DB_PASSWORD}@db:5432/society_platform?schema=public
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
@@ -53,6 +54,11 @@ services:
       NEXT_PUBLIC_APP_URL: ${NEXTAUTH_URL}
       NEXT_PUBLIC_APP_NAME: ${APP_NAME:-Society Platform}
       SOCIETY_SLUG: ${SOCIETY_SLUG:-}
+      # Public demo stack: no login, everyone shares DEMO_EMAIL. Only safe on a
+      # database with seed data and no Rubric credentials — see deploy/README.md.
+      DEMO_MODE: ${DEMO_MODE:-}
+      DEMO_EMAIL: ${DEMO_EMAIL:-}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

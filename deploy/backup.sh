@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Nightly Postgres backups for both stacks. Keeps last 14 days.
-# Cron: 0 3 * * *  /home/maahir/containers/society-project/deploy/backup.sh >> /home/maahir/containers/rubric-backup.log 2>&1
+# Cron: 0 3 * * *  /path/to/society-project/deploy/backup.sh >> /path/to/rubric-backup.log 2>&1
 set -euo pipefail
 
-OUT="${BACKUP_DIR:-/home/maahir/containers/rubric-backups}"
+OUT="${BACKUP_DIR:-$HOME/containers/rubric-backups}"
 KEEP_DAYS=14
 mkdir -p "$OUT"
 

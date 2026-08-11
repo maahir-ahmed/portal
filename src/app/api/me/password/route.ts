@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/api";
+import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -13,6 +13,9 @@ const schema = z.object({
 export async function PATCH(req: NextRequest) {
   const { session, error } = await requireAuth();
   if (error) return error;
+
+  const demoBlocked = await blockDemoAccountWrite(session!.user.id);
+  if (demoBlocked) return demoBlocked;
 
   try {
     const data = schema.parse(await req.json());

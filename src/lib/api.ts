@@ -47,3 +47,18 @@ export async function requireMembership(
 
   return { membership, error: null };
 }
+
+// DEMO_MODE (the public showcase stack) signs every visitor in as one shared
+// account, so any write that changes that account's password or role locks the
+// demo out for everyone until the next reseed. Refuse those, and only those —
+// visitors are otherwise free to click around and create things.
+export async function blockDemoAccountWrite(userId: string): Promise<NextResponse | null> {
+  if (process.env.DEMO_MODE !== "1") return null;
+  const demoEmail = process.env.DEMO_EMAIL?.toLowerCase();
+  if (!demoEmail) return null;
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (user?.email.toLowerCase() !== demoEmail) return null;
+
+  return NextResponse.json({ error: "The shared demo account cannot be modified" }, { status: 403 });
+}

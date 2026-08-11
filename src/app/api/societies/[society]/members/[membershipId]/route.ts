@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, blockDemoAccountWrite } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { portfolioForTitle } from "@/lib/titles";
 import { z } from "zod";
@@ -25,6 +25,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (!target || target.societyId !== membership!.societyId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const demoBlocked = await blockDemoAccountWrite(target.userId);
+  if (demoBlocked) return demoBlocked;
 
   try {
     const body = patchSchema.parse(await req.json());
