@@ -4,7 +4,7 @@ import { Toaster } from "sonner";
 import { SessionProvider } from "@/components/shared/SessionProvider";
 import "./globals.css";
 
-// Outfit is the unswsecurity.com brand typeface.
+// Outfit is the society brand typeface.
 const outfit = Outfit({
   variable: "--font-geist-sans",
   subsets: ["latin"],
