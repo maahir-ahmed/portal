@@ -1,0 +1,2494 @@
+{
+  "capturedAt": null,
+  "responses": {
+    "getSocietyPortalMembershipList": {
+      "success": true,
+      "allMemberships": [
+        {
+          "fullname": "Noah Wang",
+          "email": "member1@example.com",
+          "responses": {
+            "Student Number": "z5000001",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member2@example.com",
+          "responses": {
+            "Student Number": "z5000002",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member3@example.com",
+          "responses": {
+            "Student Number": "z5000003",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member4@example.com",
+          "responses": {
+            "Student Number": "z5000004",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member5@example.com",
+          "responses": {
+            "Student Number": "z5000005",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member6@example.com",
+          "responses": {
+            "Student Number": "z5000006",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member7@example.com",
+          "responses": {
+            "Student Number": "z5000007",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member8@example.com",
+          "responses": {
+            "Student Number": "z5000008",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member9@example.com",
+          "responses": {
+            "Student Number": "z5000009",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member10@example.com",
+          "responses": {
+            "Student Number": "z5000010",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member11@example.com",
+          "responses": {
+            "Student Number": "z5000011",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member12@example.com",
+          "responses": {
+            "Student Number": "z5000012",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member13@example.com",
+          "responses": {
+            "Student Number": "z5000013",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member14@example.com",
+          "responses": {
+            "Student Number": "z5000014",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member15@example.com",
+          "responses": {
+            "Student Number": "z5000015",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member16@example.com",
+          "responses": {
+            "Student Number": "z5000016",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member17@example.com",
+          "responses": {
+            "Student Number": "z5000017",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member18@example.com",
+          "responses": {
+            "Student Number": "z5000018",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member19@example.com",
+          "responses": {
+            "Student Number": "z5000019",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member20@example.com",
+          "responses": {
+            "Student Number": "z5000020",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member21@example.com",
+          "responses": {
+            "Student Number": "z5000021",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member22@example.com",
+          "responses": {
+            "Student Number": "z5000022",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member23@example.com",
+          "responses": {
+            "Student Number": "z5000023",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member24@example.com",
+          "responses": {
+            "Student Number": "z5000024",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member25@example.com",
+          "responses": {
+            "Student Number": "z5000025",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member26@example.com",
+          "responses": {
+            "Student Number": "z5000026",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member27@example.com",
+          "responses": {
+            "Student Number": "z5000027",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member28@example.com",
+          "responses": {
+            "Student Number": "z5000028",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member29@example.com",
+          "responses": {
+            "Student Number": "z5000029",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member30@example.com",
+          "responses": {
+            "Student Number": "z5000030",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member31@example.com",
+          "responses": {
+            "Student Number": "z5000031",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member32@example.com",
+          "responses": {
+            "Student Number": "z5000032",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member33@example.com",
+          "responses": {
+            "Student Number": "z5000033",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member34@example.com",
+          "responses": {
+            "Student Number": "z5000034",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member35@example.com",
+          "responses": {
+            "Student Number": "z5000035",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member36@example.com",
+          "responses": {
+            "Student Number": "z5000036",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member37@example.com",
+          "responses": {
+            "Student Number": "z5000037",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member38@example.com",
+          "responses": {
+            "Student Number": "z5000038",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member39@example.com",
+          "responses": {
+            "Student Number": "z5000039",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member40@example.com",
+          "responses": {
+            "Student Number": "z5000040",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member41@example.com",
+          "responses": {
+            "Student Number": "z5000041",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member42@example.com",
+          "responses": {
+            "Student Number": "z5000042",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member43@example.com",
+          "responses": {
+            "Student Number": "z5000043",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member44@example.com",
+          "responses": {
+            "Student Number": "z5000044",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member45@example.com",
+          "responses": {
+            "Student Number": "z5000045",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member46@example.com",
+          "responses": {
+            "Student Number": "z5000046",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member47@example.com",
+          "responses": {
+            "Student Number": "z5000047",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member48@example.com",
+          "responses": {
+            "Student Number": "z5000048",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member49@example.com",
+          "responses": {
+            "Student Number": "z5000049",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member50@example.com",
+          "responses": {
+            "Student Number": "z5000050",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member51@example.com",
+          "responses": {
+            "Student Number": "z5000051",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member52@example.com",
+          "responses": {
+            "Student Number": "z5000052",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member53@example.com",
+          "responses": {
+            "Student Number": "z5000053",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member54@example.com",
+          "responses": {
+            "Student Number": "z5000054",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member55@example.com",
+          "responses": {
+            "Student Number": "z5000055",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member56@example.com",
+          "responses": {
+            "Student Number": "z5000056",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member57@example.com",
+          "responses": {
+            "Student Number": "z5000057",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member58@example.com",
+          "responses": {
+            "Student Number": "z5000058",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member59@example.com",
+          "responses": {
+            "Student Number": "z5000059",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member60@example.com",
+          "responses": {
+            "Student Number": "z5000060",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member61@example.com",
+          "responses": {
+            "Student Number": "z5000061",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member62@example.com",
+          "responses": {
+            "Student Number": "z5000062",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member63@example.com",
+          "responses": {
+            "Student Number": "z5000063",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member64@example.com",
+          "responses": {
+            "Student Number": "z5000064",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member65@example.com",
+          "responses": {
+            "Student Number": "z5000065",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member66@example.com",
+          "responses": {
+            "Student Number": "z5000066",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member67@example.com",
+          "responses": {
+            "Student Number": "z5000067",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member68@example.com",
+          "responses": {
+            "Student Number": "z5000068",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member69@example.com",
+          "responses": {
+            "Student Number": "z5000069",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member70@example.com",
+          "responses": {
+            "Student Number": "z5000070",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member71@example.com",
+          "responses": {
+            "Student Number": "z5000071",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member72@example.com",
+          "responses": {
+            "Student Number": "z5000072",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member73@example.com",
+          "responses": {
+            "Student Number": "z5000073",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member74@example.com",
+          "responses": {
+            "Student Number": "z5000074",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member75@example.com",
+          "responses": {
+            "Student Number": "z5000075",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member76@example.com",
+          "responses": {
+            "Student Number": "z5000076",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member77@example.com",
+          "responses": {
+            "Student Number": "z5000077",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member78@example.com",
+          "responses": {
+            "Student Number": "z5000078",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member79@example.com",
+          "responses": {
+            "Student Number": "z5000079",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member80@example.com",
+          "responses": {
+            "Student Number": "z5000080",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member81@example.com",
+          "responses": {
+            "Student Number": "z5000081",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member82@example.com",
+          "responses": {
+            "Student Number": "z5000082",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member83@example.com",
+          "responses": {
+            "Student Number": "z5000083",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member84@example.com",
+          "responses": {
+            "Student Number": "z5000084",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member85@example.com",
+          "responses": {
+            "Student Number": "z5000085",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member86@example.com",
+          "responses": {
+            "Student Number": "z5000086",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member87@example.com",
+          "responses": {
+            "Student Number": "z5000087",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member88@example.com",
+          "responses": {
+            "Student Number": "z5000088",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member89@example.com",
+          "responses": {
+            "Student Number": "z5000089",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member90@example.com",
+          "responses": {
+            "Student Number": "z5000090",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member91@example.com",
+          "responses": {
+            "Student Number": "z5000091",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member92@example.com",
+          "responses": {
+            "Student Number": "z5000092",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member93@example.com",
+          "responses": {
+            "Student Number": "z5000093",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member94@example.com",
+          "responses": {
+            "Student Number": "z5000094",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member95@example.com",
+          "responses": {
+            "Student Number": "z5000095",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member96@example.com",
+          "responses": {
+            "Student Number": "z5000096",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member97@example.com",
+          "responses": {
+            "Student Number": "z5000097",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member98@example.com",
+          "responses": {
+            "Student Number": "z5000098",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member99@example.com",
+          "responses": {
+            "Student Number": "z5000099",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member100@example.com",
+          "responses": {
+            "Student Number": "z5000100",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member101@example.com",
+          "responses": {
+            "Student Number": "z5000101",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member102@example.com",
+          "responses": {
+            "Student Number": "z5000102",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member103@example.com",
+          "responses": {
+            "Student Number": "z5000103",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member104@example.com",
+          "responses": {
+            "Student Number": "z5000104",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member105@example.com",
+          "responses": {
+            "Student Number": "z5000105",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member106@example.com",
+          "responses": {
+            "Student Number": "z5000106",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member107@example.com",
+          "responses": {
+            "Student Number": "z5000107",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member108@example.com",
+          "responses": {
+            "Student Number": "z5000108",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member109@example.com",
+          "responses": {
+            "Student Number": "z5000109",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member110@example.com",
+          "responses": {
+            "Student Number": "z5000110",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member111@example.com",
+          "responses": {
+            "Student Number": "z5000111",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member112@example.com",
+          "responses": {
+            "Student Number": "z5000112",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member113@example.com",
+          "responses": {
+            "Student Number": "z5000113",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member114@example.com",
+          "responses": {
+            "Student Number": "z5000114",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member115@example.com",
+          "responses": {
+            "Student Number": "z5000115",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member116@example.com",
+          "responses": {
+            "Student Number": "z5000116",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member117@example.com",
+          "responses": {
+            "Student Number": "z5000117",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member118@example.com",
+          "responses": {
+            "Student Number": "z5000118",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member119@example.com",
+          "responses": {
+            "Student Number": "z5000119",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member120@example.com",
+          "responses": {
+            "Student Number": "z5000120",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member121@example.com",
+          "responses": {
+            "Student Number": "z5000121",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member122@example.com",
+          "responses": {
+            "Student Number": "z5000122",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member123@example.com",
+          "responses": {
+            "Student Number": "z5000123",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member124@example.com",
+          "responses": {
+            "Student Number": "z5000124",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member125@example.com",
+          "responses": {
+            "Student Number": "z5000125",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member126@example.com",
+          "responses": {
+            "Student Number": "z5000126",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member127@example.com",
+          "responses": {
+            "Student Number": "z5000127",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member128@example.com",
+          "responses": {
+            "Student Number": "z5000128",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member129@example.com",
+          "responses": {
+            "Student Number": "z5000129",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member130@example.com",
+          "responses": {
+            "Student Number": "z5000130",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member131@example.com",
+          "responses": {
+            "Student Number": "z5000131",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member132@example.com",
+          "responses": {
+            "Student Number": "z5000132",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member133@example.com",
+          "responses": {
+            "Student Number": "z5000133",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member134@example.com",
+          "responses": {
+            "Student Number": "z5000134",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member135@example.com",
+          "responses": {
+            "Student Number": "z5000135",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member136@example.com",
+          "responses": {
+            "Student Number": "z5000136",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member137@example.com",
+          "responses": {
+            "Student Number": "z5000137",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member138@example.com",
+          "responses": {
+            "Student Number": "z5000138",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member139@example.com",
+          "responses": {
+            "Student Number": "z5000139",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member140@example.com",
+          "responses": {
+            "Student Number": "z5000140",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member141@example.com",
+          "responses": {
+            "Student Number": "z5000141",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member142@example.com",
+          "responses": {
+            "Student Number": "z5000142",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member143@example.com",
+          "responses": {
+            "Student Number": "z5000143",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member144@example.com",
+          "responses": {
+            "Student Number": "z5000144",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member145@example.com",
+          "responses": {
+            "Student Number": "z5000145",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member146@example.com",
+          "responses": {
+            "Student Number": "z5000146",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member147@example.com",
+          "responses": {
+            "Student Number": "z5000147",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member148@example.com",
+          "responses": {
+            "Student Number": "z5000148",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member149@example.com",
+          "responses": {
+            "Student Number": "z5000149",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member150@example.com",
+          "responses": {
+            "Student Number": "z5000150",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member151@example.com",
+          "responses": {
+            "Student Number": "z5000151",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member152@example.com",
+          "responses": {
+            "Student Number": "z5000152",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member153@example.com",
+          "responses": {
+            "Student Number": "z5000153",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member154@example.com",
+          "responses": {
+            "Student Number": "z5000154",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member155@example.com",
+          "responses": {
+            "Student Number": "z5000155",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member156@example.com",
+          "responses": {
+            "Student Number": "z5000156",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member157@example.com",
+          "responses": {
+            "Student Number": "z5000157",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member158@example.com",
+          "responses": {
+            "Student Number": "z5000158",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member159@example.com",
+          "responses": {
+            "Student Number": "z5000159",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member160@example.com",
+          "responses": {
+            "Student Number": "z5000160",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member161@example.com",
+          "responses": {
+            "Student Number": "z5000161",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member162@example.com",
+          "responses": {
+            "Student Number": "z5000162",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member163@example.com",
+          "responses": {
+            "Student Number": "z5000163",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member164@example.com",
+          "responses": {
+            "Student Number": "z5000164",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member165@example.com",
+          "responses": {
+            "Student Number": "z5000165",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member166@example.com",
+          "responses": {
+            "Student Number": "z5000166",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member167@example.com",
+          "responses": {
+            "Student Number": "z5000167",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member168@example.com",
+          "responses": {
+            "Student Number": "z5000168",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member169@example.com",
+          "responses": {
+            "Student Number": "z5000169",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member170@example.com",
+          "responses": {
+            "Student Number": "z5000170",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member171@example.com",
+          "responses": {
+            "Student Number": "z5000171",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member172@example.com",
+          "responses": {
+            "Student Number": "z5000172",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member173@example.com",
+          "responses": {
+            "Student Number": "z5000173",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member174@example.com",
+          "responses": {
+            "Student Number": "z5000174",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member175@example.com",
+          "responses": {
+            "Student Number": "z5000175",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member176@example.com",
+          "responses": {
+            "Student Number": "z5000176",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member177@example.com",
+          "responses": {
+            "Student Number": "z5000177",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member178@example.com",
+          "responses": {
+            "Student Number": "z5000178",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member179@example.com",
+          "responses": {
+            "Student Number": "z5000179",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member180@example.com",
+          "responses": {
+            "Student Number": "z5000180",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member181@example.com",
+          "responses": {
+            "Student Number": "z5000181",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member182@example.com",
+          "responses": {
+            "Student Number": "z5000182",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member183@example.com",
+          "responses": {
+            "Student Number": "z5000183",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member184@example.com",
+          "responses": {
+            "Student Number": "z5000184",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member185@example.com",
+          "responses": {
+            "Student Number": "z5000185",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member186@example.com",
+          "responses": {
+            "Student Number": "z5000186",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member187@example.com",
+          "responses": {
+            "Student Number": "z5000187",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member188@example.com",
+          "responses": {
+            "Student Number": "z5000188",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member189@example.com",
+          "responses": {
+            "Student Number": "z5000189",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member190@example.com",
+          "responses": {
+            "Student Number": "z5000190",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member191@example.com",
+          "responses": {
+            "Student Number": "z5000191",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member192@example.com",
+          "responses": {
+            "Student Number": "z5000192",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member193@example.com",
+          "responses": {
+            "Student Number": "z5000193",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member194@example.com",
+          "responses": {
+            "Student Number": "z5000194",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member195@example.com",
+          "responses": {
+            "Student Number": "z5000195",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member196@example.com",
+          "responses": {
+            "Student Number": "z5000196",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member197@example.com",
+          "responses": {
+            "Student Number": "z5000197",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member198@example.com",
+          "responses": {
+            "Student Number": "z5000198",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member199@example.com",
+          "responses": {
+            "Student Number": "z5000199",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member200@example.com",
+          "responses": {
+            "Student Number": "z5000200",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member201@example.com",
+          "responses": {
+            "Student Number": "z5000201",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member202@example.com",
+          "responses": {
+            "Student Number": "z5000202",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member203@example.com",
+          "responses": {
+            "Student Number": "z5000203",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member204@example.com",
+          "responses": {
+            "Student Number": "z5000204",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member205@example.com",
+          "responses": {
+            "Student Number": "z5000205",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member206@example.com",
+          "responses": {
+            "Student Number": "z5000206",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member207@example.com",
+          "responses": {
+            "Student Number": "z5000207",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member208@example.com",
+          "responses": {
+            "Student Number": "z5000208",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member209@example.com",
+          "responses": {
+            "Student Number": "z5000209",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member210@example.com",
+          "responses": {
+            "Student Number": "z5000210",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member211@example.com",
+          "responses": {
+            "Student Number": "z5000211",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member212@example.com",
+          "responses": {
+            "Student Number": "z5000212",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member213@example.com",
+          "responses": {
+            "Student Number": "z5000213",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member214@example.com",
+          "responses": {
+            "Student Number": "z5000214",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member215@example.com",
+          "responses": {
+            "Student Number": "z5000215",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member216@example.com",
+          "responses": {
+            "Student Number": "z5000216",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member217@example.com",
+          "responses": {
+            "Student Number": "z5000217",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member218@example.com",
+          "responses": {
+            "Student Number": "z5000218",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member219@example.com",
+          "responses": {
+            "Student Number": "z5000219",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member220@example.com",
+          "responses": {
+            "Student Number": "z5000220",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member221@example.com",
+          "responses": {
+            "Student Number": "z5000221",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member222@example.com",
+          "responses": {
+            "Student Number": "z5000222",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member223@example.com",
+          "responses": {
+            "Student Number": "z5000223",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member224@example.com",
+          "responses": {
+            "Student Number": "z5000224",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member225@example.com",
+          "responses": {
+            "Student Number": "z5000225",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member226@example.com",
+          "responses": {
+            "Student Number": "z5000226",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member227@example.com",
+          "responses": {
+            "Student Number": "z5000227",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member228@example.com",
+          "responses": {
+            "Student Number": "z5000228",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member229@example.com",
+          "responses": {
+            "Student Number": "z5000229",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member230@example.com",
+          "responses": {
+            "Student Number": "z5000230",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member231@example.com",
+          "responses": {
+            "Student Number": "z5000231",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member232@example.com",
+          "responses": {
+            "Student Number": "z5000232",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member233@example.com",
+          "responses": {
+            "Student Number": "z5000233",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member234@example.com",
+          "responses": {
+            "Student Number": "z5000234",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member235@example.com",
+          "responses": {
+            "Student Number": "z5000235",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member236@example.com",
+          "responses": {
+            "Student Number": "z5000236",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Finn Lee",
+          "email": "member237@example.com",
+          "responses": {
+            "Student Number": "z5000237",
+            "Degree": "Cyber Security",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Nora Garcia",
+          "email": "member238@example.com",
+          "responses": {
+            "Student Number": "z5000238",
+            "Degree": "Computer Science / Law",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Owen Kim",
+          "email": "member239@example.com",
+          "responses": {
+            "Student Number": "z5000239",
+            "Degree": "Data Science",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ava Nguyen",
+          "email": "member240@example.com",
+          "responses": {
+            "Student Number": "z5000240",
+            "Degree": "Computer Science",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Noah Wang",
+          "email": "member241@example.com",
+          "responses": {
+            "Student Number": "z5000241",
+            "Degree": "Software Engineering",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Mia Chen",
+          "email": "member242@example.com",
+          "responses": {
+            "Student Number": "z5000242",
+            "Degree": "Information Systems",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Ethan Brown",
+          "email": "member243@example.com",
+          "responses": {
+            "Student Number": "z5000243",
+            "Degree": "Cyber Security",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Zoe Singh",
+          "email": "member244@example.com",
+          "responses": {
+            "Student Number": "z5000244",
+            "Degree": "Computer Science / Law",
+            "Study Year": "1"
+          }
+        },
+        {
+          "fullname": "Kai Ito",
+          "email": "member245@example.com",
+          "responses": {
+            "Student Number": "z5000245",
+            "Degree": "Data Science",
+            "Study Year": "2"
+          }
+        },
+        {
+          "fullname": "Ruby Tran",
+          "email": "member246@example.com",
+          "responses": {
+            "Student Number": "z5000246",
+            "Degree": "Computer Science",
+            "Study Year": "3"
+          }
+        },
+        {
+          "fullname": "Leo Patel",
+          "email": "member247@example.com",
+          "responses": {
+            "Student Number": "z5000247",
+            "Degree": "Software Engineering",
+            "Study Year": "4"
+          }
+        },
+        {
+          "fullname": "Ivy Ali",
+          "email": "member248@example.com",
+          "responses": {
+            "Student Number": "z5000248",
+            "Degree": "Information Systems",
+            "Study Year": "1"
+          }
+        }
+      ]
+    },
+    "getSocietyPortalMembershipHomePage": {
+      "success": true,
+      "activeMemberships": 248,
+      "expiredMemberships": 61,
+      "pendingMemberships": 4
+    },
+    "getSocietyPortalTicketingHomePage": {
+      "success": true,
+      "eventdetails": {
+        "2026": [
+          {
+            "eventid": 9101,
+            "eventname": "CTF Beginners Workshop",
+            "eventTime": "2026-07-30 18:00:00",
+            "totalpaid": 112,
+            "totalScanned": 96,
+            "totalrev": "560.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9102,
+            "eventname": "Industry Night",
+            "eventTime": "2026-07-16 17:30:00",
+            "totalpaid": 180,
+            "totalScanned": 164,
+            "totalrev": "1800.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9103,
+            "eventname": "Capture the Flag: Winter",
+            "eventTime": "2026-06-28 10:00:00",
+            "totalpaid": 96,
+            "totalScanned": 88,
+            "totalrev": "480.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9104,
+            "eventname": "Intro to Web Exploitation",
+            "eventTime": "2026-06-11 18:00:00",
+            "totalpaid": 74,
+            "totalScanned": 61,
+            "totalrev": "0.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9105,
+            "eventname": "First General Meeting",
+            "eventTime": "2026-05-22 17:00:00",
+            "totalpaid": 143,
+            "totalScanned": 121,
+            "totalrev": "0.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9106,
+            "eventname": "Security Trivia Night",
+            "eventTime": "2026-05-08 18:30:00",
+            "totalpaid": 88,
+            "totalScanned": 79,
+            "totalrev": "440.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9107,
+            "eventname": "Careers Panel",
+            "eventTime": "2026-04-24 17:30:00",
+            "totalpaid": 156,
+            "totalScanned": 140,
+            "totalrev": "780.00",
+            "draft": false,
+            "private": false
+          },
+          {
+            "eventid": 9108,
+            "eventname": "Welcome BBQ",
+            "eventTime": "2026-03-05 12:00:00",
+            "totalpaid": 210,
+            "totalScanned": 186,
+            "totalrev": "0.00",
+            "draft": false,
+            "private": false
+          }
+        ]
+      }
+    },
+    "getSocietyPortalSettlementList": {
+      "success": true,
+      "fundingsummary": [
+        {
+          "uuid": "g-1",
+          "title": "Base Grant 2026",
+          "granttype": "Base",
+          "totalgrant": "3000.00",
+          "totalclaimgrant": "2450.00",
+          "totalpaid": "2450.00",
+          "remainingBalance": "550.00",
+          "percentageused": 82
+        },
+        {
+          "uuid": "g-2",
+          "title": "Event Support Grant",
+          "granttype": "Event",
+          "totalgrant": "1500.00",
+          "totalclaimgrant": "900.00",
+          "totalpaid": "900.00",
+          "remainingBalance": "600.00",
+          "percentageused": 60
+        },
+        {
+          "uuid": "g-3",
+          "title": "Equipment Grant",
+          "granttype": "Capital",
+          "totalgrant": "1200.00",
+          "totalclaimgrant": "1200.00",
+          "totalpaid": "1200.00",
+          "remainingBalance": "0.00",
+          "percentageused": 100
+        },
+        {
+          "uuid": "g-4",
+          "title": "Outreach Grant",
+          "granttype": "Outreach",
+          "totalgrant": "800.00",
+          "totalclaimgrant": "300.00",
+          "totalpaid": "0.00",
+          "remainingBalance": "500.00",
+          "percentageused": 38
+        }
+      ],
+      "dynamicCards": [
+        {
+          "title": "Total Granted",
+          "value": "$6,500.00"
+        },
+        {
+          "title": "Claimed",
+          "value": "$4,850.00"
+        },
+        {
+          "title": "Remaining",
+          "value": "$1,650.00"
+        }
+      ],
+      "allSettlements": [
+        {
+          "settlementid": 5501,
+          "settlementtype": "Ticket Sales",
+          "settlementdesc": "Industry Night",
+          "settlementamount": "1800.00",
+          "finalamount": "1710.00",
+          "created": "2026-07-20",
+          "reference": "STL-5501"
+        },
+        {
+          "settlementid": 5502,
+          "settlementtype": "Grant",
+          "settlementdesc": "Equipment Grant payout",
+          "settlementamount": "1200.00",
+          "finalamount": "1200.00",
+          "created": "2026-07-02",
+          "reference": "STL-5502"
+        },
+        {
+          "settlementid": 5503,
+          "settlementtype": "Ticket Sales",
+          "settlementdesc": "Careers Panel",
+          "settlementamount": "780.00",
+          "finalamount": "741.00",
+          "created": "2026-05-01",
+          "reference": "STL-5503"
+        },
+        {
+          "settlementid": 5504,
+          "settlementtype": "Ticket Sales",
+          "settlementdesc": "CTF Beginners Workshop",
+          "settlementamount": "560.00",
+          "finalamount": "532.00",
+          "created": "2026-08-04",
+          "reference": "STL-5504"
+        }
+      ]
+    },
+    "getSocietyTeamMembers": {
+      "success": true,
+      "members": [
+        {
+          "name": "Demo Executive",
+          "role": {
+            "name": "President"
+          },
+          "accepted": true
+        },
+        {
+          "name": "Alice Chen",
+          "role": {
+            "name": "Secretary"
+          },
+          "accepted": true
+        },
+        {
+          "name": "Bob Nguyen",
+          "role": {
+            "name": "CTF Director"
+          },
+          "accepted": true
+        },
+        {
+          "name": "Charlie Park",
+          "role": {
+            "name": "Creative Subcom"
+          },
+          "accepted": true
+        },
+        {
+          "name": "Ivy Tran",
+          "role": {
+            "name": "Treasurer"
+          },
+          "accepted": true
+        },
+        {
+          "name": "Leo Kim",
+          "role": {
+            "name": "Marketing Director"
+          },
+          "accepted": true
+        },
+        {
+          "name": "Nora Singh",
+          "role": {
+            "name": "Education Director"
+          },
+          "accepted": false
+        }
+      ]
+    },
+    "getMerchListings": {
+      "success": true,
+      "listings": []
+    },
+    "getMerchOrders": {
+      "success": true,
+      "orders": []
+    }
+  }
+}

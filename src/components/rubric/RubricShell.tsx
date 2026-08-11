@@ -49,7 +49,7 @@ export function RubricShell({ children }: RubricShellProps) {
             Rubric Portal
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Connected to your society on{" "}
+            Your society on{" "}
             <a href="https://hellorubric.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline">
               hellorubric.com <ExternalLink className="h-3 w-3" />
             </a>

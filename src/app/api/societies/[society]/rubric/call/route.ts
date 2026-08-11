@@ -3,6 +3,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { getRubricCredentials, setRubricSession } from "@/lib/rubric";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "@/lib/rubricCalls";
+import { demoEnabled, demoResponse } from "@/lib/rubricDemo";
 import { z } from "zod";
 
 // Every Rubric API call goes through here. The session ID stays on the server: it is
@@ -73,6 +74,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     : ({ success: true, data: {} } as const);
   if (!callParams.success) {
     return NextResponse.json({ error: "Invalid parameters for this Rubric call" }, { status: 400 });
+  }
+
+  // Demo stack: answer from the saved snapshot and return before any credential
+  // lookup, so a demo deployment cannot reach Rubric even if a session ID were
+  // somehow stored on its society. Writes and drill-downs have no fixture and say
+  // so plainly, rather than claiming Rubric is unconfigured.
+  if (demoEnabled()) {
+    const canned = demoResponse(parsed.data.type);
+    return canned
+      ? NextResponse.json(scrubResponse(canned))
+      : NextResponse.json({ error: "Not available in the demo" }, { status: 400 });
   }
 
   const creds = await getRubricCredentials(membership!.societyId);

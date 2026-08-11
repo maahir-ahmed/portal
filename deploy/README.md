@@ -67,6 +67,15 @@ there is no login step. Consequences, all deliberate:
   let anonymous visitors pull the real member and ticket-holder lists.
 - Password changes are refused (`/api/me/password`), because the demo account's password
   is shared — one visitor changing it would lock everyone else out.
+- The Rubric tabs are served from `src/lib/rubricDemoSnapshot.json`, not from Rubric.
+  The proxy returns that fixture and never looks up a session, and the tab carries a
+  banner saying so. Ships as invented sample data; to show your society's real
+  aggregates instead, run this **on the connected production stack** and commit the
+  result — people are replaced with placeholders before it is written:
+  ```
+  docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml \
+    --profile seed run --rm seed npx tsx scripts/rubric-snapshot.ts
+  ```
 - Visitors can write. Reseed on a schedule to keep the showcase tidy:
   ```
   0 4 * * *  cd ~/containers/society-project && docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml --profile seed run --rm seed sh -c "npx prisma db push --schema=prisma/schema.prisma --force-reset --accept-data-loss && npx tsx prisma/seed.ts" >> ~/containers/rubric-demo-reset.log 2>&1

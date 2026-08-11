@@ -79,6 +79,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
 | `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
 | `npm run check:passphrase` | Verifies the temporary-passphrase wordlist stays unique and large enough for the entropy it claims |
+| `npm run rubric:snapshot` | Refreshes the demo's Rubric fixture from a connected deployment (anonymises people first) |
 
 ## Deployment
 

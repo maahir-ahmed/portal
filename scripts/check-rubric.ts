@@ -6,6 +6,8 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "../src/lib/rubricCalls";
 import { encryptSecret, decryptSecret } from "../src/lib/secrets";
+import { anonymisePeople } from "../src/lib/rubricDemo";
+import snapshot from "../src/lib/rubricDemoSnapshot.json";
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -119,9 +121,31 @@ assert.throws(
   "a tampered ciphertext must not decrypt (GCM tag)"
 );
 
+// 8. The demo snapshot is served to a site with no login, so it must name nobody
+// real, and the anonymiser must not eat the fields the demo renders.
+const person = anonymisePeople({
+  allMemberships: [{ fullname: "Real Person", email: "real@unsw.edu.au", responses: { "Student Number": "z9999999", Degree: "Computer Science" } }],
+  members: [{ name: "Real Exec", accepted: true, role: { name: "President" } }],
+  listings: [{ name: "Society Hoodie", price: "45.00" }],
+  fundingsummary: [{ title: "Base Grant", totalgrant: "3000.00" }],
+}) as Record<string, Record<string, Record<string, string>>[]>;
+assert.notEqual(person.allMemberships[0].fullname, "Real Person", "member names must be replaced");
+assert.notEqual(person.allMemberships[0].email, "real@unsw.edu.au", "member emails must be replaced");
+assert.notEqual(person.allMemberships[0].responses["Student Number"], "z9999999", "zIDs must be replaced");
+assert.equal(person.allMemberships[0].responses.Degree, "Computer Science", "degrees are not personal, keep them");
+assert.notEqual(person.members[0].name, "Real Exec", "team member names must be replaced");
+assert.equal(person.members[0].role.name, "President", "a role is not a person; anonymising it corrupts the demo");
+assert.equal(person.listings[0].name, "Society Hoodie", "merch names must survive");
+assert.equal(person.fundingsummary[0].totalgrant, "3000.00", "grant figures must survive");
+
+// The committed fixture itself must already be clean.
+const fixture = JSON.stringify(snapshot);
+assert.equal(/unsw\.edu\.au|@gmail|@outlook/i.test(fixture), false, "the demo snapshot contains a real-looking address");
+
 const writes = Object.entries(RUBRIC_CALLS).filter(([, s]) => s.write).length;
 console.log(
   `✅ rubric: ${Object.keys(RUBRIC_CALLS).length} allowlisted calls (${writes} writes, exec-only, ` +
     `${piiCalls.length} pii reads audited), ${used.size} used by the UI, ` +
-    `session ID confined to the server and encrypted at rest`
+    `session ID confined to the server and encrypted at rest, ` +
+    `demo snapshot (${snapshot.capturedAt ?? "sample data"}) anonymised`
 );
