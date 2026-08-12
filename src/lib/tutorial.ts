@@ -723,6 +723,14 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Your Arc tier, which is what sets the printing allowance on the Printing page.",
   },
   {
+    id: "settings-ahegs",
+    target: "settings-ahegs",
+    minRole: "EXECUTIVE",
+    title: "The AHEGS year",
+    body:
+      "Which year the AHEGS tab opens on. It is set here rather than read off the calendar, because a submission is collated all year and lodged at the end of it — you don't want the page rolling over to an empty year on 1 January while you're still finishing the last one. Leave it blank to follow the calendar.",
+  },
+  {
     id: "settings-branding",
     target: "settings-branding",
     minRole: "EXECUTIVE",

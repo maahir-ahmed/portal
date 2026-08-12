@@ -25,16 +25,17 @@ export default async function AhegsPage({ params, searchParams }: Props) {
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
     include: {
-      society: { select: { name: true } },
+      society: { select: { name: true, ahegsYear: true } },
       user: { select: { name: true, email: true, zId: true, phone: true } },
     },
   });
   if (!membership || membership.role === "SUBCOMMITTEE") redirect(`/${societySlug}/dashboard`);
 
   const scope = ahegsScope(membership.role, membership.portfolioId);
-  const now = new Date();
+  // The settings value is the club's "current" year; the calendar is only a fallback.
+  const defaultYear = membership.society.ahegsYear ?? new Date().getFullYear();
   const parsed = Number(yearParam);
-  const year = Number.isInteger(parsed) && parsed > 2000 && parsed < 2100 ? parsed : now.getFullYear();
+  const year = Number.isInteger(parsed) && parsed > 2000 && parsed < 2100 ? parsed : defaultYear;
 
   const [memberships, entries, evidence, allMeetings, portfolios] = await Promise.all([
     prisma.societyMembership.findMany({
@@ -136,7 +137,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
       <AhegsClient
         societySlug={societySlug}
         year={year}
-        years={[now.getFullYear() + 1, now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2]}
+        years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2]}
         scope={scope}
         rows={rows}
         meetings={meetings}

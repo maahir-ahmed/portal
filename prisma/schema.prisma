@@ -150,6 +150,11 @@ model Society {
   rubricSocietyId        String?
   rubricUnionSessionId   String?
   secretarialTier      SecretarialTier @default(BRONZE)
+  // The academic year AHEGS is being collated for. Set in Settings because it does
+  // not follow the calendar: a submission is prepared over one year and lodged at its
+  // end, so the page must not roll over to a new, empty year on 1 January. Null falls
+  // back to the calendar year.
+  ahegsYear            Int?
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

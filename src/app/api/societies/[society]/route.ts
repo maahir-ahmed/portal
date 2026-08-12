@@ -19,6 +19,8 @@ const updateSchema = z.object({
   discordUrl: z.string().url().nullable().optional(),
   linkedinUrl: z.string().url().nullable().optional(),
   secretarialTier: z.enum(["BRONZE", "SILVER", "GOLD"]).optional(),
+  // Arrives as a string from the settings form; "" has already become null above.
+  ahegsYear: z.coerce.number().int().min(2000).max(2100).nullable().optional(),
 }).partial();
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -50,6 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       linkedinUrl: true,
       description: true,
       secretarialTier: true,
+      ahegsYear: true,
       rubricSocietyId: true,
       createdAt: true,
       updatedAt: true,

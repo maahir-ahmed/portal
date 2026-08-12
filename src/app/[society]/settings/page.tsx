@@ -102,6 +102,32 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <Card data-tour="settings-ahegs">
+          <CardHeader>
+            <CardTitle className="text-base">AHEGS Year</CardTitle>
+            <CardDescription>
+              The year AHEGS is being collated for. Leave blank to follow the calendar year.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Label htmlFor="ahegsYear">Current AHEGS year</Label>
+            <Input
+              id="ahegsYear"
+              name="ahegsYear"
+              type="number"
+              min={2000}
+              max={2100}
+              placeholder={String(new Date().getFullYear())}
+              defaultValue={society.ahegsYear ?? ""}
+              className="max-w-[160px] tabnums"
+            />
+            <p className="text-xs text-muted-foreground">
+              The AHEGS tab opens on this year, so a submission being prepared over the summer
+              doesn&apos;t roll over to an empty one on 1 January.
+            </p>
+          </CardContent>
+        </Card>
+
         <Card data-tour="settings-branding">
           <CardHeader>
             <CardTitle className="text-base">Branding</CardTitle>
