@@ -4,26 +4,25 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Copy, ClipboardList, ExternalLink } from "lucide-react";
-import { ActivityGrantStatus } from "@prisma/client";
-import { cn, statusLabel } from "@/lib/utils";
+import { Check, Copy, ClipboardList, ExternalLink, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { RoomBookingStatus } from "@prisma/client";
 
 export interface CopyRecord {
   id: string;
   title: string;
   fields: { label: string; value: string }[];
-}
-
-// Activity-grant records carry a per-event grant status plus an optional link
-// to the Rubric attendance page (the list must be attached to the Arc form).
-export interface GrantRecord extends CopyRecord {
-  status: string;
+  /** Room bookings only: their lifecycle status, so the panel knows if Arc still needs it. */
+  status?: string;
+  /** Grants only: the Rubric attendance page (its list must be attached to the Arc form). */
   attendanceHref?: string;
 }
 
-const GRANT_STATUSES = Object.values(ActivityGrantStatus);
-
 type Tab = "room" | "printing" | "grants";
+
+// Room-booking statuses that haven't reached Arc yet. Past these, the booking is
+// already lodged (or dead) and the button would only walk the status backwards.
+const ROOM_UNSUBMITTED: RoomBookingStatus[] = ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"];
 
 // Shows room booking / printing / activity-grant details beside the embedded
 // Rubric portal so the info can be copied field-by-field into Rubric's
@@ -39,7 +38,7 @@ export function RubricCopyPanel({
   societySlug: string;
   bookings: CopyRecord[];
   printing: CopyRecord[];
-  grants: GrantRecord[];
+  grants: CopyRecord[];
   initialTab?: Tab;
   initialId?: string;
 }) {
@@ -54,8 +53,6 @@ export function RubricCopyPanel({
     initialId && initialRecords.some((r) => r.id === initialId) ? initialId : initialRecords[0]?.id ?? ""
   );
   const record = records.find((r) => r.id === id) ?? records[0];
-  // When the grants tab is active, `records` IS `grants`, so the record is the grant.
-  const grant = tab === "grants" ? (record as GrantRecord | undefined) : undefined;
 
   function switchTab(t: Tab) {
     setTab(t);
@@ -71,23 +68,60 @@ export function RubricCopyPanel({
     }
   }
 
-  async function updateGrantStatus(requestId: string, status: string) {
+  // Each tab submits its record on Rubric's own site, then says so here. The three
+  // endpoints already exist and already enforce exec-only; this is just the button
+  // next to the form you filled, so the tab you are on is the tab you can tick off.
+  const SUBMIT: Record<Tab, { label: string; done: string; confirm?: string; request: (id: string) => [string, RequestInit] }> = {
+    room: {
+      label: "Mark submitted to Arc",
+      done: "Booking marked submitted to Arc",
+      request: (id) => [
+        `/api/societies/${societySlug}/room-bookings/${id}`,
+        { method: "PATCH", body: JSON.stringify({ status: "SUBMITTED_TO_ARC" }) },
+      ],
+    },
+    printing: {
+      label: "Mark submitted to Arc",
+      done: "Printing job marked submitted to Arc",
+      request: (id) => [
+        `/api/societies/${societySlug}/printing/${id}`,
+        { method: "POST", body: JSON.stringify({ action: "mark_submitted" }) },
+      ],
+    },
+    grants: {
+      label: "Mark grant submitted",
+      done: "Grant marked submitted",
+      // The only one with no way back in the UI: a submitted grant leaves this list
+      // and the event has no grant control of its own any more.
+      confirm: "Mark this activity grant as submitted? It will disappear from this list.",
+      request: (id) => [
+        `/api/societies/${societySlug}/content-requests/${id}`,
+        { method: "PATCH", body: JSON.stringify({ activityGrantStatus: "SUBMITTED" }) },
+      ],
+    },
+  };
+
+  // Room bookings stay listed after they are lodged; the other two tabs only ever
+  // hold records that still need submitting.
+  const canSubmit = !!record && (tab !== "room" || (ROOM_UNSUBMITTED as string[]).includes(record.status ?? ""));
+
+  async function markSubmitted() {
+    if (!record) return;
+    const spec = SUBMIT[tab];
+    if (spec.confirm && !confirm(spec.confirm)) return;
     setSavingStatus(true);
     try {
-      const res = await fetch(`/api/societies/${societySlug}/content-requests/${requestId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityGrantStatus: status }),
-      });
+      const [url, init] = spec.request(record.id);
+      const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" } });
       if (res.ok) {
-        toast.success(`Grant marked ${statusLabel(status).toLowerCase()}`);
+        toast.success(spec.done);
         router.refresh();
       } else {
         const d = await res.json().catch(() => ({}));
-        toast.error(d.error ?? "Failed to update grant status");
+        toast.error(d.error ?? "Failed to update");
       }
     } catch {
-      toast.error("Failed to update grant status");
+      toast.error("Failed to update");
     } finally {
       setSavingStatus(false);
     }
@@ -101,7 +135,7 @@ export function RubricCopyPanel({
   const EMPTY_LABELS: Record<Tab, string> = {
     room: "room bookings",
     printing: "printing requests awaiting Arc submission",
-    grants: "events with a Rubric event attached",
+    grants: "events with a grant left to claim (they drop off 30 days after the event)",
   };
 
   return (
@@ -135,24 +169,22 @@ export function RubricCopyPanel({
                 <option key={r.id} value={r.id}>{r.title}</option>
               ))}
             </select>
-            {grant && (
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">Grant status</label>
-                <select
-                  value={grant.status}
-                  onChange={(e) => updateGrantStatus(grant.id, e.target.value)}
-                  disabled={savingStatus}
-                  className="flex-1 rounded-md border bg-background px-2 py-1 text-xs"
-                >
-                  {GRANT_STATUSES.map((s) => (
-                    <option key={s} value={s}>{statusLabel(s)}</option>
-                  ))}
-                </select>
-              </div>
+            {canSubmit && (
+              <button
+                onClick={markSubmitted}
+                disabled={savingStatus}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border bg-background px-2 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-60"
+              >
+                {savingStatus ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                {SUBMIT[tab].label}
+              </button>
             )}
-            {grant?.attendanceHref && (
+            {tab === "room" && !canSubmit && (
+              <p className="text-xs text-muted-foreground">Already submitted to Arc.</p>
+            )}
+            {tab === "grants" && record?.attendanceHref && (
               <Link
-                href={grant.attendanceHref}
+                href={record.attendanceHref}
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Attendance list (CSV on event page)

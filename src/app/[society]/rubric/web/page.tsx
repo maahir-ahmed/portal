@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { RubricShell } from "@/components/rubric/RubricShell";
-import { RubricCopyPanel, type CopyRecord, type GrantRecord } from "@/components/rubric/RubricCopyPanel";
+import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 
@@ -11,6 +11,11 @@ import { ExternalLink } from "lucide-react";
 // blocks touching a cross-origin frame's DOM), so instead we show the room-booking /
 // printing details alongside it to copy-paste in.
 const RUBRIC_URL = "https://portal.hellorubric.com/";
+
+// Arc's activity grant has to be claimed within 30 days of the event; past that the
+// claim is dead, so the event stops being offered here.
+const GRANT_CLAIM_DAYS = 30;
+const grantCutoff = () => new Date(Date.now() - GRANT_CLAIM_DAYS * 86_400_000);
 
 const pretty = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 const SIDED: Record<string, string> = {
@@ -56,10 +61,14 @@ export default async function RubricWebPage({
     }),
     prisma.contentRequest.findMany({
       // Events with a Rubric event attached: the pool activity grants are submitted for.
+      // An activity grant can only be claimed within 30 days of the event, so anything
+      // older is past claiming and drops off the list, as does anything already lodged.
       where: {
         societyId,
         OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
         status: { not: "CANCELLED" },
+        activityGrantStatus: "NOT_SUBMITTED",
+        startDate: { gte: grantCutoff() },
       },
       orderBy: { startDate: "desc" },
       take: 25,
@@ -70,6 +79,7 @@ export default async function RubricWebPage({
   const bookings: CopyRecord[] = rooms.map((b) => ({
     id: b.id,
     title: `${b.eventName} · ${formatDate(b.preferredDate)}`,
+    status: b.status,
     fields: [
       { label: "Event name", value: b.eventName },
       { label: "Date", value: formatDate(b.preferredDate) },
@@ -109,10 +119,9 @@ export default async function RubricWebPage({
     ],
   }));
 
-  const grants: GrantRecord[] = grantEvents.map((e) => ({
+  const grants: CopyRecord[] = grantEvents.map((e) => ({
     id: e.id,
     title: `${e.eventName} · ${formatDate(e.startDate)}`,
-    status: e.activityGrantStatus,
     attendanceHref: e.rubricEventId ? `/${society}/rubric/events/${e.rubricEventId}` : undefined,
     fields: [
       { label: "Event name", value: e.eventName },

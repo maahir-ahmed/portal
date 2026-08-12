@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
-import { ActivityGrantStatus } from "@prisma/client";
+
 
 type Params = { society: string; id: string };
 
@@ -34,9 +34,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // The activity grant is only ever "not lodged with Arc yet" or "lodged"; the app
+  // doesn't track Arc's decision on it, so the other enum values are unreachable.
   if (
     body.activityGrantStatus !== undefined &&
-    !Object.values(ActivityGrantStatus).includes(body.activityGrantStatus)
+    !["NOT_SUBMITTED", "SUBMITTED"].includes(body.activityGrantStatus)
   ) {
     return NextResponse.json({ error: "Invalid grant status" }, { status: 400 });
   }

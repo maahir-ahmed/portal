@@ -225,10 +225,13 @@ export default async function ContentRequestDetailPage({ params }: Props) {
                     {isExec && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Activity grant:</span>
-                        <StatusBadge status={request.activityGrantStatus} />
-                        <Link href={`/${societySlug}/rubric/web?type=grants&id=${request.id}`} className="text-blue-600 hover:underline text-xs">
-                          Manage on web portal →
-                        </Link>
+                        {request.activityGrantStatus === "NOT_SUBMITTED" ? (
+                          <Link href={`/${societySlug}/rubric/web?type=grants&id=${request.id}`} className="text-blue-600 hover:underline text-xs">
+                            Submit on web portal →
+                          </Link>
+                        ) : (
+                          <span className="text-xs">Submitted to Arc</span>
+                        )}
                       </div>
                     )}
                     <div>
