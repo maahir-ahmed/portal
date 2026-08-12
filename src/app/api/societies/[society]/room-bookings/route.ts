@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
 
   try {
     const body = schema.parse(await req.json());
-    const isLate = body.hasExternalGuests && isLateArcSubmission(body.preferredDate);
+    const isLate = isLateArcSubmission(body.preferredDate);
 
     const booking = await prisma.roomBooking.create({
       data: {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       entityId: booking.id,
     });
 
-    const urgencyNote = isLate ? " ⚠️ URGENT: External guests, less than 7 business days until event." : "";
+    const urgencyNote = isLate ? " ⚠️ URGENT: less than 7 business days until the event." : "";
     await notifyExecs(
       membership!.societyId,
       "APPROVAL_REQUIRED",

@@ -237,7 +237,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "room-card",
     title: "The booking list",
     body:
-      "Date, time, requested location and attendee cap on each row, sorted by event date. Bookings with external guests are flagged, and a red “Late submission” pill appears when the event is less than seven business days away.",
+      "Date, time, requested location and attendee cap on each row, sorted by event date. A red “Late submission” pill appears on any booking whose event is less than seven business days away.",
   },
   {
     id: "room-new",
@@ -250,14 +250,14 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/requests/room-booking/new",
     target: "room-notice",
     title: "Arc's seven-day rule",
-    body: "Anything involving non-UNSW guests has to reach Arc at least seven business days out. The reminder is here and the warning follows the booking around.",
+    body: "Every booking has to reach Arc at least seven business days before the event, external guests or not. The reminder is here and the warning follows the booking around.",
   },
   {
     id: "room-external",
     target: "room-external",
     title: "External guests",
     body:
-      "Answering “yes” opens two required fields (who they are and how many) and raises the late-submission warning. This is the single most common reason a booking gets bounced.",
+      "Answering “yes” opens two required fields: who they are and how many. Arc looks hardest at these, and they are the single most common reason a booking gets bounced.",
   },
   {
     id: "room-safety",

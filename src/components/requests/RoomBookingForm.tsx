@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 const LOCATIONS = [
@@ -112,8 +112,8 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
       </div>
 
       <div data-tour="room-notice" className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
-        <strong>Note:</strong> Arc requires room booking submissions at least 7 business days before the event
-        when external guests are involved.
+        <strong>Note:</strong> Arc requires every room booking to be submitted at least 7 business days before
+        the event, external guests or not.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -214,12 +214,6 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
             </div>
             {hasExternal && (
               <>
-                <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-orange-800">
-                    Events with external guests require Arc submission at least 7 business days prior.
-                  </p>
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="externalGuestsDesc">External Guests Description *</Label>
                   <Textarea

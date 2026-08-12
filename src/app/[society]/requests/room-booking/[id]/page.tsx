@@ -59,7 +59,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
   if (!booking || booking.societyId !== membership.societyId) notFound();
 
   const isExec = membership.role === "EXECUTIVE";
-  const isLate = booking.hasExternalGuests && isLateArcSubmission(booking.preferredDate);
+  const isLate = isLateArcSubmission(booking.preferredDate);
 
   const canEdit = isExec || booking.submittedById === session.user.id;
 
@@ -105,8 +105,8 @@ export default async function RoomBookingDetailPage({ params }: Props) {
           <div>
             <p className="font-medium text-red-800">Late Submission Warning</p>
             <p className="text-sm text-red-700 mt-0.5">
-              This event has external guests but was submitted less than 7 business days before the event date.
-              Please contact Arc immediately.
+              Arc needs room bookings at least 7 business days before the event, and this one is inside that
+              window. Please contact Arc immediately.
             </p>
           </div>
         </div>
