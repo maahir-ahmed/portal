@@ -151,8 +151,8 @@ export function BoardClient({
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {LANES.map((lane) => {
+      <div data-tour="board-columns" className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {LANES.map((lane, i) => {
           const laneCards = cards.filter((c) => c.lane === lane.id);
           return (
             <div
@@ -205,6 +205,7 @@ export function BoardClient({
                 </form>
               ) : (
                 <button
+                  data-tour={i === 0 ? "board-add" : undefined}
                   onClick={() => setAddingTo(lane.id)}
                   className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                 >

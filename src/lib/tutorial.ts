@@ -95,7 +95,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "tour-launcher-sidebar",
     title: "Restarting this tour",
     body:
-      "“Take the tour” at the bottom of the menu reopens this walkthrough whenever you want it, as does the mortarboard button in the top bar. Restarting always starts from the beginning and re-creates fresh demo records.",
+      "“Take the tour” at the bottom of the menu reopens this walkthrough whenever you want it. Restarting always starts from the beginning and re-creates fresh demo records.",
   },
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -530,6 +530,31 @@ export const TOUR_STEPS: TourStep[] = [
 
   // ── Members ────────────────────────────────────────────────────────────────
   {
+    id: "nav-board",
+    path: "/board",
+    target: "nav-board",
+    minRole: "EXECUTIVE",
+    title: "The board",
+    body:
+      "A shared board for the exec team: things to do, and things coming up. Nothing here is tied to a request — it's the notepad the committee used to keep in a group chat.",
+  },
+  {
+    id: "board-columns",
+    target: "board-columns",
+    minRole: "EXECUTIVE",
+    title: "Three columns, drag between them",
+    body:
+      "To do, In progress, Done. Drag a card from one to the next; it saves as soon as you drop it. Cards sort by due date, soonest first, and anything undated sinks to the bottom.",
+  },
+  {
+    id: "board-add",
+    target: "board-add",
+    minRole: "EXECUTIVE",
+    title: "Adding a card",
+    body:
+      "Give it a name and, if it matters, a due date — that date turns amber inside a week and red once it's passed. Click any card to add notes or delete it. Everyone on the exec sees the same board.",
+  },
+  {
     id: "nav-members",
     path: "/members",
     target: "nav-members",
@@ -563,6 +588,56 @@ export const TOUR_STEPS: TourStep[] = [
   },
 
   // ── Rubric portal ──────────────────────────────────────────────────────────
+  {
+    id: "nav-ahegs",
+    path: "/ahegs",
+    target: "nav-ahegs",
+    minRole: "DIRECTOR",
+    title: "AHEGS recognition",
+    body:
+      "Arc's Contributing Members Recognition, collated across the whole year instead of in a panic each November. Executives see the whole club; directors see their own portfolio, themselves included. Subcommittee members don't see this tab at all.",
+  },
+  {
+    id: "ahegs-meetings",
+    target: "ahegs-meetings",
+    minRole: "DIRECTOR",
+    title: "Meetings and minutes",
+    body:
+      "Log each meeting your portfolio runs: name, date, how long it went, and who turned up. Attach the minutes and Arc's proof-of-commitment evidence builds itself over the year. Delete a meeting and everyone who attended loses those hours again.",
+  },
+  {
+    id: "ahegs-roster",
+    target: "ahegs-roster",
+    minRole: "DIRECTOR",
+    title: "The roster, and hours",
+    body:
+      "Everyone is filled in from the member directory, so mostly you're correcting: the name as printed on the Student ID, a missing zID, the dates someone actually served. Hours are summed from the meetings each person attended, and “Adjust” credits work done outside them — running an event, marking a CTF. Untick anyone who shouldn't be put forward.",
+  },
+  {
+    id: "ahegs-ready",
+    target: "ahegs-ready",
+    minRole: "EXECUTIVE",
+    title: "Is it ready to send?",
+    body:
+      "One card per category: how many people, how much evidence is still missing, and how many rows Arc would reject. A card turns green when that list is good to go. “Download list” gives you Arc's own spreadsheet, already filled in.",
+  },
+  {
+    id: "ahegs-evidence",
+    click: "ahegs-tab-subcom",
+    target: "ahegs-evidence",
+    minRole: "EXECUTIVE",
+    title: "Arc's supporting documents",
+    body:
+      "For mentors and sub-committee, Arc wants training resources, attendance records and proof of commitment — one combined file each, uploaded or linked. The meetings logged above are what you build them from. Executives need none of this.",
+  },
+  {
+    id: "ahegs-arc",
+    target: "ahegs-arc",
+    minRole: "EXECUTIVE",
+    title: "Filling in Arc's form",
+    body:
+      "Arc asks about you before it asks for the lists. Click any value to copy it, then upload the three spreadsheets and the evidence files on Arc's site and sign. Note that hours never leave this app — Arc's templates have no hours column, so they're only here to help you decide who goes forward.",
+  },
   {
     id: "nav-rubric",
     path: "/rubric",

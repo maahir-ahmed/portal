@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { TOUR_STEPS, TOOLTIP_W, normalisePage, stepsFor, stepsForPage, tooltipBox } from "../src/lib/tutorial";
+import { ROLE_RANK, TOUR_STEPS, TOOLTIP_W, normalisePage, stepsFor, stepsForPage, tooltipBox } from "../src/lib/tutorial";
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -21,7 +21,7 @@ const anchors = new Set(
 );
 // Template-literal anchors (`nav-${item.tour}` etc.) can't be read statically.
 for (const m of source.matchAll(/data-tour=\{`([a-z-]+)-\$\{[^}]+\}`\}/g)) {
-  for (const suffix of ["dashboard", "content", "room", "treasury", "printing", "budget", "queue", "members", "rubric", "settings", "account", "current", "comparison"]) {
+  for (const suffix of ["dashboard", "content", "room", "treasury", "printing", "budget", "queue", "board", "members", "ahegs", "rubric", "settings", "account", "current", "comparison"]) {
     anchors.add(`${m[1]}-${suffix}`);
   }
 }
@@ -81,12 +81,36 @@ const PAGES = [
   "/requests/room-booking", "/requests/room-booking/new", "/requests/room-booking/[id]",
   "/requests/treasury", "/requests/treasury/new", "/requests/treasury/[id]",
   "/requests/printing", "/requests/printing/new", "/requests/printing/[id]",
-  "/budget", "/executive/queue", "/members",
+  "/budget", "/executive/queue", "/board", "/members", "/ahegs",
   "/rubric", "/rubric/events", "/rubric/members", "/rubric/grants", "/rubric/web",
   "/settings", "/account",
 ];
 const emptyPages = PAGES.filter((page) => stepsForPage("EXECUTIVE", page).length === 0);
 assert.deepEqual(emptyPages, [], `pages with no help steps:\n  ${emptyPages.join("\n  ")}`);
+
+// The tour must never walk someone onto a page they'd be redirected off. These are
+// the access floors enforced by the page guards and the sidebar; a step that outranks
+// its page is a step whose role gate was forgotten.
+const PAGE_MIN_ROLE = {
+  "/executive/queue": "EXECUTIVE",
+  "/board": "EXECUTIVE",
+  "/members": "EXECUTIVE",
+  "/settings": "EXECUTIVE",
+  "/rubric/members": "EXECUTIVE",
+  "/rubric/grants": "EXECUTIVE",
+  "/rubric/web": "EXECUTIVE",
+  "/ahegs": "DIRECTOR",
+  "/rubric": "DIRECTOR",
+  "/rubric/events": "DIRECTOR",
+} as const;
+
+for (const [page, minRole] of Object.entries(PAGE_MIN_ROLE)) {
+  for (const role of ["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"] as const) {
+    if (ROLE_RANK[role] >= ROLE_RANK[minRole]) continue;
+    const leaked = stepsForPage(role, page).map((s) => s.id);
+    assert.deepEqual(leaked, [], `${role} tour covers ${page}, which needs ${minRole}: ${leaked.join(", ")}`);
+  }
+}
 
 const pagedTotal = PAGES.reduce((sum, page) => sum + stepsForPage("EXECUTIVE", page).length, 0);
 const tourable = TOUR_STEPS.filter((s) => !s.kind).length;

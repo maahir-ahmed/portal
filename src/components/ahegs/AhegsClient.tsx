@@ -223,7 +223,7 @@ export function AhegsClient({
 
       {/* Readiness, and the downloads Arc wants: the executives' job. */}
       {scope.isExec && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div data-tour="ahegs-ready" className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {AHEGS_CATEGORIES.map((category) => {
             const people = included(category);
             const problems = people.filter((r) => rowProblems(r).length > 0).length;
@@ -259,7 +259,7 @@ export function AhegsClient({
       )}
 
       {/* Meetings and minutes. Directors log their own portfolio; hours follow. */}
-      <Card>
+      <Card data-tour="ahegs-meetings">
         <CardContent className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -370,8 +370,10 @@ export function AhegsClient({
       </Card>
 
       <div className="flex gap-1 border-b">
-        {visibleCategories.map((c) => (
+        {/* Sub-Committee is always last, and is the tab the tour's evidence step opens. */}
+        {visibleCategories.map((c, i) => (
           <button key={c} onClick={() => setTab(c)}
+            data-tour={i === visibleCategories.length - 1 ? "ahegs-tab-subcom" : undefined}
             className={cn(
               "-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors",
               tab === c ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
@@ -383,7 +385,7 @@ export function AhegsClient({
 
       {/* Arc's supporting documents, combined per category: an executive job. */}
       {scope.isExec && EVIDENCE_REQUIRED[tab].length > 0 && (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div data-tour="ahegs-evidence" className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {EVIDENCE_REQUIRED[tab].map((kind) => {
             const current = evidenceFor(tab, kind);
             const key = `${tab}-${kind}`;
@@ -438,7 +440,7 @@ export function AhegsClient({
       )}
 
       {/* Roster. Defaults come from the member directory; edits stick. */}
-      <div className="overflow-x-auto rounded-lg border">
+      <div data-tour="ahegs-roster" className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[1050px] text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
@@ -519,7 +521,7 @@ export function AhegsClient({
       </div>
 
       {scope.isExec && (
-        <Card>
+        <Card data-tour="ahegs-arc">
           <CardContent className="space-y-2 p-4">
             <p className="text-sm font-semibold">Your details for Arc&apos;s form</p>
             <p className="text-xs text-muted-foreground">

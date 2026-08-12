@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Bell, CircleQuestionMark, GraduationCap, Menu, X } from "lucide-react";
+import { Bell, CircleQuestionMark, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { timeAgo } from "@/lib/utils";
-import { SEEN_KEY } from "@/components/tutorial/TutorialOverlay";
 import { normalisePage, stepsForPage } from "@/lib/tutorial";
 
 interface Notification {
@@ -36,17 +35,6 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
   const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  // Nudge dot on the tour button until it's been opened once (read client-side to
-  // keep the server render and the first client render identical).
-  const [tourSeen, setTourSeen] = useState(true);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reads localStorage, which only exists on the client
-  useEffect(() => setTourSeen(!!localStorage.getItem(SEEN_KEY)), []);
-
-  function startTour() {
-    setTourSeen(true);
-    window.dispatchEvent(new Event("tutorial:start"));
-  }
 
   // Help for this page only: the tour steps that live here, no demo records.
   const role = (
@@ -104,21 +92,6 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
           <CircleQuestionMark className="h-[18px] w-[18px]" />
         </Button>
       )}
-
-      {/* Guided tour */}
-      <Button
-        variant="ghost"
-        size="icon"
-        data-tour="tour-launcher"
-        onClick={startTour}
-        title="Take the guided tour"
-        className="relative rounded-lg text-muted-foreground hover:text-foreground"
-      >
-        <GraduationCap className="h-[18px] w-[18px]" />
-        {!tourSeen && (
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[hsl(var(--brand-deep))] ring-2 ring-card" />
-        )}
-      </Button>
 
       {/* Notifications */}
       <DropdownMenu>

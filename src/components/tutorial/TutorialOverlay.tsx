@@ -23,7 +23,6 @@ import {
 // Full-tour progress lives in localStorage so a hard reload resumes where you were.
 
 const SAVE_KEY = "society-tutorial";
-export const SEEN_KEY = "society-tutorial-seen";
 
 interface Saved {
   stepId: string;
@@ -83,7 +82,6 @@ export function TutorialOverlay() {
       setPage(null);
       setRect(null);
       localStorage.removeItem(SAVE_KEY);
-      localStorage.setItem(SEEN_KEY, "1");
       if (cleanup) {
         void wipeDemo();
         setIds({});
