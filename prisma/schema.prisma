@@ -77,6 +77,13 @@ enum SecretarialTier {
   GOLD
 }
 
+// Columns of the executive board. Fixed set: it is a to-do board, not a workflow.
+enum BoardLane {
+  TODO
+  DOING
+  DONE
+}
+
 enum NotificationType {
   ASSIGNMENT
   APPROVAL_REQUIRED
@@ -139,6 +146,7 @@ model Society {
   announcements    Announcement[]
   auditLogs        AuditLog[]
   budgetCategories BudgetCategory[]
+  boardCards       BoardCard[]
 }
 
 model User {
@@ -172,6 +180,7 @@ model User {
   printingRequests  PrintingRequest[]    @relation("PrintingSubmitter")
   bankAccounts      BankAccount[]
   auditLogs         AuditLog[]
+  boardCards        BoardCard[]
 }
 
 model SocietyMembership {
@@ -549,6 +558,28 @@ model BudgetCategory {
 
   @@unique([societyId, name])
   @@index([societyId])
+}
+
+// ─── Executive Board ──────────────────────────────────────────────────────────
+
+// A Trello-style board for the exec team: things to do and things coming up. It is
+// deliberately not linked to requests — those have their own queues and statuses.
+// Cards are shared by the whole exec team, so there is no per-user board.
+model BoardCard {
+  id          String    @id @default(cuid())
+  societyId   String
+  createdById String
+  lane        BoardLane @default(TODO)
+  title       String
+  notes       String?   @db.Text
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  society   Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id])
+
+  @@index([societyId, lane])
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
