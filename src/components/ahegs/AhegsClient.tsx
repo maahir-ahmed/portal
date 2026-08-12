@@ -39,6 +39,7 @@ export function AhegsClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [addingMeeting, setAddingMeeting] = useState(false);
   const [attendees, setAttendees] = useState<string[]>([]);
+  const [minutesFile, setMinutesFile] = useState<File | null>(null);
   const [meetingScope, setMeetingScope] = useState<string>(scope.portfolioId ?? "exec");
 
   // A director only ever holds their own portfolio's rows, so any category with
@@ -101,13 +102,12 @@ export function AhegsClient({
   async function addMeeting(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const file = form.get("minutes") as File | null;
     setBusy("meeting");
     try {
       let fileUrl: string | null = null;
       let fileName: string | null = null;
-      if (file && file.size > 0) {
-        const up = await uploadFile(file);
+      if (minutesFile) {
+        const up = await uploadFile(minutesFile);
         fileUrl = up.url;
         fileName = up.name;
       }
@@ -125,6 +125,7 @@ export function AhegsClient({
       toast.success("Meeting logged");
       setAddingMeeting(false);
       setAttendees([]);
+      setMinutesFile(null);
       // Hours are summed server-side, so the whole roster re-reads rather than
       // guessing at the new totals here.
       router.refresh();
@@ -306,9 +307,20 @@ export function AhegsClient({
           {addingMeeting && (
             <form onSubmit={addMeeting} className="space-y-3 rounded-lg border bg-muted/30 p-3">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-                <input name="title" placeholder="Meeting name" required maxLength={300} className={cn(cell, "sm:col-span-2")} />
-                <input name="date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className={cell} />
-                <input name="hours" type="number" step="0.25" min="0" max="24" defaultValue="1" required aria-label="Hours" className={cell} />
+                <div className="space-y-1 sm:col-span-2">
+                  <label htmlFor="meeting-title" className="text-xs font-medium">Meeting name</label>
+                  <input id="meeting-title" name="title" placeholder="e.g. CTF weekly" required maxLength={300} className={cell} />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="meeting-date" className="text-xs font-medium">Date</label>
+                  <input id="meeting-date" name="date" type="date" required
+                         defaultValue={new Date().toISOString().slice(0, 10)} className={cell} />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="meeting-hours" className="text-xs font-medium">Hours</label>
+                  <input id="meeting-hours" name="hours" type="number" step="0.25" min="0" max="24"
+                         defaultValue="1" required className={cn(cell, "tabnums")} />
+                </div>
               </div>
               {scope.isExec && (
                 <select
@@ -377,14 +389,27 @@ export function AhegsClient({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs hover:bg-muted">
-                  <Upload className="h-3.5 w-3.5" /> Attach minutes
-                  <input type="file" name="minutes" className="hidden" />
-                </label>
+                {minutesFile ? (
+                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1.5 text-xs">
+                    <FileText className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    <span className="truncate">{minutesFile.name}</span>
+                    <button type="button" onClick={() => setMinutesFile(null)} aria-label="Remove minutes"
+                            className="text-muted-foreground hover:text-red-600">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ) : (
+                  <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs hover:bg-muted">
+                    <Upload className="h-3.5 w-3.5" /> Attach minutes
+                    <input type="file" className="hidden"
+                           onChange={(e) => setMinutesFile(e.target.files?.[0] ?? null)} />
+                  </label>
+                )}
                 <Button type="submit" size="sm" disabled={busy === "meeting"}>
                   {busy === "meeting" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save meeting"}
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => { setAddingMeeting(false); setAttendees([]); }}>
+                <Button type="button" size="sm" variant="ghost"
+                        onClick={() => { setAddingMeeting(false); setAttendees([]); setMinutesFile(null); }}>
                   Cancel
                 </Button>
               </div>
