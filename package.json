@@ -11,6 +11,7 @@
     "check:rubric": "npx tsx scripts/check-rubric.ts",
     "check:passphrase": "npx tsx scripts/check-passphrase.ts",
     "check:ahegs": "npx tsx scripts/check-ahegs.ts",
+    "check:bookings": "npx tsx scripts/check-bookings.ts",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",

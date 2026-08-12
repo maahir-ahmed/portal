@@ -72,7 +72,7 @@ export default async function RoomBookingsPage({ params }: Props) {
       ) : (
         <div className="space-y-3">
           {bookings.map((b, i) => {
-            const isLate = isLateArcSubmission(b.preferredDate);
+            const isLate = isLateArcSubmission(b.preferredDate, b.status);
             return (
               <Link key={b.id} href={`/${societySlug}/requests/room-booking/${b.id}`} data-tour={i === 0 ? "room-card" : undefined}>
                 <Card className="hover:border-blue-300 transition-colors cursor-pointer">

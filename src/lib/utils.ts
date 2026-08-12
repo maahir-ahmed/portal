@@ -34,8 +34,22 @@ export function businessDaysUntil(date: Date | string): number {
   return differenceInBusinessDays(new Date(date), new Date());
 }
 
-export function isLateArcSubmission(eventDate: Date | string): boolean {
-  return businessDaysUntil(eventDate) < 7;
+// Statuses where the booking has already reached Arc (or is finished with). Past
+// these, nothing is outstanding and a deadline warning is just noise.
+const REACHED_ARC = ["SUBMITTED_TO_ARC", "APPROVED", "REJECTED", "COMPLETED"];
+
+/**
+ * Whether a booking is at risk of missing Arc's seven-business-day deadline.
+ *
+ * The warning is about getting it lodged in time, so it only fires while that is
+ * still both possible and needed. `businessDaysUntil` goes negative once the event
+ * has passed, which is why the lower bound is here: without it every historical
+ * booking reads as late.
+ */
+export function isLateArcSubmission(eventDate: Date | string, status?: string): boolean {
+  if (status && REACHED_ARC.includes(status)) return false;
+  const days = businessDaysUntil(eventDate);
+  return days >= 0 && days < 7;
 }
 
 export function formatCurrency(amount: number | string): string {
