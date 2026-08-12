@@ -648,6 +648,10 @@ model AhegsMeeting {
   // Null for a whole-of-committee meeting; otherwise the portfolio that ran it, which
   // is also what decides who can see and edit it.
   portfolioId String?
+  // The executive team's own meetings. Execs hold no portfolio, so they can't be
+  // grouped by one; this is their equivalent. Implies portfolioId is null, and like
+  // any portfolio-less meeting it is visible to executives only.
+  execTeam    Boolean  @default(false)
   year        Int
   title       String
   date        DateTime

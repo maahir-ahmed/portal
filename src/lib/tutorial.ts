@@ -603,7 +603,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Meetings and minutes",
     body:
-      "Log each meeting your portfolio runs: name, date, how long it went, and who turned up. Attach the minutes and Arc's proof-of-commitment evidence builds itself over the year. Delete a meeting and everyone who attended loses those hours again.",
+      "Log each meeting your group runs: name, date, how long it went, and who turned up. Directors file against their own portfolio; executives choose the exec team, any portfolio, or the whole committee. Attach the minutes and Arc's proof-of-commitment evidence builds itself over the year. Delete a meeting and everyone who attended loses those hours again.",
   },
   {
     id: "ahegs-roster",

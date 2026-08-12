@@ -38,7 +38,19 @@ export default async function AhegsPage({ params, searchParams }: Props) {
 
   const [memberships, entries, evidence, allMeetings, portfolios] = await Promise.all([
     prisma.societyMembership.findMany({
-      where: { societyId: membership.societyId },
+      // The committee, as the Members tab defines it: removing someone sets
+      // isActive false, and a removed member should drop out of here too.
+      where: {
+        societyId: membership.societyId,
+        OR: [
+          { isActive: true },
+          // …unless they were already put on this year's submission. Someone who
+          // served half the year and then left keeps their place; they just can't be
+          // added after the fact. Without this they would silently vanish from a
+          // submission already in progress.
+          { ahegsEntries: { some: { year, included: true } } },
+        ],
+      },
       include: { user: { select: { name: true, email: true, zId: true } } },
       orderBy: { joinedAt: "asc" },
     }),
@@ -96,6 +108,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
     .map((m) => ({
       id: m.id,
       portfolioId: m.portfolioId,
+      execTeam: m.execTeam,
       title: m.title,
       date: m.date.toISOString().slice(0, 10),
       hours: m.hours,

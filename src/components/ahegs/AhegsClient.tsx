@@ -17,7 +17,7 @@ import type { AhegsCategory, AhegsEvidenceKind } from "@prisma/client";
 
 interface Evidence { category: AhegsCategory; kind: AhegsEvidenceKind; url: string; label: string | null }
 interface Meeting {
-  id: string; portfolioId: string | null; title: string; date: string;
+  id: string; portfolioId: string | null; execTeam: boolean; title: string; date: string;
   hours: number; fileUrl: string | null; fileName: string | null; attendeeIds: string[];
 }
 interface Portfolio { id: string; name: string }
@@ -39,7 +39,7 @@ export function AhegsClient({
   const [busy, setBusy] = useState<string | null>(null);
   const [addingMeeting, setAddingMeeting] = useState(false);
   const [attendees, setAttendees] = useState<string[]>([]);
-  const [meetingPortfolio, setMeetingPortfolio] = useState<string>(scope.portfolioId ?? "");
+  const [meetingScope, setMeetingScope] = useState<string>(scope.portfolioId ?? "exec");
 
   // A director only ever holds their own portfolio's rows, so any category with
   // nobody in it is noise on their screen.
@@ -49,8 +49,12 @@ export function AhegsClient({
   const [tab, setTab] = useState<AhegsCategory>(visibleCategories[0] ?? "SUBCOMMITTEE");
 
   const base = `/api/societies/${societySlug}/ahegs`;
-  const portfolioName = (id: string | null) =>
-    id ? (portfolios.find((p) => p.id === id)?.name ?? "Unknown") : "Whole committee";
+  const meetingGroupName = (m: { portfolioId: string | null; execTeam: boolean }) =>
+    m.execTeam
+      ? "Executive team"
+      : m.portfolioId
+        ? (portfolios.find((p) => p.id === m.portfolioId)?.name ?? "Unknown")
+        : "Whole committee";
 
   async function send(url: string, method: string, body?: unknown) {
     const res = await fetch(url, {
@@ -112,7 +116,8 @@ export function AhegsClient({
         title: String(form.get("title") ?? "").trim(),
         date: String(form.get("date") ?? ""),
         hours: Number(form.get("hours")),
-        portfolioId: scope.isExec ? meetingPortfolio || null : undefined,
+        portfolioId: scope.isExec && meetingScope !== "exec" ? meetingScope || null : null,
+        execTeam: scope.isExec && meetingScope === "exec",
         fileUrl,
         fileName,
         attendeeIds: attendees,
@@ -187,10 +192,14 @@ export function AhegsClient({
   const evidenceFor = (c: AhegsCategory, k: AhegsEvidenceKind) =>
     evidence.find((e) => e.category === c && e.kind === k);
   const tabRows = rows.filter((r) => r.category === tab);
-  // Attendees are picked from the people the meeting's portfolio actually contains.
-  const attendeeChoices = rows.filter(
-    (r) => !scope.isExec || !meetingPortfolio || r.portfolioId === meetingPortfolio
-  );
+  // Attendees are picked from whoever the chosen group actually contains: the
+  // executives (who hold no portfolio), one portfolio, or the whole committee.
+  const attendeeChoices = rows.filter((r) => {
+    if (!scope.isExec) return true;
+    if (meetingScope === "exec") return r.portfolioId === null;
+    if (meetingScope === "") return true;
+    return r.portfolioId === meetingScope;
+  });
 
   const arcFields: [string, string][] = [
     ["Submitter's name", submitter.name],
@@ -216,7 +225,7 @@ export function AhegsClient({
         </select>
         {!scope.isExec && (
           <span className="text-sm text-muted-foreground">
-            · {portfolioName(scope.portfolioId)} portfolio
+            · {portfolios.find((p) => p.id === scope.portfolioId)?.name ?? "no"} portfolio
           </span>
         )}
       </div>
@@ -284,12 +293,14 @@ export function AhegsClient({
               </div>
               {scope.isExec && (
                 <select
-                  value={meetingPortfolio}
-                  onChange={(e) => { setMeetingPortfolio(e.target.value); setAttendees([]); }}
+                  value={meetingScope}
+                  onChange={(e) => { setMeetingScope(e.target.value); setAttendees([]); }}
+                  aria-label="Who met"
                   className={cell}
                 >
-                  <option value="">Whole committee</option>
+                  <option value="exec">Executive team</option>
                   {portfolios.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <option value="">Whole committee</option>
                 </select>
               )}
               <div>
@@ -342,7 +353,7 @@ export function AhegsClient({
                     <p className="truncate font-medium">{m.title}</p>
                     <p className="text-xs text-muted-foreground tabnums">
                       {formatDate(m.date)} · {m.hours}h · {m.attendeeIds.length} attended
-                      {scope.isExec && ` · ${portfolioName(m.portfolioId)}`}
+                      {scope.isExec && ` · ${meetingGroupName(m)}`}
                     </p>
                   </div>
                   {m.fileUrl ? (
