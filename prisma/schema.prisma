@@ -166,6 +166,7 @@ model Society {
   boardCards       BoardCard[]
   ahegsEntries     AhegsEntry[]
   ahegsEvidence    AhegsEvidence[]
+  ahegsMeetings    AhegsMeeting[]
 }
 
 model User {
@@ -200,6 +201,7 @@ model User {
   bankAccounts      BankAccount[]
   auditLogs         AuditLog[]
   boardCards        BoardCard[]
+  ahegsMeetings     AhegsMeeting[]
 }
 
 model SocietyMembership {
@@ -217,6 +219,7 @@ model SocietyMembership {
   society     Society      @relation(fields: [societyId], references: [id], onDelete: Cascade)
   portfolio   Portfolio?   @relation(fields: [portfolioId], references: [id])
   ahegsEntries AhegsEntry[]
+  ahegsAttendance AhegsAttendance[]
 
   @@unique([userId, societyId])
   @@index([societyId])
@@ -236,6 +239,7 @@ model Portfolio {
   society     Society             @relation(fields: [societyId], references: [id], onDelete: Cascade)
   memberships SocietyMembership[]
   titles      SocietyTitle[]
+  ahegsMeetings AhegsMeeting[]
 
   @@unique([societyId, name])
 }
@@ -602,6 +606,9 @@ model AhegsEntry {
   position     String?
   startDate    DateTime?
   endDate      DateTime?
+  // Contribution outside scheduled meetings (running an event, marking a CTF). Added
+  // to the hours derived from meeting attendance; may be negative to correct one.
+  hoursAdjustment Float?
   updatedAt    DateTime      @updatedAt
 
   society    Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
@@ -627,6 +634,52 @@ model AhegsEvidence {
   society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
 
   @@unique([societyId, year, category, kind])
+}
+
+// A meeting a portfolio ran, with its minutes attached. Directors log these through
+// the year; the hours each member is credited with are summed from the meetings they
+// attended, so the number always has the minutes standing behind it.
+//
+// Arc's templates have no hours column — hours decide who the club puts forward,
+// and the minutes are what Arc asks for as proof of commitment.
+model AhegsMeeting {
+  id          String   @id @default(cuid())
+  societyId   String
+  // Null for a whole-of-committee meeting; otherwise the portfolio that ran it, which
+  // is also what decides who can see and edit it.
+  portfolioId String?
+  year        Int
+  title       String
+  date        DateTime
+  // Duration in hours. Float rather than Decimal: this is not money, and the halves
+  // and quarters people actually record are exact in binary anyway.
+  hours       Float    @default(1)
+  fileUrl     String?
+  fileName    String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  society   Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  portfolio Portfolio?        @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
+  createdBy User              @relation(fields: [createdById], references: [id])
+  attendees AhegsAttendance[]
+
+  @@index([societyId, year])
+  @@index([portfolioId])
+}
+
+// Who was at a meeting. The join is what turns logged meetings into per-person hours.
+model AhegsAttendance {
+  id           String @id @default(cuid())
+  meetingId    String
+  membershipId String
+
+  meeting    AhegsMeeting      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  membership SocietyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, membershipId])
+  @@index([membershipId])
 }
 
 // ─── Executive Board ──────────────────────────────────────────────────────────

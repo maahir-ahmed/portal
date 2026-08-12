@@ -71,6 +71,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 export interface RosterSource {
   membershipId: string;
   role: Role;
+  portfolioId: string | null;
   title: string | null;
   isActive: boolean;
   joinedAt: Date;
@@ -88,10 +89,12 @@ export interface RosterEntryOverride {
   position?: string | null;
   startDate?: Date | null;
   endDate?: Date | null;
+  hoursAdjustment?: number | null;
 }
 
 export interface RosterRow {
   membershipId: string;
+  portfolioId: string | null;
   category: AhegsCategory;
   included: boolean;
   fullName: string;
@@ -100,8 +103,35 @@ export interface RosterRow {
   position: string;
   startDate: string;
   endDate: string;
+  /** Hours credited from meetings attended, and how many meetings that was. */
+  meetingHours: number;
+  meetingCount: number;
+  /** Contribution outside meetings, set by hand. */
+  hoursAdjustment: number | null;
+  /** meetingHours + hoursAdjustment. */
+  totalHours: number;
   /** True where the value came from the exec rather than the member directory. */
   edited: boolean;
+}
+
+/** A logged meeting, reduced to what the hours sum needs. */
+export interface MeetingAttendance {
+  hours: number;
+  attendeeIds: string[];
+}
+
+// Hours are summed rather than stored, so correcting a meeting's duration or its
+// attendee list re-credits everyone automatically and the minutes always match.
+export function hoursFromMeetings(membershipId: string, meetings: MeetingAttendance[]) {
+  let meetingCount = 0;
+  let hours = 0;
+  for (const m of meetings) {
+    if (m.attendeeIds.includes(membershipId)) {
+      meetingCount++;
+      hours += m.hours;
+    }
+  }
+  return { meetingCount, meetingHours: Math.round(hours * 100) / 100 };
 }
 
 /**
@@ -109,15 +139,24 @@ export interface RosterRow {
  * directory and is overridden only where an exec has corrected it, so the roster
  * keeps following the directory for the rest of the year.
  */
-export function resolveRow(m: RosterSource, o: RosterEntryOverride | undefined, year: number): RosterRow {
+export function resolveRow(
+  m: RosterSource,
+  o: RosterEntryOverride | undefined,
+  year: number,
+  meetings: MeetingAttendance[] = []
+): RosterRow {
   // Arc wants the period inside the academic year being recognised, so a member who
   // joined in an earlier year starts on 1 January rather than their join date.
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEnd = new Date(Date.UTC(year, 11, 31));
   const joined = m.joinedAt > yearStart ? m.joinedAt : yearStart;
 
+  const { meetingCount, meetingHours } = hoursFromMeetings(m.membershipId, meetings);
+  const hoursAdjustment = o?.hoursAdjustment ?? null;
+
   return {
     membershipId: m.membershipId,
+    portfolioId: m.portfolioId,
     category: o?.category ?? CATEGORY_FOR_ROLE[m.role],
     // Someone whose membership has been deactivated is off the list by default, but
     // they may well have contributed for half the year — hence the toggle.
@@ -129,8 +168,39 @@ export function resolveRow(m: RosterSource, o: RosterEntryOverride | undefined, 
     position: o?.position ?? m.title ?? "",
     startDate: iso(o?.startDate ?? joined),
     endDate: iso(o?.endDate ?? yearEnd),
+    meetingCount,
+    meetingHours,
+    hoursAdjustment,
+    totalHours: Math.round((meetingHours + (hoursAdjustment ?? 0)) * 100) / 100,
     edited: !!o,
   };
+}
+
+// ─── Who sees what ───────────────────────────────────────────────────────────
+//
+// Executives see and edit the whole club. Directors are scoped to their own
+// portfolio — which includes themselves, since a director's membership carries the
+// portfolio their title belongs to. Subcommittee members get no access at all, so
+// the page and every route under it require DIRECTOR at minimum.
+
+export interface AhegsScope {
+  isExec: boolean;
+  /** The director's portfolio. Null for an executive (who is not limited to one). */
+  portfolioId: string | null;
+}
+
+export function ahegsScope(role: Role, portfolioId: string | null): AhegsScope {
+  return { isExec: role === "EXECUTIVE", portfolioId: role === "EXECUTIVE" ? null : portfolioId };
+}
+
+/**
+ * Whether this viewer may see and edit a row. Enforced in the route handlers, not
+ * just the UI — a director must not be able to reach another portfolio by id.
+ * A director with no portfolio (a title outside the society's list) sees nobody.
+ */
+export function canTouchPortfolio(scope: AhegsScope, portfolioId: string | null): boolean {
+  if (scope.isExec) return true;
+  return scope.portfolioId !== null && portfolioId === scope.portfolioId;
 }
 
 // Arc's own spreadsheet refuses a zID outside this range ("A valid zID must be

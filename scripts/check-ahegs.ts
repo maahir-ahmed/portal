@@ -6,7 +6,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 import { fillTemplate, readZip } from "../src/lib/xlsx";
-import { AHEGS_CATEGORIES, TEMPLATES, resolveRow, rowProblems } from "../src/lib/ahegs";
+import {
+  AHEGS_CATEGORIES,
+  TEMPLATES,
+  ahegsScope,
+  canTouchPortfolio,
+  hoursFromMeetings,
+  resolveRow,
+  rowProblems,
+} from "../src/lib/ahegs";
 
 const sheetOf = (buf: Buffer) => readZip(buf).get("xl/worksheets/sheet1.xml")!.toString("utf8");
 const path = (file: string) => join("public", file);
@@ -96,6 +104,7 @@ for (const category of AHEGS_CATEGORIES) {
 const member = {
   membershipId: "m1",
   role: "DIRECTOR" as const,
+  portfolioId: "p-creatives",
   title: "Creative Director",
   isActive: true,
   joinedAt: new Date("2024-03-05T00:00:00Z"),
@@ -135,7 +144,59 @@ assert.deepEqual(rowProblems({ ...row, endDate: "2026-01-01", startDate: "2026-0
 assert.deepEqual(rowProblems({ ...row, category: "SUBCOMMITTEE", position: "" }), ["no position"]);
 assert.deepEqual(rowProblems({ ...row, category: "MENTOR", position: "" }), [], "mentors have no position column");
 
+// 4. Hours. These decide who the club puts forward, so a wrong sum quietly drops
+//    someone from recognition they earned.
+const meetings = [
+  { hours: 1.5, attendeeIds: ["m1", "m2"] },
+  { hours: 2, attendeeIds: ["m1"] },
+  { hours: 0.25, attendeeIds: ["m2"] },
+];
+assert.deepEqual(hoursFromMeetings("m1", meetings), { meetingCount: 2, meetingHours: 3.5 });
+assert.deepEqual(hoursFromMeetings("m2", meetings), { meetingCount: 2, meetingHours: 1.75 });
+assert.deepEqual(hoursFromMeetings("nobody", meetings), { meetingCount: 0, meetingHours: 0 });
+assert.deepEqual(hoursFromMeetings("m1", []), { meetingCount: 0, meetingHours: 0 });
+
+// Float sums must not surface as 0.30000000000000004 in the UI.
+assert.equal(
+  hoursFromMeetings("m1", [
+    { hours: 0.1, attendeeIds: ["m1"] },
+    { hours: 0.2, attendeeIds: ["m1"] },
+  ]).meetingHours,
+  0.3
+);
+
+const withHours = resolveRow(member, undefined, 2026, meetings);
+assert.equal(withHours.meetingHours, 3.5);
+assert.equal(withHours.meetingCount, 2);
+assert.equal(withHours.totalHours, 3.5, "no adjustment means hours are the meeting sum");
+
+const adjusted = resolveRow(member, { hoursAdjustment: 2.5 }, 2026, meetings);
+assert.equal(adjusted.totalHours, 6, "the adjustment is added to the meeting hours");
+const docked = resolveRow(member, { hoursAdjustment: -1.5 }, 2026, meetings);
+assert.equal(docked.totalHours, 2, "a negative adjustment corrects an over-credit");
+
+// 5. Scoping. A director must not reach another portfolio, and subcommittee members
+//    have no access at all (the routes require DIRECTOR, so they never get this far).
+const exec = ahegsScope("EXECUTIVE", null);
+const director = ahegsScope("DIRECTOR", "p-creatives");
+const strayDirector = ahegsScope("DIRECTOR", null);
+
+assert.equal(exec.isExec, true);
+assert.equal(exec.portfolioId, null, "an executive is not pinned to one portfolio");
+assert.equal(canTouchPortfolio(exec, "p-creatives"), true);
+assert.equal(canTouchPortfolio(exec, null), true, "executives cover the unassigned too");
+
+assert.equal(canTouchPortfolio(director, "p-creatives"), true, "own portfolio, which includes themselves");
+assert.equal(canTouchPortfolio(director, "p-ctf"), false, "another portfolio is off limits");
+assert.equal(canTouchPortfolio(director, null), false, "executives' rows carry no portfolio");
+
+// A director whose title isn't in the society's list has no portfolio: they must see
+// nobody rather than everybody with a null portfolio.
+assert.equal(canTouchPortfolio(strayDirector, null), false, "a portfolio-less director sees nobody");
+assert.equal(canTouchPortfolio(strayDirector, "p-creatives"), false);
+
 console.log(
   `✅ ahegs: ${AHEGS_CATEGORIES.length} templates blank and fillable, ` +
-    `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory`
+    `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory, ` +
+    `hours summed from attendance, portfolio scoping enforced`
 );

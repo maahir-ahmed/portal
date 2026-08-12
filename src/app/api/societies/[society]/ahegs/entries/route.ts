@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
 import { z } from "zod";
 
 // One member's corrections for one year's submission. The row is created on first
@@ -16,28 +16,24 @@ const schema = z.object({
   position: z.string().max(200).nullable().optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
+  hoursAdjustment: z.number().min(-1000).max(1000).nullable().optional(),
 });
 
 const day = (v: string | null | undefined) => (v ? new Date(`${v}T00:00:00Z`) : null);
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { membership, scope, error } = await requireAhegsAccess(society);
+  if (error) return error;
 
   try {
     const body = schema.parse(await req.json());
 
-    // The membership being edited has to belong to this society, or an exec could
-    // pull another club's member onto their submission by guessing an id.
-    const target = await prisma.societyMembership.findFirst({
-      where: { id: body.membershipId, societyId: membership!.societyId },
-      select: { id: true },
-    });
-    if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    // The membership has to belong to this society, and to a portfolio the caller
+    // owns — otherwise a director could edit another portfolio's row by guessing an
+    // id, and an exec could reach another club's member.
+    const target = await membershipsInScope(membership.societyId, scope, [body.membershipId]);
+    if (target === null) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const data = {
       category: body.category,
@@ -48,11 +44,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
       position: body.position || null,
       startDate: day(body.startDate),
       endDate: day(body.endDate),
+      hoursAdjustment: body.hoursAdjustment ?? null,
     };
 
     await prisma.ahegsEntry.upsert({
       where: { membershipId_year: { membershipId: body.membershipId, year: body.year } },
-      create: { societyId: membership!.societyId, membershipId: body.membershipId, year: body.year, ...data },
+      create: { societyId: membership.societyId, membershipId: body.membershipId, year: body.year, ...data },
       update: data,
     });
 

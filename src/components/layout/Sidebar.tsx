@@ -88,7 +88,8 @@ const navItems = [
     label: "AHEGS",
     icon: Award,
     tour: "ahegs",
-    minRole: "EXECUTIVE" as const,
+    // Directors log their portfolio's meetings; subcommittee members see nothing.
+    minRole: "DIRECTOR" as const,
   },
   {
     href: "/rubric",

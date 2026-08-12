@@ -37,6 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
         {
           membershipId: m.id,
           role: m.role,
+          portfolioId: m.portfolioId,
           title: m.title,
           isActive: m.isActive,
           joinedAt: m.joinedAt,
