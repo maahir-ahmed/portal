@@ -84,6 +84,23 @@ enum BoardLane {
   DONE
 }
 
+// Arc's Clubs Contributing Members Recognition (AHEGS) categories. The society's
+// own roles map straight onto them: directors are the club's mentors. Volunteers are
+// a fourth Arc category this club doesn't submit for.
+enum AhegsCategory {
+  EXECUTIVE
+  MENTOR
+  SUBCOMMITTEE
+}
+
+// The supporting documents Arc asks for alongside the mentor and sub-committee
+// lists. Each is either an uploaded file or a link to one.
+enum AhegsEvidenceKind {
+  TRAINING
+  ATTENDANCE
+  COMMITMENT
+}
+
 enum NotificationType {
   ASSIGNMENT
   APPROVAL_REQUIRED
@@ -147,6 +164,8 @@ model Society {
   auditLogs        AuditLog[]
   budgetCategories BudgetCategory[]
   boardCards       BoardCard[]
+  ahegsEntries     AhegsEntry[]
+  ahegsEvidence    AhegsEvidence[]
 }
 
 model User {
@@ -194,9 +213,10 @@ model SocietyMembership {
   joinedAt     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  society    Society     @relation(fields: [societyId], references: [id], onDelete: Cascade)
-  portfolio  Portfolio?  @relation(fields: [portfolioId], references: [id])
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  society     Society      @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  portfolio   Portfolio?   @relation(fields: [portfolioId], references: [id])
+  ahegsEntries AhegsEntry[]
 
   @@unique([userId, societyId])
   @@index([societyId])
@@ -558,6 +578,55 @@ model BudgetCategory {
 
   @@unique([societyId, name])
   @@index([societyId])
+}
+
+// ─── AHEGS ────────────────────────────────────────────────────────────────────
+
+// One person on one year's AHEGS submission. The roster is derived from the member
+// directory, so a row only exists here once it has been touched: to drop someone
+// from the submission, or to correct what Arc sees. Every text field is an override
+// — null means "use the membership's own value", so a later name or title change
+// still flows through.
+model AhegsEntry {
+  id           String        @id @default(cuid())
+  societyId    String
+  membershipId String
+  year         Int
+  category     AhegsCategory
+  included     Boolean       @default(true)
+  // Arc matches on the name as printed on the Student ID, which is often not the
+  // name someone uses day to day, hence an override rather than a directory edit.
+  fullName     String?
+  zid          String?
+  email        String?
+  position     String?
+  startDate    DateTime?
+  endDate      DateTime?
+  updatedAt    DateTime      @updatedAt
+
+  society    Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  membership SocietyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, year])
+  @@index([societyId, year])
+}
+
+// Training resources, attendance records and proof of commitment, per category per
+// year. Arc wants one combined file for each, so there is at most one row per slot.
+model AhegsEvidence {
+  id        String            @id @default(cuid())
+  societyId String
+  year      Int
+  category  AhegsCategory
+  kind      AhegsEvidenceKind
+  // An /uploads/… path or an external link; Arc accepts either for training resources.
+  url       String
+  label     String?
+  updatedAt DateTime          @updatedAt
+
+  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@unique([societyId, year, category, kind])
 }
 
 // ─── Executive Board ──────────────────────────────────────────────────────────

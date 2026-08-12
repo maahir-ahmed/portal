@@ -17,6 +17,7 @@ npm run db:seed             # demo society + accounts
 npm run check:rubric        # invariant checks, see below
 npm run check:tutorial
 npm run check:passphrase
+npm run check:ahegs
 ```
 
 There is no test framework. The three `check:*` scripts are the whole safety net —
@@ -28,6 +29,7 @@ would otherwise rot silently. Run the relevant one after touching its area:
 | `check:rubric` | anything under `src/lib/rubric*`, the Rubric proxy route, `src/lib/secrets.ts`, the demo snapshot |
 | `check:tutorial` | `src/lib/tutorial.ts` or any `data-tour` attribute |
 | `check:passphrase` | `src/lib/passphrase.ts` or the wordlist dependency |
+| `check:ahegs` | `src/lib/ahegs.ts`, `src/lib/xlsx.ts`, the AHEGS routes, or the templates in `public/` |
 
 ## Architecture
 

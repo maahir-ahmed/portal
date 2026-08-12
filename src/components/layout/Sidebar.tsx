@@ -17,6 +17,7 @@ import {
   PiggyBank,
   GraduationCap,
   SquareKanban,
+  Award,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,13 @@ const navItems = [
     label: "Members",
     icon: Users,
     tour: "members",
+    minRole: "EXECUTIVE" as const,
+  },
+  {
+    href: "/ahegs",
+    label: "AHEGS",
+    icon: Award,
+    tour: "ahegs",
     minRole: "EXECUTIVE" as const,
   },
   {
