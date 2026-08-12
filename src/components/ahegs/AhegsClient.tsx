@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  AlertTriangle, Check, Copy, Download, FileText, Link2, Loader2, Plus, Trash2, Upload, X,
+  AlertTriangle, Check, Copy, Download, FileText, Layers, Link2, Loader2, Plus, Trash2, Upload, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -91,9 +91,11 @@ export function AhegsClient({
     }
   }
 
-  async function uploadFile(file: File): Promise<{ url: string; name: string }> {
+  async function uploadFile(file: File, accept?: string): Promise<{ url: string; name: string }> {
     const body = new FormData();
     body.append("file", file);
+    // Minutes are PDF-only: they get merged into the single file Arc asks for.
+    if (accept) body.append("accept", accept);
     const res = await fetch("/api/upload", { method: "POST", body });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Upload failed");
     return res.json();
@@ -107,7 +109,7 @@ export function AhegsClient({
       let fileUrl: string | null = null;
       let fileName: string | null = null;
       if (minutesFile) {
-        const up = await uploadFile(minutesFile);
+        const up = await uploadFile(minutesFile, "pdf");
         fileUrl = up.url;
         fileName = up.name;
       }
@@ -153,7 +155,7 @@ export function AhegsClient({
   async function attachMinutes(id: string, file: File) {
     setBusy(id);
     try {
-      const up = await uploadFile(file);
+      const up = await uploadFile(file, "pdf");
       await send(`${base}/meetings/${id}`, "PATCH", { fileUrl: up.url, fileName: up.name });
       toast.success("Minutes attached");
       router.refresh();
@@ -190,6 +192,34 @@ export function AhegsClient({
   }
 
   const included = (c: AhegsCategory) => rows.filter((r) => r.included && r.category === c);
+  const categoryOf = new Map(rows.map((r) => [r.membershipId, r.category]));
+  const minutesFor = (c: AhegsCategory) =>
+    initialMeetings.filter(
+      (m) => m.fileUrl && m.attendeeIds.some((id) => categoryOf.get(id) === c)
+    ).length;
+
+  // Arc wants one file per slot, so the logged minutes are stitched into it here
+  // rather than someone combining PDFs by hand the night before the deadline.
+  async function combineMinutes(category: AhegsCategory, kind: AhegsEvidenceKind) {
+    const key = `${category}-${kind}`;
+    setBusy(key);
+    try {
+      const r = await send(`${base}/merge`, "POST", { year, category, kind });
+      setEvidence((prev) => [
+        ...prev.filter((e) => !(e.category === category && e.kind === kind)),
+        { category, kind, url: r.url, label: r.label },
+      ]);
+      toast.success(
+        `Combined ${r.merged} document${r.merged === 1 ? "" : "s"} into ${r.pages} pages` +
+          (r.skipped?.length ? ` · skipped ${r.skipped.length}` : "")
+      );
+      if (r.skipped?.length) toast.warning(`Could not read: ${r.skipped.join(", ")}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not combine the minutes");
+    } finally {
+      setBusy(null);
+    }
+  }
   const evidenceFor = (c: AhegsCategory, k: AhegsEvidenceKind) =>
     evidence.find((e) => e.category === c && e.kind === k);
   const tabRows = rows.filter((r) => r.category === tab);
@@ -401,7 +431,7 @@ export function AhegsClient({
                 ) : (
                   <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs hover:bg-muted">
                     <Upload className="h-3.5 w-3.5" /> Attach minutes
-                    <input type="file" className="hidden"
+                    <input type="file" accept="application/pdf,.pdf" className="hidden"
                            onChange={(e) => setMinutesFile(e.target.files?.[0] ?? null)} />
                   </label>
                 )}
@@ -438,7 +468,7 @@ export function AhegsClient({
                     <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                       {busy === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                       add minutes
-                      <input type="file" className="hidden"
+                      <input type="file" accept="application/pdf,.pdf" className="hidden"
                              onChange={(e) => { const f = e.target.files?.[0]; if (f) attachMinutes(m.id, f); e.target.value = ""; }} />
                     </label>
                   )}
@@ -479,18 +509,35 @@ export function AhegsClient({
                   <p className="text-sm font-semibold">{EVIDENCE_LABELS[kind].title}</p>
                   <p className="text-xs text-muted-foreground">{EVIDENCE_LABELS[kind].hint}</p>
                   {current ? (
-                    <div className="flex items-center gap-2">
-                      <a href={current.url} target="_blank" rel="noopener noreferrer"
-                         className="min-w-0 flex-1 truncate text-xs text-blue-600 hover:underline">
-                        {current.label || current.url}
-                      </a>
-                      <button onClick={() => setEvidenceSlot(tab, kind, null)} disabled={busy === key}
-                              aria-label="Remove" className="text-muted-foreground hover:text-red-600">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <a href={current.url} target="_blank" rel="noopener noreferrer"
+                           className="min-w-0 flex-1 truncate text-xs text-blue-600 hover:underline">
+                          {current.label || current.url}
+                        </a>
+                        <button onClick={() => setEvidenceSlot(tab, kind, null)} disabled={busy === key}
+                                aria-label="Remove" className="text-muted-foreground hover:text-red-600">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      {/* More meetings get logged all year, so rebuilding is the norm. */}
+                      {kind !== "TRAINING" && minutesFor(tab) > 0 && (
+                        <Button type="button" size="sm" variant="ghost" className="w-full gap-1.5 text-xs"
+                                disabled={busy === key} onClick={() => combineMinutes(tab, kind)}>
+                          {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+                          Rebuild from {minutesFor(tab)} minutes
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-2">
+                      {kind !== "TRAINING" && minutesFor(tab) > 0 && (
+                        <Button type="button" size="sm" variant="outline" className="w-full gap-1.5 text-xs"
+                                disabled={busy === key} onClick={() => combineMinutes(tab, kind)}>
+                          {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+                          Combine {minutesFor(tab)} minutes into one PDF
+                        </Button>
+                      )}
                       <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs hover:bg-muted">
                         {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                         Upload a file

@@ -169,7 +169,9 @@ title via `portfolioForTitle` — it is never accepted from the client.
 
 Written to `process.cwd()/uploads` (a Docker volume in prod) with a random UUID filename.
 Both the MIME type and the extension are allowlisted, and svg/html are excluded because
-they execute script when rendered same-origin. The serving route sets `nosniff` and a
+they execute script when rendered same-origin. A caller can narrow the allowlist for its
+own field by posting an `accept` value (`NARROWED` in the upload route) — AHEGS minutes
+use this to take PDFs only, since they get merged into one document for Arc. The serving route sets `nosniff` and a
 `sandbox` CSP. Keep both lists in sync if you add a type.
 
 ## Working in this repo

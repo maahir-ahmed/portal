@@ -5,7 +5,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
+import { PDFDocument } from "pdf-lib";
 import { fillTemplate, readZip } from "../src/lib/xlsx";
+import { mergeMinutes } from "../src/lib/pdfMerge";
 import {
   AHEGS_CATEGORIES,
   TEMPLATES,
@@ -195,8 +197,52 @@ assert.equal(canTouchPortfolio(director, null), false, "executives' rows carry n
 assert.equal(canTouchPortfolio(strayDirector, null), false, "a portfolio-less director sees nobody");
 assert.equal(canTouchPortfolio(strayDirector, "p-creatives"), false);
 
-console.log(
-  `✅ ahegs: ${AHEGS_CATEGORIES.length} templates blank and fillable, ` +
-    `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory, ` +
-    `hours summed from attendance, portfolio scoping enforced`
-);
+async function checkMerge() {
+  // 6. The merge. Arc wants one file per slot, and a submission assembled the night
+  //    before the deadline is not the time to discover a corrupt PDF broke everything.
+  async function pdfOf(pages: number): Promise<Uint8Array> {
+    const doc = await PDFDocument.create();
+    for (let i = 0; i < pages; i++) doc.addPage([595, 842]);
+    return doc.save();
+  }
+  const source = (title: string, bytes: Uint8Array) => ({
+    title, date: "1 Mar 2026", hours: 1.5, attendees: 4, bytes,
+  });
+
+  const twoPage = await pdfOf(2);
+  const threePage = await pdfOf(3);
+  const merged = await mergeMinutes("Sub-Committee attendance 2026", [
+    source("CTF weekly", twoPage),
+    source("Socials planning", threePage),
+  ]);
+  // 2 + 3 documents pages, plus the contents page inserted at the front.
+  assert.equal(merged.pages, 6, `expected 6 pages, got ${merged.pages}`);
+  assert.deepEqual(merged.failed, []);
+  assert.ok(merged.pdf.length > 0);
+  assert.equal(
+    Buffer.from(merged.pdf.slice(0, 5)).toString(),
+    "%PDF-",
+    "output is not a PDF"
+  );
+  // It must be readable back, not merely produced.
+  assert.equal((await PDFDocument.load(merged.pdf)).getPageCount(), 6);
+
+  // One unreadable document is named and skipped rather than sinking the whole merge.
+  const withJunk = await mergeMinutes("Mentors commitment 2026", [
+    source("Good minutes", twoPage),
+    source("Corrupt minutes", new Uint8Array([1, 2, 3, 4])),
+  ]);
+  assert.deepEqual(withJunk.failed, ["Corrupt minutes"]);
+  assert.equal(withJunk.pages, 3, "the good document and the contents page still come through");
+
+  // A single document still gets its contents page, so the output shape never varies.
+  assert.equal((await mergeMinutes("One", [source("Only", twoPage)])).pages, 3);
+
+  console.log(
+    `✅ ahegs: ${AHEGS_CATEGORIES.length} templates blank and fillable, ` +
+      `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory, ` +
+      `hours summed from attendance, portfolio scoping enforced, minutes merge into one PDF`
+  );
+}
+
+void checkMerge();
