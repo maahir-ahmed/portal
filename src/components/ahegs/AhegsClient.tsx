@@ -192,14 +192,32 @@ export function AhegsClient({
   const evidenceFor = (c: AhegsCategory, k: AhegsEvidenceKind) =>
     evidence.find((e) => e.category === c && e.kind === k);
   const tabRows = rows.filter((r) => r.category === tab);
-  // Attendees are picked from whoever the chosen group actually contains: the
-  // executives (who hold no portfolio), one portfolio, or the whole committee.
-  const attendeeChoices = rows.filter((r) => {
-    if (!scope.isExec) return true;
-    if (meetingScope === "exec") return r.portfolioId === null;
-    if (meetingScope === "") return true;
-    return r.portfolioId === meetingScope;
-  });
+  // Whoever the chosen group actually contains: the executives (who hold no
+  // portfolio), one portfolio, or the whole committee. A director's rows are already
+  // only their own portfolio, so there is nothing left to filter.
+  const choicesFor = (group: string) =>
+    rows.filter((r) => {
+      if (!scope.isExec) return true;
+      if (group === "exec") return r.portfolioId === null;
+      if (group === "") return true;
+      return r.portfolioId === group;
+    });
+  const attendeeChoices = choicesFor(meetingScope);
+
+  // Most meetings are attended by the whole group, so start with everyone ticked and
+  // let the person logging it untick whoever was missing. The whole-committee list is
+  // the exception: nobody sits through all of those, so it starts empty.
+  const defaultAttendees = (group: string) =>
+    group === "" ? [] : choicesFor(group).map((r) => r.membershipId);
+
+  // Executives hold no portfolio, so they are their own group in the picker.
+  const attendeeGroups = [
+    { label: "Executives", rows: attendeeChoices.filter((r) => r.portfolioId === null) },
+    ...portfolios.map((p) => ({
+      label: p.name,
+      rows: attendeeChoices.filter((r) => r.portfolioId === p.id),
+    })),
+  ].filter((g) => g.rows.length > 0);
 
   const arcFields: [string, string][] = [
     ["Submitter's name", submitter.name],
@@ -278,7 +296,8 @@ export function AhegsClient({
               </p>
             </div>
             {!addingMeeting && (
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAddingMeeting(true)}>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs"
+                      onClick={() => { setAttendees(defaultAttendees(meetingScope)); setAddingMeeting(true); }}>
                 <Plus className="h-3.5 w-3.5" /> Log a meeting
               </Button>
             )}
@@ -294,7 +313,7 @@ export function AhegsClient({
               {scope.isExec && (
                 <select
                   value={meetingScope}
-                  onChange={(e) => { setMeetingScope(e.target.value); setAttendees([]); }}
+                  onChange={(e) => { setMeetingScope(e.target.value); setAttendees(defaultAttendees(e.target.value)); }}
                   aria-label="Who met"
                   className={cell}
                 >
@@ -304,28 +323,57 @@ export function AhegsClient({
                 </select>
               )}
               <div>
-                <p className="mb-1 text-xs font-medium">Who attended ({attendees.length})</p>
-                <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded border bg-background p-2">
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-xs font-medium">
+                    Who attended ({attendees.length}/{attendeeChoices.length})
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAttendees(
+                        attendees.length === attendeeChoices.length
+                          ? []
+                          : attendeeChoices.map((r) => r.membershipId)
+                      )
+                    }
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {attendees.length === attendeeChoices.length ? "Clear all" : "Select all"}
+                  </button>
+                </div>
+                <div className="max-h-52 space-y-2 overflow-y-auto rounded border bg-background p-2">
                   {attendeeChoices.length === 0 && <p className="text-xs text-muted-foreground">Nobody to pick from.</p>}
-                  {attendeeChoices.map((r) => {
-                    const on = attendees.includes(r.membershipId);
-                    return (
-                      <button
-                        key={r.membershipId}
-                        type="button"
-                        onClick={() =>
-                          setAttendees(on ? attendees.filter((a) => a !== r.membershipId) : [...attendees, r.membershipId])
-                        }
-                        className={cn(
-                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                          on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
-                        )}
-                      >
-                        {on && <Check className="mr-1 inline h-3 w-3" />}
-                        {r.fullName}
-                      </button>
-                    );
-                  })}
+                  {attendeeGroups.map((group) => (
+                    <div key={group.label}>
+                      {/* Only worth labelling once the picker spans more than one group. */}
+                      {attendeeGroups.length > 1 && (
+                        <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {group.label}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {group.rows.map((r) => {
+                          const on = attendees.includes(r.membershipId);
+                          return (
+                            <button
+                              key={r.membershipId}
+                              type="button"
+                              onClick={() =>
+                                setAttendees(on ? attendees.filter((a) => a !== r.membershipId) : [...attendees, r.membershipId])
+                              }
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                                on ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
+                              )}
+                            >
+                              {on && <Check className="mr-1 inline h-3 w-3" />}
+                              {r.fullName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
