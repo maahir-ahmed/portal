@@ -8,6 +8,8 @@ import { z } from "zod";
 const schema = z.object({
   membershipId: z.string().min(1),
   year: z.number().int().min(2000).max(2100),
+  // MENTOR is no longer offered but is still a stored value, so it stays accepted:
+  // a row saved before directors were folded in must not fail to save again.
   category: z.enum(["EXECUTIVE", "MENTOR", "SUBCOMMITTEE"]),
   included: z.boolean(),
   fullName: z.string().max(200).nullable().optional(),

@@ -13,7 +13,6 @@ import {
   TEMPLATES,
   ahegsScope,
   canTouchPortfolio,
-  documentCategories,
   groupLabel,
   hoursFromMeetings,
   resolveRow,
@@ -24,8 +23,11 @@ const sheetOf = (buf: Buffer) => readZip(buf).get("xl/worksheets/sheet1.xml")!.t
 const path = (file: string) => join("public", file);
 
 // 1. The blank templates must stay blank. Overwriting one with a filled copy would
-//    publish last year's committee: public/ is committed and served by the app.
-for (const category of AHEGS_CATEGORIES) {
+//    publish last year's committee: public/ is committed and served by the app. Every
+//    template is checked, including the mentors one this club no longer submits — it
+//    is still a file served to the internet.
+const ALL_TEMPLATES = Object.keys(TEMPLATES) as (keyof typeof TEMPLATES)[];
+for (const category of ALL_TEMPLATES) {
   const zip = readZip(readFileSync(path(TEMPLATES[category].file)));
   const strings = zip.get("xl/sharedStrings.xml")!.toString("utf8");
   const zids = [...strings.matchAll(/\b\d{7}\b/g)].map((m) => m[0]);
@@ -96,7 +98,7 @@ assert.deepEqual(styleIds(writtenStyles), styleIds(templateStyles), "generated r
 
 // Each template has its own column count; writing six cells into the five-column
 // mentors sheet would push dates into a column Arc doesn't read.
-for (const category of AHEGS_CATEGORIES) {
+for (const category of ALL_TEMPLATES) {
   const cols = TEMPLATES[category].headings.length;
   const one = sheetOf(fillTemplate(path(TEMPLATES[category].file), [Array(cols).fill("x")]));
   const cells = [...(/<row r="3"[^>]*>([\s\S]*?)<\/row>/.exec(one)![1].matchAll(/<c /g))];
@@ -117,7 +119,15 @@ const member = {
   zId: "z5123456",
 };
 const row = resolveRow(member, undefined, 2026);
-assert.equal(row.category, "MENTOR", "directors are the club's mentors");
+// Directors go forward on the sub-committee list, not Arc's separate mentors one.
+assert.equal(row.category, "SUBCOMMITTEE", "directors are submitted as sub-committee");
+assert.deepEqual(AHEGS_CATEGORIES, ["EXECUTIVE", "SUBCOMMITTEE"], "two lists, not three");
+// A submission edited while MENTOR was still offered must not lose those people.
+assert.equal(
+  resolveRow(member, { category: "MENTOR" }, 2026).category,
+  "SUBCOMMITTEE",
+  "a stored MENTOR override reads as sub-committee"
+);
 assert.equal(row.zid, "5123456", "the leading z must be stripped");
 assert.equal(row.startDate, "2026-01-01", "an earlier join date clamps to the start of the year");
 assert.equal(row.endDate, "2026-12-31");
@@ -146,7 +156,7 @@ assert.deepEqual(rowProblems({ ...row, zid: "3000000" }), [], "the bottom of Arc
 assert.deepEqual(rowProblems({ ...row, zid: "" }), ["zID must be 7 digits, without the z"]);
 assert.deepEqual(rowProblems({ ...row, endDate: "2026-01-01", startDate: "2026-06-01" }), ["ends before it starts"]);
 assert.deepEqual(rowProblems({ ...row, category: "SUBCOMMITTEE", position: "" }), ["no position"]);
-assert.deepEqual(rowProblems({ ...row, category: "MENTOR", position: "" }), [], "mentors have no position column");
+assert.deepEqual(rowProblems({ ...row, category: "MENTOR", position: "" }), [], "Arc's mentors template has no position column");
 
 // 4. Hours. These decide who the club puts forward, so a wrong sum quietly drops
 //    someone from recognition they earned.
@@ -199,42 +209,8 @@ assert.equal(canTouchPortfolio(director, null), false, "executives' rows carry n
 assert.equal(canTouchPortfolio(strayDirector, null), false, "a portfolio-less director sees nobody");
 assert.equal(canTouchPortfolio(strayDirector, "p-creatives"), false);
 
-// 6. Contributions. A meeting knows who attended, so it says which categories it is
-//    evidence for; an uploaded document doesn't, so the group it came from decides —
-//    and getting that wrong puts one portfolio's material into another's submission.
-const committee = [
-  { portfolioId: "p-ctf", category: "MENTOR" as const },
-  { portfolioId: "p-ctf", category: "SUBCOMMITTEE" as const },
-  { portfolioId: "p-socials", category: "SUBCOMMITTEE" as const },
-  { portfolioId: null, category: "EXECUTIVE" as const },
-];
-
-assert.deepEqual(
-  documentCategories({ portfolioId: "p-ctf", execTeam: false }, committee),
-  ["MENTOR", "SUBCOMMITTEE"],
-  "a portfolio with a director and subcom feeds both lists"
-);
-assert.deepEqual(
-  documentCategories({ portfolioId: "p-socials", execTeam: false }, committee),
-  ["SUBCOMMITTEE"],
-  "a portfolio with no director is not mentor evidence"
-);
-assert.deepEqual(
-  documentCategories({ portfolioId: "p-empty", execTeam: false }, committee),
-  [],
-  "an empty portfolio is evidence for nobody"
-);
-assert.deepEqual(
-  documentCategories({ portfolioId: null, execTeam: true }, committee),
-  ["EXECUTIVE"],
-  "the executive team's own material is theirs alone"
-);
-assert.deepEqual(
-  documentCategories({ portfolioId: null, execTeam: false }, committee),
-  AHEGS_CATEGORIES,
-  "a whole-committee document counts everywhere"
-);
-
+// 6. Group labels. A meeting's group is what an executive reads the pile by, and a
+//    portfolio deleted out from under one must not render as a blank heading.
 const named = [{ id: "p-ctf", name: "CTF" }];
 assert.equal(groupLabel({ portfolioId: "p-ctf", execTeam: false }, named), "CTF");
 assert.equal(groupLabel({ portfolioId: null, execTeam: true }, named), "Executive team");
@@ -245,13 +221,17 @@ assert.equal(groupLabel({ portfolioId: "gone", execTeam: false }, named), "Unkno
 async function checkMerge() {
   // 7. The merge. Arc wants one file per slot, and a submission assembled the night
   //    before the deadline is not the time to discover a corrupt PDF broke everything.
+  // Each page is a different width, so the merged file can be asked which pages it
+  // actually took rather than just how many.
   async function pdfOf(pages: number): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
-    for (let i = 0; i < pages; i++) doc.addPage([595, 842]);
+    for (let i = 0; i < pages; i++) doc.addPage([100 + i, 842]);
     return doc.save();
   }
-  const source = (title: string, bytes: Uint8Array) => ({
-    title, subtitle: "CTF · 1 Mar 2026 · 1.5h · 4 attended", bytes,
+  const widths = async (pdf: Uint8Array) =>
+    (await PDFDocument.load(pdf)).getPages().slice(1).map((p) => Math.round(p.getWidth()));
+  const source = (title: string, bytes: Uint8Array, take?: "first" | "rest") => ({
+    title, subtitle: "CTF · 1 Mar 2026 · 1.5h · 4 attended", bytes, take,
   });
 
   const twoPage = await pdfOf(2);
@@ -283,10 +263,33 @@ async function checkMerge() {
   // A single document still gets its contents page, so the output shape never varies.
   assert.equal((await mergeMinutes("One", [source("Only", twoPage)])).pages, 3);
 
+  // 8. Splitting the minutes. Page 1 of a set of minutes is the attendance sheet and
+  //    the rest is the meeting itself, so one document builds both of Arc's files.
+  //    Taking the wrong end of it submits the attendance list as proof of commitment.
+  const attendance = await mergeMinutes("Attendance", [
+    source("CTF weekly", threePage, "first"),
+    source("Socials planning", twoPage, "first"),
+  ]);
+  assert.deepEqual(await widths(attendance.pdf), [100, 100], "attendance takes page 1 of each");
+
+  const commitment = await mergeMinutes("Commitment", [
+    source("CTF weekly", threePage, "rest"),
+    source("Socials planning", twoPage, "rest"),
+  ]);
+  assert.deepEqual(await widths(commitment.pdf), [101, 102, 101], "commitment takes everything after page 1");
+
+  // A one-page set of minutes has both on the same sheet: "rest" keeps it rather than
+  // contributing nothing, because an empty commitment file is a failed submission.
+  const onePage = await pdfOf(1);
+  const short = await mergeMinutes("Commitment", [source("Short meeting", onePage, "rest")]);
+  assert.deepEqual(await widths(short.pdf), [100], "a one-page document survives the split");
+  assert.deepEqual(await widths((await mergeMinutes("Whole", [source("All", threePage)])).pdf), [100, 101, 102],
+    "no split means the whole document");
+
   console.log(
-    `✅ ahegs: ${AHEGS_CATEGORIES.length} templates blank and fillable, ` +
+    `✅ ahegs: ${ALL_TEMPLATES.length} templates blank and fillable, ` +
       `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory, ` +
-      `hours summed from attendance, portfolio scoping enforced, contributions merge into one PDF`
+      `hours summed from attendance, portfolio scoping enforced, minutes split into Arc's two files`
   );
 }
 

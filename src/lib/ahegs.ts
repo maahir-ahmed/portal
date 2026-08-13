@@ -1,14 +1,16 @@
 import type { AhegsCategory, AhegsEvidenceKind, Role } from "@prisma/client";
 
-// Arc's Clubs Contributing Members Recognition, once a year. Arc has a fourth
-// category (Volunteers) that this club doesn't submit for, so it isn't modelled.
-export const AHEGS_CATEGORIES: AhegsCategory[] = ["EXECUTIVE", "MENTOR", "SUBCOMMITTEE"];
+// Arc's Clubs Contributing Members Recognition, once a year. Arc offers four lists;
+// this club submits two. Volunteers doesn't apply, and directors go forward as
+// sub-committee rather than as Arc's "mentors" — one list and one set of supporting
+// documents instead of two, for people whose contribution is the same shape.
+export const AHEGS_CATEGORIES: AhegsCategory[] = ["EXECUTIVE", "SUBCOMMITTEE"];
 
-// The committee's own roles decide the category: the club's directors are the people
-// Arc calls mentors, and everyone else contributing is sub-committee.
+// The committee's own roles decide the category. MENTOR is still a value the database
+// carries (older submissions used it), just not one this club puts forward.
 export const CATEGORY_FOR_ROLE: Record<Role, AhegsCategory> = {
   EXECUTIVE: "EXECUTIVE",
-  DIRECTOR: "MENTOR",
+  DIRECTOR: "SUBCOMMITTEE",
   SUBCOMMITTEE: "SUBCOMMITTEE",
 };
 
@@ -21,6 +23,9 @@ export const CATEGORY_LABELS: Record<AhegsCategory, string> = {
 // Arc's blank templates, served from public/. The column order here IS the column
 // order of the spreadsheet — the export writes cells positionally, and Arc rejects
 // lists that don't match its template.
+// MENTOR keeps its entry because the enum keeps the value; it is simply not in
+// AHEGS_CATEGORIES, so nothing offers it. The blank file stays in public/ — and stays
+// checked for last year's committee — in case the club ever splits the list again.
 export const TEMPLATES: Record<
   AhegsCategory,
   { file: string; headings: string[]; hasPosition: boolean }
@@ -42,8 +47,8 @@ export const TEMPLATES: Record<
   },
 };
 
-// Arc asks for supporting documents behind the mentor and sub-committee lists only;
-// elected executives need no evidence beyond the list itself.
+// Arc asks for supporting documents behind the sub-committee list only; elected
+// executives need no evidence beyond the list itself.
 export const EVIDENCE_REQUIRED: Record<AhegsCategory, AhegsEvidenceKind[]> = {
   EXECUTIVE: [],
   MENTOR: ["TRAINING", "ATTENDANCE", "COMMITMENT"],
@@ -67,11 +72,9 @@ export const EVIDENCE_LABELS: Record<AhegsEvidenceKind, { title: string; hint: s
 
 // ─── Contributions ───────────────────────────────────────────────────────────
 //
-// Everything a group hands up towards the submission: the minutes attached to a
-// meeting, and the documents uploaded against an evidence kind. Both are tagged with
-// the group that produced them the same way — a portfolio, the executive team, or
-// the whole committee — which is what lets an executive read the pile grouped and
-// what stops a director editing another portfolio's half of it.
+// Every meeting is tagged with the group that ran it — a portfolio, the executive
+// team, or the whole committee — which is what lets an executive read the pile
+// grouped and what stops a director editing another portfolio's half of it.
 
 export interface ContributionGroup {
   portfolioId: string | null;
@@ -84,24 +87,10 @@ export function groupLabel(g: ContributionGroup, portfolios: { id: string; name:
   return portfolios.find((p) => p.id === g.portfolioId)?.name ?? "Unknown group";
 }
 
-/**
- * Which of Arc's categories a group's document is evidence for. A meeting knows who
- * attended, so it answers this from its attendance; a document has no attendees, so
- * it counts for whichever categories that group actually contains. Derived rather
- * than asked for, because a director shouldn't have to think in Arc's categories —
- * and it re-answers itself when the committee changes.
- */
-export function documentCategories(
-  doc: ContributionGroup,
-  members: { portfolioId: string | null; category: AhegsCategory }[]
-): AhegsCategory[] {
-  if (doc.execTeam) return ["EXECUTIVE"];
-  if (!doc.portfolioId) return AHEGS_CATEGORIES;
-  const inGroup = members.filter((m) => m.portfolioId === doc.portfolioId);
-  return AHEGS_CATEGORIES.filter((c) => inGroup.some((m) => m.category === c));
-}
-
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+const normaliseCategory = (c: AhegsCategory | null | undefined): AhegsCategory | null =>
+  !c ? null : AHEGS_CATEGORIES.includes(c) ? c : "SUBCOMMITTEE";
 
 /** A membership as it will appear on the submission, before any exec edits. */
 export interface RosterSource {
@@ -193,7 +182,9 @@ export function resolveRow(
   return {
     membershipId: m.membershipId,
     portfolioId: m.portfolioId,
-    category: o?.category ?? CATEGORY_FOR_ROLE[m.role],
+    // A submission edited before directors were folded in still stores MENTOR; it is
+    // read as sub-committee rather than dropping those people off every list.
+    category: normaliseCategory(o?.category) ?? CATEGORY_FOR_ROLE[m.role],
     // Someone whose membership has been deactivated is off the list by default, but
     // they may well have contributed for half the year — hence the toggle.
     included: o?.included ?? m.isActive,

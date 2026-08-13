@@ -8,10 +8,16 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 export interface MergeSource {
   /** What the document is, for the contents page. */
   title: string;
-  /** The line under it: date, duration, who it came from — composed by the caller,
-   *  because a meeting and an uploaded report describe themselves differently. */
+  /** The line under it: date, duration, who it came from. */
   subtitle: string;
   bytes: Uint8Array;
+  /**
+   * Which pages to take. Minutes carry the attendance sheet on page 1 and the meeting
+   * itself on the pages after it, so the same document feeds both of Arc's files:
+   * "first" builds the attendance record, "rest" the proof of commitment. Omit for
+   * the whole document.
+   */
+  take?: "first" | "rest";
 }
 
 export interface MergeResult {
@@ -19,6 +25,17 @@ export interface MergeResult {
   pages: number;
   /** Documents that could not be read, by title, so the exec can fix them. */
   failed: string[];
+}
+
+/**
+ * A one-page set of minutes has its attendance and its content on the same sheet, so
+ * "rest" keeps that page rather than contributing nothing — an empty proof-of-
+ * commitment file is a failed submission, a duplicated page is not.
+ */
+function pageIndices(all: number[], take: MergeSource["take"]): number[] {
+  if (take === "first") return all.slice(0, 1);
+  if (take === "rest") return all.length > 1 ? all.slice(1) : all;
+  return all;
 }
 
 /**
@@ -38,7 +55,7 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
   for (const source of sources) {
     try {
       const doc = await PDFDocument.load(source.bytes, { ignoreEncryption: true });
-      const pages = await out.copyPages(doc, doc.getPageIndices());
+      const pages = await out.copyPages(doc, pageIndices(doc.getPageIndices(), source.take));
       for (const page of pages) out.addPage(page);
       merged.push(source);
     } catch {

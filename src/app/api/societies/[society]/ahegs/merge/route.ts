@@ -5,21 +5,21 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import {
-  CATEGORY_FOR_ROLE, CATEGORY_LABELS, EVIDENCE_LABELS, documentCategories, groupLabel,
-} from "@/lib/ahegs";
+import { CATEGORY_FOR_ROLE, CATEGORY_LABELS, EVIDENCE_LABELS, groupLabel } from "@/lib/ahegs";
 import { mergeMinutes, type MergeSource } from "@/lib/pdfMerge";
 import { formatDate } from "@/lib/utils";
 import { z } from "zod";
 
-// Combines everything the club has collected for one evidence slot — the minutes
-// attached to meetings, plus the documents each group uploaded — into the single file
-// Arc asks for, and files it straight into that slot. Executive-only, because the
-// evidence slots are: a group contributes, an executive assembles the submission.
+// Combines the minutes of every meeting into the single file Arc asks for, and files
+// it straight into that evidence slot. Executive-only, because the evidence slots
+// are: a group logs its meetings, an executive assembles the submission.
+//
+// Training resources are the third slot and are not built from meetings — they are
+// uploaded or linked by hand — so only these two can be merged.
 const schema = z.object({
   year: z.number().int().min(2000).max(2100),
   category: z.enum(["EXECUTIVE", "MENTOR", "SUBCOMMITTEE"]),
-  kind: z.enum(["TRAINING", "ATTENDANCE", "COMMITMENT"]),
+  kind: z.enum(["ATTENDANCE", "COMMITMENT"]),
 });
 
 /** Reads an upload of ours. External links are deliberately not fetched server-side. */
@@ -42,21 +42,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     const body = schema.parse(await req.json());
     const societyId = membership!.societyId;
 
-    const [meetings, documents, memberships, entries, portfolios] = await Promise.all([
-      // Minutes are the attendance record and the standing proof of commitment;
-      // training material is uploaded rather than attended, so it has no meetings.
-      body.kind === "TRAINING"
-        ? Promise.resolve([])
-        : prisma.ahegsMeeting.findMany({
-            where: { societyId, year: body.year, fileUrl: { not: null } },
-            include: { attendees: { select: { membershipId: true } } },
-            orderBy: { date: "asc" },
-          }),
-      prisma.ahegsDocument.findMany({
-        where: { societyId, year: body.year, kind: body.kind },
-        orderBy: { createdAt: "asc" },
+    const [meetings, memberships, entries, portfolios] = await Promise.all([
+      prisma.ahegsMeeting.findMany({
+        where: { societyId, year: body.year, fileUrl: { not: null } },
+        include: { attendees: { select: { membershipId: true } } },
+        orderBy: { date: "asc" },
       }),
-      prisma.societyMembership.findMany({ where: { societyId }, select: { id: true, role: true, portfolioId: true } }),
+      prisma.societyMembership.findMany({ where: { societyId }, select: { id: true, role: true } }),
       prisma.ahegsEntry.findMany({
         where: { societyId, year: body.year },
         select: { membershipId: true, category: true },
@@ -64,55 +56,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       prisma.portfolio.findMany({ where: { societyId }, select: { id: true, name: true } }),
     ]);
 
+    // A meeting is evidence for a category when someone in that category was there,
+    // which is what Arc is actually asking to see.
     const override = new Map(entries.map((e) => [e.membershipId, e.category]));
     const categoryOf = new Map(
       memberships.map((m) => [m.id, override.get(m.id) ?? CATEGORY_FOR_ROLE[m.role]])
     );
-    const people = memberships.map((m) => ({ portfolioId: m.portfolioId, category: categoryOf.get(m.id)! }));
+    const relevant = meetings.filter((m) =>
+      m.attendees.some((a) => categoryOf.get(a.membershipId) === body.category)
+    );
 
-    // A meeting is evidence for a category when someone in that category was there,
-    // which is what Arc is actually asking to see. A document has no attendees, so it
-    // counts for whichever categories its group contains.
-    const wanted = [
-      ...meetings
-        .filter((m) => m.attendees.some((a) => categoryOf.get(a.membershipId) === body.category))
-        .map((m) => ({
-          group: groupLabel(m, portfolios),
-          sort: m.date.getTime(),
-          title: m.title,
-          detail: `${formatDate(m.date)} · ${m.hours}h · ${m.attendees.length} attended`,
-          url: m.fileUrl!,
-        })),
-      ...documents
-        .filter((d) => documentCategories(d, people).includes(body.category))
-        .map((d) => ({
-          group: groupLabel(d, portfolios),
-          sort: d.createdAt.getTime(),
-          title: d.title,
-          detail: `${EVIDENCE_LABELS[d.kind].title} · added ${formatDate(d.createdAt)}`,
-          url: d.url,
-        })),
-    ].sort((a, b) => a.group.localeCompare(b.group) || a.sort - b.sort);
+    // Minutes are laid out with the attendance sheet on page 1 and the meeting itself
+    // on the pages after it, so one document answers both of Arc's questions: the
+    // attendance file takes the first page of each, the commitment file the rest.
+    const take = body.kind === "ATTENDANCE" ? "first" : "rest";
 
     const sources: MergeSource[] = [];
     const unreadable: string[] = [];
-    for (const item of wanted) {
+    for (const m of relevant) {
       try {
         sources.push({
-          title: item.title,
-          subtitle: `${item.group} · ${item.detail}`,
-          bytes: await readUpload(item.url),
+          title: m.title,
+          subtitle: `${groupLabel(m, portfolios)} · ${formatDate(m.date)} · ${m.hours}h · ${m.attendees.length} attended`,
+          bytes: await readUpload(m.fileUrl!),
+          take,
         });
       } catch {
-        // A linked file lives somewhere we don't fetch from, so it can't be merged —
-        // naming it is how the exec knows to download and attach it themselves.
-        unreadable.push(item.title);
+        // Minutes kept as a link live somewhere we don't fetch from, so they can't be
+        // merged — naming them is how the exec knows to attach them by hand.
+        unreadable.push(m.title);
       }
     }
 
     if (sources.length === 0) {
       return NextResponse.json(
-        { error: "Nothing uploaded for this slot yet that can be combined" },
+        { error: "No meeting minutes to combine for this category yet" },
         { status: 400 }
       );
     }
@@ -158,6 +136,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Could not combine the documents" }, { status: 500 });
+    return NextResponse.json({ error: "Could not combine the minutes" }, { status: 500 });
   }
 }
