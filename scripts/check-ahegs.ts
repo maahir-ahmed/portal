@@ -13,6 +13,8 @@ import {
   TEMPLATES,
   ahegsScope,
   canTouchPortfolio,
+  documentCategories,
+  groupLabel,
   hoursFromMeetings,
   resolveRow,
   rowProblems,
@@ -197,8 +199,51 @@ assert.equal(canTouchPortfolio(director, null), false, "executives' rows carry n
 assert.equal(canTouchPortfolio(strayDirector, null), false, "a portfolio-less director sees nobody");
 assert.equal(canTouchPortfolio(strayDirector, "p-creatives"), false);
 
+// 6. Contributions. A meeting knows who attended, so it says which categories it is
+//    evidence for; an uploaded document doesn't, so the group it came from decides —
+//    and getting that wrong puts one portfolio's material into another's submission.
+const committee = [
+  { portfolioId: "p-ctf", category: "MENTOR" as const },
+  { portfolioId: "p-ctf", category: "SUBCOMMITTEE" as const },
+  { portfolioId: "p-socials", category: "SUBCOMMITTEE" as const },
+  { portfolioId: null, category: "EXECUTIVE" as const },
+];
+
+assert.deepEqual(
+  documentCategories({ portfolioId: "p-ctf", execTeam: false }, committee),
+  ["MENTOR", "SUBCOMMITTEE"],
+  "a portfolio with a director and subcom feeds both lists"
+);
+assert.deepEqual(
+  documentCategories({ portfolioId: "p-socials", execTeam: false }, committee),
+  ["SUBCOMMITTEE"],
+  "a portfolio with no director is not mentor evidence"
+);
+assert.deepEqual(
+  documentCategories({ portfolioId: "p-empty", execTeam: false }, committee),
+  [],
+  "an empty portfolio is evidence for nobody"
+);
+assert.deepEqual(
+  documentCategories({ portfolioId: null, execTeam: true }, committee),
+  ["EXECUTIVE"],
+  "the executive team's own material is theirs alone"
+);
+assert.deepEqual(
+  documentCategories({ portfolioId: null, execTeam: false }, committee),
+  AHEGS_CATEGORIES,
+  "a whole-committee document counts everywhere"
+);
+
+const named = [{ id: "p-ctf", name: "CTF" }];
+assert.equal(groupLabel({ portfolioId: "p-ctf", execTeam: false }, named), "CTF");
+assert.equal(groupLabel({ portfolioId: null, execTeam: true }, named), "Executive team");
+assert.equal(groupLabel({ portfolioId: null, execTeam: false }, named), "Whole committee");
+// A portfolio deleted out from under a document must not render as blank.
+assert.equal(groupLabel({ portfolioId: "gone", execTeam: false }, named), "Unknown group");
+
 async function checkMerge() {
-  // 6. The merge. Arc wants one file per slot, and a submission assembled the night
+  // 7. The merge. Arc wants one file per slot, and a submission assembled the night
   //    before the deadline is not the time to discover a corrupt PDF broke everything.
   async function pdfOf(pages: number): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
@@ -206,7 +251,7 @@ async function checkMerge() {
     return doc.save();
   }
   const source = (title: string, bytes: Uint8Array) => ({
-    title, date: "1 Mar 2026", hours: 1.5, attendees: 4, bytes,
+    title, subtitle: "CTF · 1 Mar 2026 · 1.5h · 4 attended", bytes,
   });
 
   const twoPage = await pdfOf(2);
@@ -241,7 +286,7 @@ async function checkMerge() {
   console.log(
     `✅ ahegs: ${AHEGS_CATEGORIES.length} templates blank and fillable, ` +
       `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory, ` +
-      `hours summed from attendance, portfolio scoping enforced, minutes merge into one PDF`
+      `hours summed from attendance, portfolio scoping enforced, contributions merge into one PDF`
   );
 }
 

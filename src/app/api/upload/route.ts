@@ -22,7 +22,7 @@ const NARROWED: Record<string, { types: string[]; exts: string[]; hint: string }
   pdf: {
     types: ["application/pdf"],
     exts: ["pdf"],
-    hint: "Minutes must be a PDF. In Word use File → Save As → PDF; in Google Docs, File → Download → PDF.",
+    hint: "This has to be a PDF so it can be merged into one document. In Word use File → Save As → PDF; in Google Docs, File → Download → PDF.",
   },
 };
 

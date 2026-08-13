@@ -37,7 +37,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
   const parsed = Number(yearParam);
   const year = Number.isInteger(parsed) && parsed > 2000 && parsed < 2100 ? parsed : defaultYear;
 
-  const [memberships, entries, evidence, allMeetings, portfolios] = await Promise.all([
+  const [memberships, entries, evidence, allMeetings, allDocuments, portfolios] = await Promise.all([
     prisma.societyMembership.findMany({
       // The committee, as the Members tab defines it: removing someone sets
       // isActive false, and a removed member should drop out of here too.
@@ -65,6 +65,13 @@ export default async function AhegsPage({ params, searchParams }: Props) {
       where: { societyId: membership.societyId, year },
       include: { attendees: { select: { membershipId: true } } },
       orderBy: { date: "desc" },
+    }),
+    // Same again for the uploaded documents: everything is fetched, and the caller's
+    // scope decides what is sent down.
+    prisma.ahegsDocument.findMany({
+      where: { societyId: membership.societyId, year },
+      include: { uploadedBy: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.portfolio.findMany({
       where: { societyId: membership.societyId },
@@ -118,6 +125,20 @@ export default async function AhegsPage({ params, searchParams }: Props) {
       attendeeIds: m.attendees.map((a) => a.membershipId),
     }));
 
+  const documents = allDocuments
+    .filter((d) => canTouchPortfolio(scope, d.portfolioId))
+    .map((d) => ({
+      id: d.id,
+      portfolioId: d.portfolioId,
+      execTeam: d.execTeam,
+      kind: d.kind,
+      title: d.title,
+      url: d.url,
+      fileName: d.fileName,
+      uploadedBy: d.uploadedBy.name,
+      createdAt: d.createdAt.toISOString().slice(0, 10),
+    }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -129,7 +150,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
           <p className="text-sm text-muted-foreground">
             {scope.isExec
               ? "Clubs Contributing Members Recognition — collate through the year, submit at the end."
-              : "Log your portfolio's meetings and minutes. Hours build up towards each member's recognition."}
+              : "Log your portfolio's meetings and upload its supporting documents. Hours build up towards each member's recognition."}
           </p>
         </div>
       </div>
@@ -141,6 +162,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
         scope={scope}
         rows={rows}
         meetings={meetings}
+        documents={documents}
         portfolios={portfolios}
         evidence={evidence.map((e) => ({ category: e.category, kind: e.kind, url: e.url, label: e.label }))}
         submitter={{

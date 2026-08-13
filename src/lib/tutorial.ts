@@ -603,7 +603,15 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Meetings and minutes",
     body:
-      "Log each meeting your group runs: name, date, how long it went, and who turned up. Directors file against their own portfolio; executives choose the exec team, any portfolio, or the whole committee. Attach the minutes and Arc's proof-of-commitment evidence builds itself over the year. Delete a meeting and everyone who attended loses those hours again.",
+      "Log each meeting or workshop your group runs: name, date, how long it went, and who turned up. Directors file against their own portfolio; executives choose the exec team, any portfolio, or the whole committee, and see every group's meetings listed a portfolio at a time. Attach the minutes as a PDF and Arc's evidence builds itself over the year. Delete a meeting and everyone who attended loses those hours again.",
+  },
+  {
+    id: "ahegs-documents",
+    target: "ahegs-documents",
+    minRole: "DIRECTOR",
+    title: "Supporting documents",
+    body:
+      "Everything that isn't a set of minutes: training material, attendance records, schedules, reports. Tag each one with the evidence slot it belongs to and it joins the pile for your portfolio — directors upload their group's, executives see all of them grouped and can file against any group. PDFs get folded into the combined file; a pasted link can only be listed, so it says so on the row.",
   },
   {
     id: "ahegs-roster",
@@ -628,7 +636,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Arc's supporting documents",
     body:
-      "For mentors and sub-committee, Arc wants training resources, attendance records and proof of commitment — one combined file each, uploaded or linked. The meetings logged above are what you build them from. Executives need none of this.",
+      "For mentors and sub-committee, Arc wants training resources, attendance records and proof of commitment — one combined file each. “Combine” stitches everything collected for that slot into a single PDF with a contents page: the minutes of every meeting someone in this category attended, plus the documents their groups uploaded. More gets logged all year, so the button becomes “Rebuild”. You can still upload or link a file by hand instead. Executives need none of this.",
   },
   {
     id: "ahegs-arc",

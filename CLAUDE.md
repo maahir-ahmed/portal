@@ -30,7 +30,7 @@ would otherwise rot silently. Run the relevant one after touching its area:
 | `check:rubric` | anything under `src/lib/rubric*`, the Rubric proxy route, `src/lib/secrets.ts`, the demo snapshot |
 | `check:tutorial` | `src/lib/tutorial.ts` or any `data-tour` attribute |
 | `check:passphrase` | `src/lib/passphrase.ts` or the wordlist dependency |
-| `check:ahegs` | `src/lib/ahegs.ts`, `src/lib/xlsx.ts`, the AHEGS routes, or the templates in `public/` |
+| `check:ahegs` | `src/lib/ahegs.ts`, `src/lib/xlsx.ts`, `src/lib/pdfMerge.ts`, the AHEGS routes, or the templates in `public/` |
 | `check:bookings` | `isLateArcSubmission` or anything about Arc's seven-day rule |
 
 ## Architecture

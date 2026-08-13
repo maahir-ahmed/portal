@@ -172,6 +172,7 @@ model Society {
   ahegsEntries     AhegsEntry[]
   ahegsEvidence    AhegsEvidence[]
   ahegsMeetings    AhegsMeeting[]
+  ahegsDocuments   AhegsDocument[]
 }
 
 model User {
@@ -207,6 +208,7 @@ model User {
   auditLogs         AuditLog[]
   boardCards        BoardCard[]
   ahegsMeetings     AhegsMeeting[]
+  ahegsDocuments    AhegsDocument[]
 }
 
 model SocietyMembership {
@@ -245,6 +247,7 @@ model Portfolio {
   memberships SocietyMembership[]
   titles      SocietyTitle[]
   ahegsMeetings AhegsMeeting[]
+  ahegsDocuments AhegsDocument[]
 
   @@unique([societyId, name])
 }
@@ -647,6 +650,37 @@ model AhegsEvidence {
 //
 // Arc's templates have no hours column — hours decide who the club puts forward,
 // and the minutes are what Arc asks for as proof of commitment.
+// A supporting document a group contributes towards Arc's evidence: training
+// material, an attendance record, a report. Meetings carry their own minutes; this is
+// everything else, and it is what a director uploads for their portfolio. Many per
+// group per year — the single file Arc receives is the AhegsEvidence row, built from
+// these plus the minutes.
+model AhegsDocument {
+  id           String            @id @default(cuid())
+  societyId    String
+  // Who contributed it, on the same rule as a meeting: a portfolio, the executive
+  // team, or (both null/false) the whole committee. Also decides who may edit it.
+  portfolioId  String?
+  execTeam     Boolean           @default(false)
+  year         Int
+  // Which of Arc's three evidence slots this feeds.
+  kind         AhegsEvidenceKind
+  title        String
+  // An /uploads/… path or an external link, same as AhegsEvidence. Only the former
+  // can be merged into the combined PDF.
+  url          String
+  fileName     String?
+  uploadedById String
+  createdAt    DateTime          @default(now())
+
+  society    Society    @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  portfolio  Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
+  uploadedBy User       @relation(fields: [uploadedById], references: [id])
+
+  @@index([societyId, year])
+  @@index([portfolioId])
+}
+
 model AhegsMeeting {
   id          String   @id @default(cuid())
   societyId   String

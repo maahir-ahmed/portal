@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatDate } from "@/lib/utils";
 import {
   AHEGS_CATEGORIES, CATEGORY_LABELS, EVIDENCE_LABELS, EVIDENCE_REQUIRED, TEMPLATES,
-  rowProblems, type AhegsScope, type RosterRow,
+  documentCategories, groupLabel, rowProblems, type AhegsScope, type RosterRow,
 } from "@/lib/ahegs";
 import type { AhegsCategory, AhegsEvidenceKind } from "@prisma/client";
 
@@ -20,27 +20,47 @@ interface Meeting {
   id: string; portfolioId: string | null; execTeam: boolean; title: string; date: string;
   hours: number; fileUrl: string | null; fileName: string | null; attendeeIds: string[];
 }
+interface Document {
+  id: string; portfolioId: string | null; execTeam: boolean; kind: AhegsEvidenceKind;
+  title: string; url: string; fileName: string | null; uploadedBy: string; createdAt: string;
+}
 interface Portfolio { id: string; name: string }
 interface Submitter { name: string; zid: string; email: string; phone: string; position: string; club: string }
 
 const cell = "w-full rounded border bg-background px-2 py-1 text-sm";
 
 export function AhegsClient({
-  societySlug, year, years, scope, rows: initialRows, meetings: initialMeetings,
-  portfolios, evidence: initialEvidence, submitter,
+  societySlug, year, years, scope, rows: initialRows, meetings, documents,
+  portfolios, evidence, submitter,
 }: {
   societySlug: string; year: number; years: number[]; scope: AhegsScope;
-  rows: RosterRow[]; meetings: Meeting[]; portfolios: Portfolio[];
+  rows: RosterRow[]; meetings: Meeting[]; documents: Document[]; portfolios: Portfolio[];
   evidence: Evidence[]; submitter: Submitter;
 }) {
   const router = useRouter();
+  // The roster is the one thing held locally, because its inputs are controlled and
+  // half of it is mid-edit at any moment. Everything else — meetings, documents,
+  // evidence — is read straight off the props, so a router.refresh() after each
+  // change is all that keeps the page current.
   const [rows, setRows] = useState(initialRows);
-  const [evidence, setEvidence] = useState(initialEvidence);
+  const [seed, setSeed] = useState(initialRows);
+  // Hours are summed on the server, so a logged meeting changes rows the browser
+  // can't recompute. Re-seeding on the way back is what makes the refresh visible.
+  if (seed !== initialRows) {
+    setSeed(initialRows);
+    setRows(initialRows);
+  }
   const [busy, setBusy] = useState<string | null>(null);
   const [addingMeeting, setAddingMeeting] = useState(false);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [minutesFile, setMinutesFile] = useState<File | null>(null);
   const [meetingScope, setMeetingScope] = useState<string>(scope.portfolioId ?? "exec");
+  const [addingDoc, setAddingDoc] = useState(false);
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docKind, setDocKind] = useState<AhegsEvidenceKind>("TRAINING");
+  // Unlike a meeting, an executive's document is usually club-wide material rather
+  // than the exec team's own — Arc asks for no evidence behind the executive list.
+  const [docScope, setDocScope] = useState<string>(scope.portfolioId ?? "");
 
   // A director only ever holds their own portfolio's rows, so any category with
   // nobody in it is noise on their screen.
@@ -50,12 +70,29 @@ export function AhegsClient({
   const [tab, setTab] = useState<AhegsCategory>(visibleCategories[0] ?? "SUBCOMMITTEE");
 
   const base = `/api/societies/${societySlug}/ahegs`;
-  const meetingGroupName = (m: { portfolioId: string | null; execTeam: boolean }) =>
-    m.execTeam
-      ? "Executive team"
-      : m.portfolioId
-        ? (portfolios.find((p) => p.id === m.portfolioId)?.name ?? "Unknown")
-        : "Whole committee";
+
+  // Meetings and documents are both tagged with the group that produced them, so an
+  // executive reads the pile a portfolio at a time. A director only ever holds one
+  // group, which is why the headings appear only once there is more than one.
+  function grouped<T extends { portfolioId: string | null; execTeam: boolean }>(items: T[]) {
+    const byLabel = new Map<string, T[]>();
+    for (const item of items) {
+      const label = groupLabel(item, portfolios);
+      const bucket = byLabel.get(label);
+      if (bucket) bucket.push(item);
+      else byLabel.set(label, [item]);
+    }
+    return [...byLabel].sort((a, b) => a[0].localeCompare(b[0]));
+  }
+
+  const meetingGroups = grouped(meetings);
+  const documentGroups = grouped(documents);
+  // Only worth labelling once the list spans more than one group, the same rule the
+  // attendee picker uses.
+  const groupHeading = (label: string, groups: unknown[]) =>
+    groups.length > 1 ? (
+      <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+    ) : null;
 
   async function send(url: string, method: string, body?: unknown) {
     const res = await fetch(url, {
@@ -94,7 +131,8 @@ export function AhegsClient({
   async function uploadFile(file: File, accept?: string): Promise<{ url: string; name: string }> {
     const body = new FormData();
     body.append("file", file);
-    // Minutes are PDF-only: they get merged into the single file Arc asks for.
+    // Minutes and documents are PDF-only: they get merged into the single file Arc
+    // asks for. Evidence an exec uploads by hand is whatever Arc will take.
     if (accept) body.append("accept", accept);
     const res = await fetch("/api/upload", { method: "POST", body });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Upload failed");
@@ -166,15 +204,65 @@ export function AhegsClient({
     }
   }
 
+  async function addDocument(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const link = String(form.get("url") ?? "").trim();
+    if (!docFile && !link) {
+      toast.error("Attach a PDF or paste a link");
+      return;
+    }
+    setBusy("document");
+    try {
+      let url = link;
+      let fileName: string | null = null;
+      // A PDF can be folded into the combined file; a link can only be listed, which
+      // is why the upload is the path the form nudges people down.
+      if (docFile) {
+        const up = await uploadFile(docFile, "pdf");
+        url = up.url;
+        fileName = up.name;
+      }
+      await send(`${base}/documents`, "POST", {
+        year,
+        kind: docKind,
+        title: String(form.get("title") ?? "").trim(),
+        url,
+        fileName,
+        portfolioId: scope.isExec && docScope !== "exec" ? docScope || null : null,
+        execTeam: scope.isExec && docScope === "exec",
+      });
+      toast.success("Document added");
+      setAddingDoc(false);
+      setDocFile(null);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not add the document");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeDocument(id: string) {
+    if (!confirm("Remove this document? It drops out of the next combined file.")) return;
+    setBusy(id);
+    try {
+      await send(`${base}/documents/${id}`, "DELETE");
+      toast.success("Document removed");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not remove");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function setEvidenceSlot(category: AhegsCategory, kind: AhegsEvidenceKind, url: string | null, label?: string) {
     const key = `${category}-${kind}`;
     setBusy(key);
     try {
       await send(`${base}/evidence`, "PUT", { year, category, kind, url, label: label ?? null });
-      setEvidence((prev) => [
-        ...prev.filter((e) => !(e.category === category && e.kind === kind)),
-        ...(url ? [{ category, kind, url, label: label ?? null }] : []),
-      ]);
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -193,29 +281,42 @@ export function AhegsClient({
 
   const included = (c: AhegsCategory) => rows.filter((r) => r.included && r.category === c);
   const categoryOf = new Map(rows.map((r) => [r.membershipId, r.category]));
-  const minutesFor = (c: AhegsCategory) =>
-    initialMeetings.filter(
-      (m) => m.fileUrl && m.attendeeIds.some((id) => categoryOf.get(id) === c)
-    ).length;
 
-  // Arc wants one file per slot, so the logged minutes are stitched into it here
+  /**
+   * What would go into one slot's combined file: the minutes of every meeting someone
+   * in that category attended, plus the documents whose group contains that category.
+   * Training is uploaded rather than attended, so no minutes feed it. Linked files are
+   * left out — the server does not fetch other people's URLs, so it can't merge them.
+   */
+  const sourcesFor = (c: AhegsCategory, k: AhegsEvidenceKind) => {
+    const fromMeetings =
+      k === "TRAINING"
+        ? []
+        : meetings.filter(
+            (m) => m.fileUrl?.startsWith("/uploads/") && m.attendeeIds.some((id) => categoryOf.get(id) === c)
+          );
+    const fromDocuments = documents.filter(
+      (d) => d.kind === k && d.url.startsWith("/uploads/") && documentCategories(d, rows).includes(c)
+    );
+    const groups = new Set([...fromMeetings, ...fromDocuments].map((x) => groupLabel(x, portfolios)));
+    return { count: fromMeetings.length + fromDocuments.length, groups: groups.size };
+  };
+
+  // Arc wants one file per slot, so everything collected is stitched into it here
   // rather than someone combining PDFs by hand the night before the deadline.
   async function combineMinutes(category: AhegsCategory, kind: AhegsEvidenceKind) {
     const key = `${category}-${kind}`;
     setBusy(key);
     try {
       const r = await send(`${base}/merge`, "POST", { year, category, kind });
-      setEvidence((prev) => [
-        ...prev.filter((e) => !(e.category === category && e.kind === kind)),
-        { category, kind, url: r.url, label: r.label },
-      ]);
+      router.refresh();
       toast.success(
         `Combined ${r.merged} document${r.merged === 1 ? "" : "s"} into ${r.pages} pages` +
           (r.skipped?.length ? ` · skipped ${r.skipped.length}` : "")
       );
-      if (r.skipped?.length) toast.warning(`Could not read: ${r.skipped.join(", ")}`);
+      if (r.skipped?.length) toast.warning(`Left out (linked or unreadable): ${r.skipped.join(", ")}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not combine the minutes");
+      toast.error(err instanceof Error ? err.message : "Could not combine the documents");
     } finally {
       setBusy(null);
     }
@@ -446,36 +547,159 @@ export function AhegsClient({
             </form>
           )}
 
-          {initialMeetings.length === 0 ? (
+          {meetings.length === 0 ? (
             <p className="text-sm text-muted-foreground">No meetings logged for {year} yet.</p>
           ) : (
-            <div className="divide-y rounded-lg border">
-              {initialMeetings.map((m) => (
-                <div key={m.id} className="flex flex-wrap items-center gap-3 p-2.5 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{m.title}</p>
-                    <p className="text-xs text-muted-foreground tabnums">
-                      {formatDate(m.date)} · {m.hours}h · {m.attendeeIds.length} attended
-                      {scope.isExec && ` · ${meetingGroupName(m)}`}
-                    </p>
+            <div className="space-y-3">
+              {meetingGroups.map(([label, items]) => (
+                <div key={label}>
+                  {groupHeading(label, meetingGroups)}
+                  <div className="divide-y rounded-lg border">
+                    {items.map((m) => (
+                      <div key={m.id} className="flex flex-wrap items-center gap-3 p-2.5 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{m.title}</p>
+                          <p className="text-xs text-muted-foreground tabnums">
+                            {formatDate(m.date)} · {m.hours}h · {m.attendeeIds.length} attended
+                          </p>
+                        </div>
+                        {m.fileUrl ? (
+                          <a href={m.fileUrl} target="_blank" rel="noopener noreferrer"
+                             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                            <FileText className="h-3.5 w-3.5" /> {m.fileName || "minutes"}
+                          </a>
+                        ) : (
+                          <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                            {busy === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            add minutes
+                            <input type="file" accept="application/pdf,.pdf" className="hidden"
+                                   onChange={(e) => { const f = e.target.files?.[0]; if (f) attachMinutes(m.id, f); e.target.value = ""; }} />
+                          </label>
+                        )}
+                        <button onClick={() => removeMeeting(m.id)} disabled={busy === m.id}
+                                aria-label="Delete meeting" className="text-muted-foreground hover:text-red-600">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  {m.fileUrl ? (
-                    <a href={m.fileUrl} target="_blank" rel="noopener noreferrer"
-                       className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
-                      <FileText className="h-3.5 w-3.5" /> {m.fileName || "minutes"}
-                    </a>
-                  ) : (
-                    <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                      {busy === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                      add minutes
-                      <input type="file" accept="application/pdf,.pdf" className="hidden"
-                             onChange={(e) => { const f = e.target.files?.[0]; if (f) attachMinutes(m.id, f); e.target.value = ""; }} />
-                    </label>
-                  )}
-                  <button onClick={() => removeMeeting(m.id)} disabled={busy === m.id}
-                          aria-label="Delete meeting" className="text-muted-foreground hover:text-red-600">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Everything a group hands up that isn't a set of minutes: training material,
+          attendance records, schedules, reports. */}
+      <Card data-tour="ahegs-documents">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">Supporting documents</p>
+              <p className="text-xs text-muted-foreground">
+                {scope.isExec
+                  ? "What every group has handed up. The evidence cards below combine these, and the minutes, into the files Arc receives."
+                  : "Training material, attendance records, schedules and reports for your portfolio. An executive combines them into the files Arc receives."}
+              </p>
+            </div>
+            {!addingDoc && (
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAddingDoc(true)}>
+                <Plus className="h-3.5 w-3.5" /> Add a document
+              </Button>
+            )}
+          </div>
+
+          {addingDoc && (
+            <form onSubmit={addDocument} className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <label htmlFor="doc-title" className="text-xs font-medium">What is it</label>
+                  <input id="doc-title" name="title" required maxLength={300}
+                         placeholder="e.g. CTF onboarding slides" className={cell} />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="doc-kind" className="text-xs font-medium">Evidence for</label>
+                  <select id="doc-kind" value={docKind} className={cell}
+                          onChange={(e) => setDocKind(e.target.value as AhegsEvidenceKind)}>
+                    {(["TRAINING", "ATTENDANCE", "COMMITMENT"] as AhegsEvidenceKind[]).map((k) => (
+                      <option key={k} value={k}>{EVIDENCE_LABELS[k].title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{EVIDENCE_LABELS[docKind].hint}</p>
+              {scope.isExec && (
+                <select value={docScope} onChange={(e) => setDocScope(e.target.value)}
+                        aria-label="Whose document" className={cell}>
+                  <option value="exec">Executive team</option>
+                  {portfolios.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  <option value="">Whole committee</option>
+                </select>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {docFile ? (
+                  <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1.5 text-xs">
+                    <FileText className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    <span className="truncate">{docFile.name}</span>
+                    <button type="button" onClick={() => setDocFile(null)} aria-label="Remove file"
+                            className="text-muted-foreground hover:text-red-600">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ) : (
+                  <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs hover:bg-muted">
+                    <Upload className="h-3.5 w-3.5" /> Attach a PDF
+                    <input type="file" accept="application/pdf,.pdf" className="hidden"
+                           onChange={(e) => setDocFile(e.target.files?.[0] ?? null)} />
+                  </label>
+                )}
+                <input name="url" placeholder="…or paste a link" className={cn(cell, "text-xs sm:w-56")} />
+                <Button type="submit" size="sm" disabled={busy === "document"}>
+                  {busy === "document" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save document"}
+                </Button>
+                <Button type="button" size="sm" variant="ghost"
+                        onClick={() => { setAddingDoc(false); setDocFile(null); }}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {documents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No documents uploaded for {year} yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {documentGroups.map(([label, items]) => (
+                <div key={label}>
+                  {groupHeading(label, documentGroups)}
+                  <div className="divide-y rounded-lg border">
+                    {items.map((d) => {
+                      const uploaded = d.url.startsWith("/uploads/");
+                      return (
+                        <div key={d.id} className="flex flex-wrap items-center gap-3 p-2.5 text-sm">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{d.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {EVIDENCE_LABELS[d.kind].title} · {d.uploadedBy} · {formatDate(d.createdAt)}
+                              {/* A link lives somewhere the server doesn't fetch from, so
+                                  saying so here beats a surprise at merge time. */}
+                              {!uploaded && " · link, attach it to Arc yourself"}
+                            </p>
+                          </div>
+                          <a href={d.url} target="_blank" rel="noopener noreferrer"
+                             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                            {uploaded ? <FileText className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                            {d.fileName || "open"}
+                          </a>
+                          <button onClick={() => removeDocument(d.id)} disabled={busy === d.id}
+                                  aria-label="Delete document" className="text-muted-foreground hover:text-red-600">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -497,12 +721,24 @@ export function AhegsClient({
         ))}
       </div>
 
-      {/* Arc's supporting documents, combined per category: an executive job. */}
+      {/* The files Arc actually receives, one per slot, built from everything above:
+          an executive job. */}
       {scope.isExec && EVIDENCE_REQUIRED[tab].length > 0 && (
         <div data-tour="ahegs-evidence" className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           {EVIDENCE_REQUIRED[tab].map((kind) => {
             const current = evidenceFor(tab, kind);
             const key = `${tab}-${kind}`;
+            const src = sourcesFor(tab, kind);
+            // Same button either way, but rebuilding is the normal case: more meetings
+            // and documents land all year after the first file was built.
+            const combine = (variant: "outline" | "ghost") => (
+              <Button type="button" size="sm" variant={variant} className="w-full gap-1.5 text-xs"
+                      disabled={busy === key} onClick={() => combineMinutes(tab, kind)}>
+                {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
+                {current ? "Rebuild" : "Combine"} {src.count} file{src.count === 1 ? "" : "s"}
+                {src.groups > 1 && ` from ${src.groups} groups`}
+              </Button>
+            );
             return (
               <Card key={kind}>
                 <CardContent className="space-y-2 p-4">
@@ -520,24 +756,11 @@ export function AhegsClient({
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      {/* More meetings get logged all year, so rebuilding is the norm. */}
-                      {kind !== "TRAINING" && minutesFor(tab) > 0 && (
-                        <Button type="button" size="sm" variant="ghost" className="w-full gap-1.5 text-xs"
-                                disabled={busy === key} onClick={() => combineMinutes(tab, kind)}>
-                          {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
-                          Rebuild from {minutesFor(tab)} minutes
-                        </Button>
-                      )}
+                      {src.count > 0 && combine("ghost")}
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {kind !== "TRAINING" && minutesFor(tab) > 0 && (
-                        <Button type="button" size="sm" variant="outline" className="w-full gap-1.5 text-xs"
-                                disabled={busy === key} onClick={() => combineMinutes(tab, kind)}>
-                          {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Layers className="h-3.5 w-3.5" />}
-                          Combine {minutesFor(tab)} minutes into one PDF
-                        </Button>
-                      )}
+                      {src.count > 0 && combine("outline")}
                       <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-xs hover:bg-muted">
                         {busy === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                         Upload a file

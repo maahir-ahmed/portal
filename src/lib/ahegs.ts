@@ -65,6 +65,42 @@ export const EVIDENCE_LABELS: Record<AhegsEvidenceKind, { title: string; hint: s
   },
 };
 
+// ─── Contributions ───────────────────────────────────────────────────────────
+//
+// Everything a group hands up towards the submission: the minutes attached to a
+// meeting, and the documents uploaded against an evidence kind. Both are tagged with
+// the group that produced them the same way — a portfolio, the executive team, or
+// the whole committee — which is what lets an executive read the pile grouped and
+// what stops a director editing another portfolio's half of it.
+
+export interface ContributionGroup {
+  portfolioId: string | null;
+  execTeam: boolean;
+}
+
+export function groupLabel(g: ContributionGroup, portfolios: { id: string; name: string }[]): string {
+  if (g.execTeam) return "Executive team";
+  if (!g.portfolioId) return "Whole committee";
+  return portfolios.find((p) => p.id === g.portfolioId)?.name ?? "Unknown group";
+}
+
+/**
+ * Which of Arc's categories a group's document is evidence for. A meeting knows who
+ * attended, so it answers this from its attendance; a document has no attendees, so
+ * it counts for whichever categories that group actually contains. Derived rather
+ * than asked for, because a director shouldn't have to think in Arc's categories —
+ * and it re-answers itself when the committee changes.
+ */
+export function documentCategories(
+  doc: ContributionGroup,
+  members: { portfolioId: string | null; category: AhegsCategory }[]
+): AhegsCategory[] {
+  if (doc.execTeam) return ["EXECUTIVE"];
+  if (!doc.portfolioId) return AHEGS_CATEGORIES;
+  const inGroup = members.filter((m) => m.portfolioId === doc.portfolioId);
+  return AHEGS_CATEGORIES.filter((c) => inGroup.some((m) => m.category === c));
+}
+
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 /** A membership as it will appear on the submission, before any exec edits. */

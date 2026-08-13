@@ -1,18 +1,16 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
-// Arc wants one combined file for attendance records and one for proof of
-// commitment, so the minutes logged against each meeting get stitched into a single
-// PDF. pdf-lib rather than hand-rolling it: unlike an .xlsx, a PDF is not a zip of
-// XML — it has cross-reference tables and object streams, and merging means
-// rewriting them.
+// Arc wants one combined file per evidence slot, so the minutes logged against each
+// meeting and the documents each group uploaded get stitched into a single PDF.
+// pdf-lib rather than hand-rolling it: unlike an .xlsx, a PDF is not a zip of XML —
+// it has cross-reference tables and object streams, and merging means rewriting them.
 
 export interface MergeSource {
-  /** What the meeting was, for the contents page. */
+  /** What the document is, for the contents page. */
   title: string;
-  /** Displayed date, already formatted. */
-  date: string;
-  hours: number;
-  attendees: number;
+  /** The line under it: date, duration, who it came from — composed by the caller,
+   *  because a meeting and an uploaded report describe themselves differently. */
+  subtitle: string;
   bytes: Uint8Array;
 }
 
@@ -24,7 +22,7 @@ export interface MergeResult {
 }
 
 /**
- * Merges the minutes into one document, front-loaded with a contents page so the
+ * Merges the sources into one document, front-loaded with a contents page so the
  * result is legible to whoever at Arc opens it rather than being 40 undifferentiated
  * pages. A document that won't parse is skipped and named rather than failing the
  * whole merge — one corrupt file shouldn't block the submission.
@@ -65,7 +63,7 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
     if (y < 60) break; // one page of contents is enough; the documents follow regardless
     cover.drawText(source.title.slice(0, 70), { x: 55, y, size: 10, font: bold, color: rgb(0.1, 0.1, 0.1) });
     y -= 13;
-    cover.drawText(`${source.date} · ${source.hours}h · ${source.attendees} attended`, {
+    cover.drawText(source.subtitle.slice(0, 90), {
       x: 55, y, size: 9, font, color: rgb(0.45, 0.45, 0.45),
     });
     y -= 18;
