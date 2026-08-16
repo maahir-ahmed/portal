@@ -18,7 +18,8 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force && npx tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "rubric:snapshot": "npx tsx scripts/rubric-snapshot.ts"
+    "rubric:snapshot": "npx tsx scripts/rubric-snapshot.ts",
+    "audit:layout": "tsx scripts/audit-layout.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
@@ -56,6 +57,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.43",
     "@types/react": "^19",

@@ -51,3 +51,7 @@ next-env.d.ts
 
 # Claude Code local config
 .claude/
+
+# Playwright layout audit output (contains real member data)
+/test-results/
+/playwright-report/

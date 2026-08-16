@@ -19,6 +19,7 @@ npm run check:tutorial
 npm run check:passphrase
 npm run check:ahegs
 npm run check:bookings
+npm run audit:layout        # Playwright layout sweep, needs a running dev server
 ```
 
 There is no test framework. The three `check:*` scripts are the whole safety net —
@@ -32,6 +33,12 @@ would otherwise rot silently. Run the relevant one after touching its area:
 | `check:passphrase` | `src/lib/passphrase.ts` or the wordlist dependency |
 | `check:ahegs` | `src/lib/ahegs.ts`, `src/lib/xlsx.ts`, `src/lib/pdfMerge.ts`, the AHEGS routes, or the templates in `public/` |
 | `check:bookings` | `isLateArcSubmission` or anything about Arc's seven-day rule |
+
+`npm run audit:layout` is separate: it drives Chromium over every page at 320–1440px and
+reports content that scrolls sideways, gets clipped, or spills out of its flex parent,
+plus the guided tour's hovering box. It needs `npm run dev` and an account
+(`AUDIT_EMAIL`/`AUDIT_PASSWORD`, default the seed's `alice@example.com`). Screenshots go
+to a temp directory, never the repo — they contain real member data.
 
 ## Architecture
 
