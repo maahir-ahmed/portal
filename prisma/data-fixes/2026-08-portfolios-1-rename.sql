@@ -9,6 +9,19 @@ BEGIN
     ALTER TABLE "Department" RENAME TO "Portfolio";
   END IF;
 
+  -- Renaming the table leaves its constraints called "Department_*", which push
+  -- then tries to rename in the same ALTER TABLE as an ADD COLUMN — not valid
+  -- Postgres, so the whole push fails with a bare "syntax error at or near ,".
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Department_pkey') THEN
+    ALTER TABLE "Portfolio" RENAME CONSTRAINT "Department_pkey" TO "Portfolio_pkey";
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Department_societyId_fkey') THEN
+    ALTER TABLE "Portfolio" RENAME CONSTRAINT "Department_societyId_fkey" TO "Portfolio_societyId_fkey";
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Department_societyId_name_key') THEN
+    ALTER INDEX "Department_societyId_name_key" RENAME TO "Portfolio_societyId_name_key";
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'SocietyMembership' AND column_name = 'departmentId'
