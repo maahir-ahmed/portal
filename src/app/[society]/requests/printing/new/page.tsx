@@ -201,7 +201,7 @@ export default function NewPrintingRequestPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="flex flex-wrap justify-end gap-2 mt-4">
           <Button asChild variant="outline"><Link href={`/${params.society}/requests/printing`}>Cancel</Link></Button>
           <Button type="submit" disabled={loading} className="gap-2">
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</> : <><Upload className="h-4 w-4" /> Submit Request</>}

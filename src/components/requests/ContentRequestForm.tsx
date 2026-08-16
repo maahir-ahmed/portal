@@ -107,7 +107,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
               <Label htmlFor="eventName">Event Name *</Label>
               <Input id="eventName" name="eventName" placeholder="e.g. SecSoc Capture the Flag 2025" defaultValue={initial?.eventName} required />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date & Time *</Label>
                 <DateTimeField id="startDate" name="startDate" defaultValue={dtLocal(initial?.startDate)} required />
@@ -189,7 +189,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
           </CardContent>
         </Card>
 
-        <div data-tour="content-submit" className="flex gap-3">
+        <div data-tour="content-submit" className="flex flex-wrap gap-3">
           {editing ? (
             <Button type="submit" disabled={loading}>
               {loading ? "Saving…" : "Save Changes"}

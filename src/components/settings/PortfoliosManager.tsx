@@ -143,7 +143,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
                     </>
                   ) : (
                     <>
-                      <span className="flex-1 rounded bg-muted/50 px-2 py-1 text-sm">{p.name}</span>
+                      <span className="min-w-0 flex-1 truncate rounded bg-muted/50 px-2 py-1 text-sm">{p.name}</span>
                       <span className="tabnums text-xs text-muted-foreground">
                         {p.memberCount} member{p.memberCount === 1 ? "" : "s"} · {p.titleCount} title
                         {p.titleCount === 1 ? "" : "s"}

@@ -178,7 +178,7 @@ export default function NewTreasuryPage() {
               <Label htmlFor="contactEmail">Contact Email *</Label>
               <Input id="contactEmail" name="contactEmail" type="email" required placeholder="your@email.com" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="expenseDate">Expense Date *</Label>
                 <Input id="expenseDate" name="expenseDate" type="date" required />
@@ -315,7 +315,7 @@ export default function NewTreasuryPage() {
                       <Label htmlFor="bankAccountName">Account Name *</Label>
                       <Input id="bankAccountName" name="bankAccountName" placeholder="Jane Smith" required />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="bankBsb">BSB *</Label>
                         <Input id="bankBsb" name="bankBsb" placeholder="000-000" required />
@@ -332,7 +332,7 @@ export default function NewTreasuryPage() {
           </CardContent>
         </Card>
 
-        <div data-tour="treasury-submit" className="flex gap-3">
+        <div data-tour="treasury-submit" className="flex flex-wrap gap-3">
           <Button type="submit" disabled={loading || !acknowledged || savedAccount === undefined}>
             {loading ? "Submitting…" : "Submit Claim"}
           </Button>

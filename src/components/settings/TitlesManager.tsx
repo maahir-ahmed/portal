@@ -19,7 +19,7 @@ interface Portfolio { id: string; name: string }
 
 const NO_PORTFOLIO = "__none__";
 const SELECT_CLASS =
-  "h-7 rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "h-7 min-w-0 max-w-[9rem] shrink rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 const ROLE_LABELS: Record<string, string> = {
   EXECUTIVE: "Executive",
@@ -165,7 +165,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
                     </>
                   ) : (
                     <>
-                      <span className="text-sm flex-1 bg-white/60 rounded px-2 py-1">{t.name}</span>
+                      <span className="min-w-0 flex-1 truncate bg-white/60 rounded px-2 py-1 text-sm">{t.name}</span>
                       {role !== "EXECUTIVE" && (
                         <select
                           value={t.portfolio?.id ?? NO_PORTFOLIO}

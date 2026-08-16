@@ -269,7 +269,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
             <CardTitle className="text-base">Event Safety Officer</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="safetyOfficerName">Full Name *</Label>
                 <Input
@@ -321,7 +321,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
           </CardContent>
         </Card>
 
-        <div data-tour="room-submit" className="flex gap-3">
+        <div data-tour="room-submit" className="flex flex-wrap gap-3">
           <Button type="submit" disabled={loading || !location}>
             {loading ? "Saving…" : editing ? "Save Changes" : "Submit Booking Request"}
           </Button>

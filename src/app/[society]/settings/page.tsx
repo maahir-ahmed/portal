@@ -134,7 +134,7 @@ export default function SettingsPage() {
             <CardDescription>Customise your society&apos;s colours and logo</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="primaryColor">Primary Colour</Label>
                 <div className="flex items-center gap-2">

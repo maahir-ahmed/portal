@@ -31,7 +31,7 @@ function StatCard({ label, value, icon: Icon, color = "blue" }: {
     <Card>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-muted-foreground">{label}</p>
             <p className="text-2xl font-bold mt-1">{value ?? "-"}</p>
           </div>

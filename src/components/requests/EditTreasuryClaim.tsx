@@ -100,7 +100,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts }:
             <Label htmlFor="e-desc">Description *</Label>
             <Textarea id="e-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="e-amount">Amount ($) *</Label>
               <Input id="e-amount" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />

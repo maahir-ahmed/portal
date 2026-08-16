@@ -85,7 +85,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`}>
                 <Card className="hover:border-orange-300 border-orange-200 bg-orange-50/30 transition-colors cursor-pointer">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" />
                         <div className="min-w-0">
@@ -120,7 +120,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
             {roomPending.map((b) => (
               <Card key={b.id} className="hover:border-purple-300 transition-colors">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <Link href={`/${societySlug}/requests/room-booking/${b.id}`} className="flex items-center gap-3 min-w-0 flex-1">
                       <UserAvatar name={b.submittedBy.name} avatarUrl={b.submittedBy.avatarUrl} size="sm" />
                       <div className="min-w-0">
@@ -157,7 +157,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
             {printingPending.map((p) => (
               <Card key={p.id} className="hover:border-blue-300 transition-colors">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <Link href={`/${societySlug}/requests/printing/${p.id}`} className="flex items-center gap-3 min-w-0 flex-1">
                       <UserAvatar name={p.submittedBy.name} avatarUrl={p.submittedBy.avatarUrl} size="sm" />
                       <div className="min-w-0">
@@ -208,19 +208,19 @@ export default async function ExecutiveQueuePage({ params }: Props) {
               return (
                 <Card key={t.id} className="border-emerald-200 bg-emerald-50/30">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <div className="flex items-center gap-3 min-w-0">
                         <UserAvatar name={t.submittedBy.name} avatarUrl={t.submittedBy.avatarUrl} size="sm" />
                         <div className="min-w-0">
                           <p className="font-semibold truncate">{t.description}</p>
                           <div className="text-xs text-muted-foreground flex flex-col gap-0.5 mt-0.5">
-                            <div className="flex gap-2 items-center">
+                            <div className="flex flex-wrap gap-2 items-center">
                               <span className="font-medium text-emerald-700">{formatCurrency(amount)}</span>
                               <span>·</span>
                               <span>{t.submittedBy.name}</span>
                             </div>
                             {t.bankAccount && (
-                              <span>
+                              <span className="break-words">
                                 BSB {t.bankAccount.bsb} · Acct {t.bankAccount.accountNumber} ({t.bankAccount.accountName})
                               </span>
                             )}

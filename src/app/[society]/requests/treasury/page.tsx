@@ -69,7 +69,7 @@ export default async function TreasuryPage({ params }: Props) {
               <Link key={r.id} href={`/${societySlug}/requests/treasury/${r.id}`} data-tour={i === 0 ? "treasury-card" : undefined}>
                 <Card className="hover:border-blue-300 transition-colors cursor-pointer">
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="flex items-start gap-3 min-w-0">
                         <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
                         <div className="min-w-0">

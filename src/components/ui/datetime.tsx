@@ -67,13 +67,13 @@ export function DateTimeField({ name, id, defaultValue = "", required, onChange 
         value={date}
         onChange={(e) => update(e.target.value, time)}
         required={required}
-        className="flex-1"
+        className="min-w-0 flex-1"
       />
       <TimeSelect
         value={time}
         onChange={(e) => update(date, e.target.value)}
         required={required}
-        className="w-32 flex-shrink-0"
+        className="w-28 flex-shrink-0 sm:w-32"
       />
       {name && <input type="hidden" name={name} value={date && time ? `${date}T${time}` : ""} />}
     </div>

@@ -183,7 +183,7 @@ export default function AccountPage() {
               <Label htmlFor="accountName">Account Name</Label>
               <Input id="accountName" name="accountName" defaultValue={bank?.accountName ?? ""} placeholder="Jane Smith" required />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="bsb">BSB</Label>
                 <Input id="bsb" name="bsb" defaultValue={bank?.bsb ?? ""} placeholder="000-000" required />
