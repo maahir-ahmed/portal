@@ -829,13 +829,33 @@ export function tooltipBox(
   vw: number,
   vh: number
 ): TooltipBox {
-  const base = { width: TOOLTIP_W, maxHeight: "80vh" } as const;
+  // Never wider than the viewport's gutters, or the box hangs off a narrow phone.
+  const width = Math.min(TOOLTIP_W, vw - 24);
+  const base = { width, maxHeight: "80vh" } as const;
   const centred = { ...base, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
   if (!rect) return centred;
 
   const gap = 14;
   const room = 320; // enough for a typical box; the 80vh cap handles the rest
-  const clampX = (x: number) => Math.min(Math.max(12, x), Math.max(12, vw - TOOLTIP_W - 12));
+  const clampX = (x: number) => Math.min(Math.max(12, x), Math.max(12, vw - width - 12));
+
+  // A phone is too narrow for the beside branches to ever fit, so a target that
+  // is tall enough to beat `room` in both directions used to fall through to
+  // `centred` — landing squarely on the thing the step is describing. Dock to
+  // whichever side has more space and cap the height to exactly that space.
+  if (vw < 640) {
+    const above = rect.top - gap - 12;
+    const below = vh - rect.bottom - gap - 12;
+    if (Math.max(above, below) >= 96) {
+      return below >= above
+        ? { width, left: 12, top: rect.bottom + gap, maxHeight: `${below}px` }
+        : { width, left: 12, bottom: vh - rect.top + gap, maxHeight: `${above}px` };
+    }
+    // Target is taller than the phone screen (a whole form card). Overlap is
+    // unavoidable, so dock to the bottom edge: the box covers the tail of the
+    // target rather than sitting across its middle, and the rest stays readable.
+    return { width, left: 12, bottom: 12, maxHeight: `${Math.round(vh * 0.4)}px` };
+  }
 
   if (vh - rect.bottom > room) return { ...base, top: rect.bottom + gap, left: clampX(rect.left) };
   if (rect.top > room) return { ...base, bottom: vh - rect.top + gap, left: clampX(rect.left) };

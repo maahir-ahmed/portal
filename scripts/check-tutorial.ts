@@ -69,6 +69,51 @@ for (const [label, r] of cases) {
   assert.ok(topOk || bottomOk, `${label}: box off-screen vertically (top ${box.top}, bottom ${box.bottom})`);
 }
 
+// Phones. No width here fits the beside branches, so a target too tall to clear
+// `room` above or below used to fall through to the centred box and sit on top of
+// the very thing the step was pointing at. Every case below must land beside the
+// target, not over it, and inside the gutters.
+const PHONES: [number, number][] = [[320, 568], [360, 640], [390, 844], [430, 932]];
+for (const [vw, vh] of PHONES) {
+  const tall = Math.round(vh * 0.45); // beats `room` in both directions: the old bug
+  const phoneCases: [string, ReturnType<typeof rect>][] = [
+    ["card at the top", rect(80, 16, vw - 16, 200)],
+    ["card mid-screen", rect(vh / 2 - 60, 16, vw - 16, vh / 2 + 60)],
+    ["card near the bottom", rect(vh - 220, 16, vw - 16, vh - 90)],
+    ["tall centred panel", rect((vh - tall) / 2, 16, vw - 16, (vh + tall) / 2)],
+    ["edge-to-edge element", rect(120, 0, vw, 300)],
+  ];
+  for (const [label, r] of phoneCases) {
+    const box = tooltipBox(r, vw, vh);
+    const at = `${label} @ ${vw}×${vh}`;
+    assert.notEqual(box.transform, "translate(-50%,-50%)", `${at}: fell back to the centred box, which covers the target`);
+    assert.ok(typeof box.left === "number" && box.left >= 0, `${at}: box off the left edge (${box.left})`);
+    assert.ok((box.left as number) + box.width <= vw, `${at}: box off the right edge (${box.left} + ${box.width} > ${vw})`);
+
+    // Resolve to a real top/bottom span and prove it misses the highlighted rect.
+    const cap = Number(String(box.maxHeight).replace("px", ""));
+    assert.ok(Number.isFinite(cap) && cap >= 96, `${at}: maxHeight must be a usable pixel cap, got ${box.maxHeight}`);
+    const top = typeof box.top === "number" ? box.top : vh - box.bottom! - cap;
+    const bottom = top + cap;
+    assert.ok(top >= 0 && bottom <= vh, `${at}: box spills off-screen vertically (${top}–${bottom} in ${vh})`);
+    assert.ok(bottom <= r.top || top >= r.bottom, `${at}: box (${top}–${bottom}) overlaps the target (${r.top}–${r.bottom})`);
+  }
+}
+
+// A target taller than the phone screen can't be missed, but the box must still dock
+// to an edge rather than sit across the middle of what it is describing.
+for (const [vw, vh] of PHONES) {
+  const box = tooltipBox(rect(-200, 0, vw, vh + 200), vw, vh);
+  assert.notEqual(box.transform, "translate(-50%,-50%)", `oversized target @ ${vw}×${vh}: centred instead of docking to an edge`);
+  assert.equal(box.bottom, 12, `oversized target @ ${vw}×${vh}: should dock to the bottom edge`);
+  assert.ok(Number(String(box.maxHeight).replace("px", "")) <= vh * 0.5, `oversized target @ ${vw}×${vh}: docked box takes over half the screen`);
+}
+
+// The box must never be wider than the screen it is on.
+for (const [vw, vh] of [...PHONES, [VW, VH] as [number, number]]) {
+  assert.ok(tooltipBox(null, vw, vh).width <= vw - 24, `centred box wider than the ${vw}px viewport`);
+}
+
 // Per-page help: every page the app has should have something to say, and every
 // step should belong to exactly one page.
 assert.equal(normalisePage("/secsoc/requests/treasury/cmrbf28n6001s01nwdiprcdzz", "secsoc"), "/requests/treasury/[id]");
@@ -117,6 +162,6 @@ const tourable = TOUR_STEPS.filter((s) => !s.kind).length;
 assert.equal(pagedTotal, tourable, `${tourable - pagedTotal} step(s) sit on a page not listed in PAGES`);
 
 console.log(
-  `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors, ${cases.length} placement cases | ` +
+  `✅ ${TOUR_STEPS.length} tour steps, ${anchors.size} anchors, ${cases.length} desktop + ${PHONES.length * 5} phone placement cases | ` +
     `exec ${stepsFor("EXECUTIVE").length}, director ${stepsFor("DIRECTOR").length}, subcom ${stepsFor("SUBCOMMITTEE").length}`
 );
