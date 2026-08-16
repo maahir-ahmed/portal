@@ -231,7 +231,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                         <Link href={`/${societySlug}/requests/treasury/${t.id}`}>
                           <Button size="sm" variant="outline" className="text-xs">View</Button>
                         </Link>
-                        <MarkReimbursedButton societySlug={societySlug} requestId={t.id} />
+                        <MarkReimbursedButton societySlug={societySlug} requestId={t.id} amount={amount} account={t.bankAccount} />
                       </div>
                     </div>
                   </CardContent>

@@ -185,7 +185,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
                 <p className="text-sm text-muted-foreground">
                   Spending is approved in the committee Discord. This claim is waiting to be paid out.
                 </p>
-                {isExec && <MarkReimbursedButton societySlug={societySlug} requestId={request.id} />}
+                {isExec && <MarkReimbursedButton societySlug={societySlug} requestId={request.id} amount={Number(request.amount)} account={request.bankAccount} />}
               </CardContent>
             </Card>
           )}

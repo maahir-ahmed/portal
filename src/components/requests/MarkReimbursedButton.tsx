@@ -4,21 +4,31 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/utils";
 import { Banknote } from "lucide-react";
 
 export function MarkReimbursedButton({
   societySlug,
   requestId,
+  amount,
+  account,
 }: {
   societySlug: string;
   requestId: string;
+  amount: number;
+  // The row the claim is actually linked to, not the submitter's current default —
+  // the exec is confirming the details they are about to transfer money to.
+  account: { accountName: string; bsb: string; accountNumber: string } | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleClick(e: React.MouseEvent) {
     e.preventDefault();
-    if (!confirm("Confirm this reimbursement has been paid out?")) return;
+    const payee = account
+      ? `${account.accountName}\nBSB ${account.bsb} · Acct ${account.accountNumber}`
+      : "No bank details on this claim.";
+    if (!confirm(`Paying ${formatCurrency(amount)} to:\n\n${payee}\n\nConfirm this has been transferred?`)) return;
     setLoading(true);
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
