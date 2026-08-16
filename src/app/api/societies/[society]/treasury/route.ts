@@ -70,9 +70,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       });
       bankAccountId = account.id;
     } else if (body.useExistingBank) {
+      // Must match the ordering in GET /api/me/bank-account — that is the account
+      // the form showed the submitter. A one-off account typed into an earlier claim
+      // is newer but not default, and would otherwise be picked instead.
       const existing = await prisma.bankAccount.findFirst({
         where: { userId: session!.user.id },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
       });
       bankAccountId = existing?.id ?? null;
     }
