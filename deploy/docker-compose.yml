@@ -45,8 +45,10 @@ services:
     # image (no CLI shipped; npx-fetched prisma can't load the TS config). db push
     # alone reconciles fresh DBs correctly.
     command: sh -c "npx prisma db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" --accept-data-loss && node server.js"
-    ports:
-      - "${APP_PORT}:3000"   # cloudflared hits host.docker.internal:${APP_PORT}
+    # No published port: the web service in front owns ${APP_PORT} so that something
+    # still answers while this container is being rebuilt.
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://society_user:${DB_PASSWORD}@db:5432/society_platform?schema=public
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
@@ -69,6 +71,20 @@ services:
       - uploads_data:/app/uploads
     depends_on:
       db: { condition: service_healthy }
+    networks: [internal]
+
+  # Holds the public port so a deploy never leaves the tunnel with nothing to talk to:
+  # while app is being recreated this serves maintenance.html as a 502 instead.
+  # Its own config rarely changes, so `up -d --build` leaves it running.
+  web:
+    image: nginx:1.27-alpine
+    container_name: ${STACK}_web
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT}:80"   # cloudflared hits host.docker.internal:${APP_PORT}
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./maintenance.html:/usr/share/nginx/html/maintenance.html:ro
     networks: [internal]
 
 volumes:

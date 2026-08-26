@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploying — UNSW Security Society</title>
+<!-- Served by nginx while the app container restarts, so everything is inline:
+     no fonts, no stylesheets, no images to fetch from an origin that is down. -->
+<meta http-equiv="refresh" content="15">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem; background: #ffffff; color: #0b0b0d;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .card { width: 100%; max-width: 380px; text-align: center; }
+  .tile {
+    width: 56px; height: 56px; margin: 0 auto 0.875rem; border-radius: 1rem;
+    background: #0b0b0d; display: flex; align-items: center; justify-content: center;
+  }
+  .dot { width: 14px; height: 14px; border-radius: 999px; background: #00ffd1; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.82); } }
+  .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; color: #6b7280; margin: 0 0 0.25rem; }
+  h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 0.25rem; }
+  p { font-size: 0.875rem; color: #6b7280; margin: 0; line-height: 1.5; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0b0b0d; color: #f4f4f5; }
+    .tile { background: #17171b; }
+    .code, p { color: #a1a1aa; }
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="tile"><div class="dot"></div></div>
+    <p class="code">502</p>
+    <h1>Deploying an update</h1>
+    <p>The portal is restarting with a new version. This page refreshes itself every 15 seconds — it is usually back within a minute.</p>
+  </div>
+</body>
+</html>
