@@ -77,14 +77,11 @@ services:
   # while app is being recreated this serves maintenance.html as a 502 instead.
   # Its own config rarely changes, so `up -d --build` leaves it running.
   web:
-    image: nginx:1.27-alpine
+    build: { context: ., dockerfile: Dockerfile.web }
     container_name: ${STACK}_web
     restart: unless-stopped
     ports:
       - "${APP_PORT}:80"   # cloudflared hits host.docker.internal:${APP_PORT}
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./maintenance.html:/usr/share/nginx/html/maintenance.html:ro
     networks: [internal]
 
 volumes:
