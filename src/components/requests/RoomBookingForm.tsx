@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
+import { EVENT_TYPES } from "@/lib/utils";
 import Link from "next/link";
 
 const LOCATIONS = [
@@ -26,6 +27,7 @@ const LOCATIONS = [
 export interface RoomBookingInitial {
   id: string;
   eventName: string;
+  eventType: string;
   preferredDate: string;
   startTime: string;
   endTime: string;
@@ -47,6 +49,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
   const [loading, setLoading] = useState(false);
   const [hasExternal, setHasExternal] = useState(initial?.hasExternalGuests ?? false);
   const [location, setLocation] = useState(initial?.preferredLocation ?? "");
+  const [eventType, setEventType] = useState(initial?.eventType ?? "");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,6 +58,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
 
     const body = {
       eventName: form.get("eventName"),
+      eventType,
       preferredDate: form.get("preferredDate"),
       startTime: form.get("startTime"),
       endTime: form.get("endTime"),
@@ -132,6 +136,19 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
                 defaultValue={initial?.eventName}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Event Type *</Label>
+              <Select value={eventType} onValueChange={setEventType} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an event type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -322,7 +339,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
         </Card>
 
         <div data-tour="room-submit" className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={loading || !location}>
+          <Button type="submit" disabled={loading || !location || !eventType}>
             {loading ? "Saving…" : editing ? "Save Changes" : "Submit Booking Request"}
           </Button>
           <Button asChild variant="ghost">

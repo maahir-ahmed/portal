@@ -33,6 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(isExec && body.status ? { status: body.status } : {}),
       ...(isExec && body.status === "SUBMITTED_TO_ARC" ? { submittedToArcAt: new Date() } : {}),
       ...(str(body.eventName) ? { eventName: body.eventName } : {}),
+      ...(str(body.eventType) ? { eventType: body.eventType } : {}),
       ...(body.preferredDate ? { preferredDate: new Date(body.preferredDate) } : {}),
       ...(str(body.startTime) ? { startTime: body.startTime } : {}),
       ...(str(body.endTime) ? { endTime: body.endTime } : {}),

@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatDate, isLateArcSubmission } from "@/lib/utils";
+import { cn, formatDate, isLateArcSubmission } from "@/lib/utils";
 import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users } from "lucide-react";
+
+// Finished bookings sink below the active ones and grey out, same as content requests.
+const CLOSED = new Set(["COMPLETED", "REJECTED"]);
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -25,7 +28,7 @@ export default async function RoomBookingsPage({ params }: Props) {
 
   const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
 
-  const bookings = await prisma.roomBooking.findMany({
+  const rows = await prisma.roomBooking.findMany({
     where: {
       societyId: membership.societyId,
       ...(!canSeeAll ? { submittedById: session.user.id } : {}),
@@ -34,6 +37,15 @@ export default async function RoomBookingsPage({ params }: Props) {
       submittedBy: { select: { id: true, name: true, avatarUrl: true } },
     },
     orderBy: { preferredDate: "asc" },
+  });
+
+  const bookings = rows.sort((a, b) => {
+    const aClosed = CLOSED.has(a.status) ? 1 : 0;
+    const bClosed = CLOSED.has(b.status) ? 1 : 0;
+    if (aClosed !== bClosed) return aClosed - bClosed;
+    return aClosed
+      ? b.preferredDate.getTime() - a.preferredDate.getTime()  // closed: most recent first
+      : a.preferredDate.getTime() - b.preferredDate.getTime(); // active: soonest first
   });
 
   const locationLabels: Record<string, string> = {
@@ -75,7 +87,7 @@ export default async function RoomBookingsPage({ params }: Props) {
             const isLate = isLateArcSubmission(b.preferredDate, b.status);
             return (
               <Link key={b.id} href={`/${societySlug}/requests/room-booking/${b.id}`} data-tour={i === 0 ? "room-card" : undefined}>
-                <Card className="hover:border-blue-300 transition-colors cursor-pointer">
+                <Card className={cn("hover:border-blue-300 transition-colors cursor-pointer", CLOSED.has(b.status) && "opacity-70")}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 min-w-0">

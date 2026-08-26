@@ -37,6 +37,7 @@ export default async function EditRoomBookingPage({ params }: Props) {
         hasExternalGuests: booking.hasExternalGuests,
         externalGuestsDesc: booking.externalGuestsDesc,
         numExternalGuests: booking.numExternalGuests,
+        eventType: booking.eventType,
         preferredLocation: booking.preferredLocation,
         safetyOfficerName: booking.safetyOfficerName,
         safetyOfficerZid: booking.safetyOfficerZid,

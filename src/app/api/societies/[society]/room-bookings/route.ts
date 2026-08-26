@@ -4,10 +4,12 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { isLateArcSubmission } from "@/lib/utils";
+import { EVENT_TYPES } from "@/lib/utils";
 import { z } from "zod";
 
 const schema = z.object({
   eventName: z.string().min(1).max(200),
+  eventType: z.enum(EVENT_TYPES.map((t) => t.value)),
   preferredDate: z.string(),
   startTime: z.string(),
   endTime: z.string(),
@@ -40,6 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         societyId: membership!.societyId,
         submittedById: session!.user.id,
         eventName: body.eventName,
+        eventType: body.eventType,
         preferredDate: new Date(body.preferredDate),
         startTime: body.startTime,
         endTime: body.endTime,

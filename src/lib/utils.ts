@@ -110,3 +110,24 @@ export function generateSlug(name: string): string {
     .replace(/-+/g, "-")
     .trim();
 }
+
+// Arc's event categories, used by the room booking form and the exec detail view.
+export const EVENT_TYPES = [
+  { value: "SOCIAL_ACTIVITY", label: "Social - Activity" },
+  { value: "SOCIAL_MEETUP", label: "Social - Meet-Up" },
+  { value: "WORKSHOP", label: "Workshop" },
+  { value: "INTERNAL_TRAINING", label: "Internal Training (contributing members)" },
+  { value: "PRESENTATION_TALK_PANEL", label: "Presentation/Talk/Panel" },
+  { value: "DANCE_PERFORMING_ARTS", label: "Dance/Performing Arts" },
+  { value: "MENTORING", label: "Mentoring" },
+  { value: "INTERNAL_MEETING", label: "Internal Meeting (contributing members)" },
+  { value: "GENERAL_MEETING", label: "Annual/extraordinary General Meeting" },
+  { value: "NETWORKING_INDUSTRY", label: "Networking/Industry Event" },
+  { value: "MOVIE_NIGHT", label: "Movie Night/Show Screening" },
+  { value: "PARTY_COCKTAIL", label: "Party/Cocktail Night" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
+export const EVENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  EVENT_TYPES.map((t) => [t.value, t.label])
+);

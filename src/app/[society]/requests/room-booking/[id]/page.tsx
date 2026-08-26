@@ -9,8 +9,8 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
-import { formatDate, formatDateTime, isLateArcSubmission } from "@/lib/utils";
-import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil } from "lucide-react";
+import { formatDate, formatDateTime, isLateArcSubmission, EVENT_TYPE_LABELS } from "@/lib/utils";
+import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil, Tag } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
 interface Props {
@@ -136,6 +136,10 @@ export default async function RoomBookingDetailPage({ params }: Props) {
                   <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span><strong>Max Attendees:</strong> {booking.maxAttendees}</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span><strong>Event Type:</strong> {EVENT_TYPE_LABELS[booking.eventType]}</span>
+                </div>
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">Description</p>
@@ -196,6 +200,9 @@ export default async function RoomBookingDetailPage({ params }: Props) {
                   <p className="text-xs text-muted-foreground">{booking.submittedBy.email}</p>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                <strong className="text-foreground">Event Type:</strong> {EVENT_TYPE_LABELS[booking.eventType]}
+              </p>
             </CardContent>
           </Card>
 

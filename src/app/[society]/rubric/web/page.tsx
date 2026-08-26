@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatDate, formatDateTime, EVENT_TYPE_LABELS } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 
 // Rubric's site allows framing (no X-Frame-Options / CSP frame-ancestors), so it
@@ -46,7 +46,9 @@ export default async function RubricWebPage({
   const societyId = membership.societyId;
   const [rooms, prints, grantEvents] = await Promise.all([
     prisma.roomBooking.findMany({
-      where: { societyId },
+      // Only bookings still to be lodged on the portal; once marked submitted to
+      // Arc they drop off this list, same as printing jobs.
+      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"] } },
       orderBy: { createdAt: "desc" },
       take: 25,
       include: { submittedBy: { select: { name: true } } },
@@ -82,6 +84,7 @@ export default async function RubricWebPage({
     status: b.status,
     fields: [
       { label: "Event name", value: b.eventName },
+      { label: "Event type", value: EVENT_TYPE_LABELS[b.eventType] },
       { label: "Date", value: formatDate(b.preferredDate) },
       { label: "Start time", value: b.startTime },
       { label: "End time", value: b.endTime },

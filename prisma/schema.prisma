@@ -52,6 +52,22 @@ enum TreasuryStatus {
   REIMBURSED
 }
 
+enum EventType {
+  SOCIAL_ACTIVITY
+  SOCIAL_MEETUP
+  WORKSHOP
+  INTERNAL_TRAINING
+  PRESENTATION_TALK_PANEL
+  DANCE_PERFORMING_ARTS
+  MENTORING
+  INTERNAL_MEETING
+  GENERAL_MEETING
+  NETWORKING_INDUSTRY
+  MOVIE_NIGHT
+  PARTY_COCKTAIL
+  OTHER
+}
+
 enum PreferredLocation {
   LECTURE_THEATRE
   CATS_ROOM
@@ -347,6 +363,7 @@ model RoomBooking {
   submittedById      String
   assignedToId       String?
   eventName          String
+  eventType          EventType         @default(OTHER)
   preferredDate      DateTime
   startTime          String
   endTime            String
