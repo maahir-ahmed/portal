@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deploying — UNSW Security Society</title>
+<title>Temporarily unavailable — UNSW Security Society</title>
 <!-- Served by nginx while the app container restarts, so everything is inline: no
      fonts, no stylesheets, no images to fetch from an origin that is down. Sent as a
      503; Cloudflare replaces the body of a 502 or 504 with its own error text. -->
@@ -26,6 +26,7 @@
   .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; color: #6b7280; margin: 0 0 0.25rem; }
   h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 0.25rem; }
   p { font-size: 0.875rem; color: #6b7280; margin: 0; line-height: 1.5; }
+  .note { margin-top: 0.75rem; font-size: 0.8125rem; opacity: 0.75; }
   @media (prefers-color-scheme: dark) {
     body { background: #0b0b0d; color: #f4f4f5; }
     .tile { background: #17171b; }
@@ -37,8 +38,9 @@
   <div class="card">
     <div class="tile"><div class="dot"></div></div>
     <p class="code">503</p>
-    <h1>Deploying an update</h1>
-    <p>The portal is restarting with a new version. This page refreshes itself every 15 seconds — it is usually back within a minute.</p>
+    <h1>Temporarily unavailable</h1>
+    <p>The portal isn’t responding. Usually that means a new version is deploying, which clears within a minute.</p>
+    <p class="note">This page reloads itself every 15 seconds. If it is still here after a few minutes, the server is down rather than restarting, and it will not come back on its own.</p>
   </div>
 </body>
 </html>
