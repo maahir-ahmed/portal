@@ -3,6 +3,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { BASE_PORTFOLIOS, EXEC_TITLES, directorTitle, subcomTitle } from "../src/lib/portfolios";
+import { CATEGORY_FOR_ROLE } from "../src/lib/ahegs";
+import type { Role } from "@prisma/client";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -662,10 +664,10 @@ async function main() {
       }
     }
 
-    const ahegsCategory: Record<string, string> = {
-      demo: "EXECUTIVE", alice: "EXECUTIVE", priya: "EXECUTIVE", tom: "EXECUTIVE",
-      bob: "DIRECTOR", hana: "DIRECTOR", deniz: "DIRECTOR", sam: "DIRECTOR",
-      yuki: "SUBCOMMITTEE", olive: "SUBCOMMITTEE", charlie: "SUBCOMMITTEE",
+    // Let the app's own map decide the AHEGS category, so it can't drift from the roles.
+    const roleByKey: Record<string, Role> = {
+      demo: "EXECUTIVE", alice: "EXECUTIVE", bob: "DIRECTOR", charlie: "SUBCOMMITTEE",
+      ...Object.fromEntries(cast.map((p) => [p.key, p.role])),
     };
     const extraHours: Record<string, number> = { bob: 14, hana: 9, deniz: 7, charlie: 11, yuki: 5 };
 
@@ -677,7 +679,7 @@ async function main() {
           societyId: society.id,
           membershipId,
           year: 2026,
-          category: (ahegsCategory[key] ?? "SUBCOMMITTEE") as never,
+          category: CATEGORY_FOR_ROLE[roleByKey[key] ?? "SUBCOMMITTEE"],
           included: true,
           startDate: at("2026-03-01"),
           endDate: at("2026-11-30"),
