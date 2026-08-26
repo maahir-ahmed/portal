@@ -407,6 +407,15 @@ async function main() {
         officer: { name: "Bob Nguyen", zid: "z5000103", phone: "0411 222 333" },
       },
       {
+        id: "demo-rb-8", eventName: "Sponsor Site Visit", type: "NETWORKING_INDUSTRY", by: "sam",
+        date: at("2026-09-02"), start: "12:00", end: "15:00", location: "OUTDOOR_SPACE", max: 30,
+        description: "Small-group visit from a sponsor's graduate team: a short talk on the library lawn, then lunch with students who signed up.",
+        requirements: "Outdoor space with shade and a power point for the PA. Wet weather backup room if one is going.",
+        status: "SUBMITTED", external: true, extNum: 3,
+        extDesc: "Three staff from a sponsoring employer, attending in a work capacity. No payment either way; they bring their own lunch catering.",
+        officer: { name: "Sam Ferreira", zid: "z5100005", phone: "0400 333 444" },
+      },
+      {
         id: "demo-rb-7", eventName: "Movie Night: Hackers (1995)", type: "MOVIE_NIGHT", by: "charlie",
         date: at("2026-08-14"), start: "18:00", end: "21:00", location: "LECTURE_THEATRE", max: 70,
         description: "Screening with a short intro on how little of it is accurate, then discussion.",
