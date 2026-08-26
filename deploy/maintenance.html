@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deploying — UNSW Security Society</title>
-<!-- Served by nginx while the app container restarts, so everything is inline:
-     no fonts, no stylesheets, no images to fetch from an origin that is down. -->
+<!-- Served by nginx while the app container restarts, so everything is inline: no
+     fonts, no stylesheets, no images to fetch from an origin that is down. Sent as a
+     503; Cloudflare replaces the body of a 502 or 504 with its own error text. -->
 <meta http-equiv="refresh" content="15">
 <style>
   :root { color-scheme: light dark; }
@@ -35,7 +36,7 @@
 <body>
   <div class="card">
     <div class="tile"><div class="dot"></div></div>
-    <p class="code">502</p>
+    <p class="code">503</p>
     <h1>Deploying an update</h1>
     <p>The portal is restarting with a new version. This page refreshes itself every 15 seconds — it is usually back within a minute.</p>
   </div>
