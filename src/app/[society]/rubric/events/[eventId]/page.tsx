@@ -9,7 +9,8 @@ import Link from "next/link";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, ExternalLink, Ticket, MapPin, Calendar, Users, DollarSign, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, ArrowLeft, ExternalLink, Ticket, MapPin, Calendar, Users, DollarSign, Download, Search } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
 
 interface EventDetail {
@@ -56,6 +57,7 @@ export default function RubricEventDetailPage() {
   const [tickets, setTickets] = useState<TicketData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -94,13 +96,25 @@ export default function RubricEventDetailPage() {
 
   const revenue = allTickets.reduce((acc, t) => acc + parseBill(t.totalbill), 0);
 
+  // Search runs over every column, so a zID, ticket type or custom-question answer
+  // finds its row just as a name does. The summary above stays on the full set —
+  // it describes the event, not the search.
+  const q = query.trim().toLowerCase();
+  const shownTickets = q
+    ? allTickets.filter((t) => columns.some((c) => fmt(t[c]).toLowerCase().includes(q)))
+    : allTickets;
+  const filtering = q.length > 0;
+
   // Attendance/ticket export, required when submitting activity grants on the Arc
   // portal. Exports every field Rubric provides, with Rubric's own field names.
+  // Exports whatever the table is showing. With a search active that is the filtered
+  // set, which is why the button carries the count — an Arc grant submission wants
+  // every ticket, and a half-empty attendance sheet is easy to hand over by accident.
   function exportAttendanceCsv() {
-    if (allTickets.length === 0) return;
+    if (shownTickets.length === 0) return;
     const cell = (v: unknown) => `"${fmt(v).replace(/"/g, '""')}"`;
     const header = columns.map(cell).join(",");
-    const rows = allTickets.map((t) => columns.map((c) => cell(t[c])).join(","));
+    const rows = shownTickets.map((t) => columns.map((c) => cell(t[c])).join(","));
     const csv = [header, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -175,8 +189,9 @@ export default function RubricEventDetailPage() {
                       <Ticket className="h-4 w-4" /> Ticket Sales
                     </CardTitle>
                     {allTickets.length > 0 && (
-                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={exportAttendanceCsv}>
-                        <Download className="h-3.5 w-3.5" /> Attendance CSV
+                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={exportAttendanceCsv} disabled={shownTickets.length === 0}>
+                        <Download className="h-3.5 w-3.5" />
+                        {filtering ? `Attendance CSV (${shownTickets.length})` : "Attendance CSV"}
                       </Button>
                     )}
                   </div>
@@ -185,6 +200,27 @@ export default function RubricEventDetailPage() {
                   {allTickets.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No ticket data available</p>
                   ) : (
+                    <>
+                    <div className="flex flex-wrap items-center gap-3 mb-3">
+                      <div className="relative flex-1 min-w-[12rem]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          placeholder="Search name, email, zID, ticket type…"
+                          className="h-9 pl-9"
+                          aria-label="Search tickets"
+                        />
+                      </div>
+                      {filtering && (
+                        <p className="text-xs text-muted-foreground">
+                          {shownTickets.length} of {allTickets.length} tickets
+                        </p>
+                      )}
+                    </div>
+                    {shownTickets.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">No tickets match “{query.trim()}”.</p>
+                    ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm whitespace-nowrap">
                         <thead>
@@ -195,7 +231,7 @@ export default function RubricEventDetailPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {allTickets.map((t, i) => {
+                          {shownTickets.map((t, i) => {
                             const isDup = dupNames.has(nameKey(t));
                             return (
                             <tr key={(t.ticketid as number) ?? i} className={`border-b last:border-0 ${isDup ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"}`}>
@@ -213,6 +249,8 @@ export default function RubricEventDetailPage() {
                         </tbody>
                       </table>
                     </div>
+                    )}
+                    </>
                   )}
                 </CardContent>
               </Card>
