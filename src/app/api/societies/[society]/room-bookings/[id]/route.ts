@@ -39,9 +39,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     );
   }
 
+  // Naming the room is the last thing that happens to a booking, so recording it
+  // closes the booking out. Only on the way in — clearing the room again leaves the
+  // status alone rather than reopening something already finished, and an explicit
+  // status in the same request wins.
+  // Exec-only, like every other status change: a submitter may still record the room
+  // Arc gave them, it just does not close the booking on its own.
+  const autoComplete =
+    isExec &&
+    typeof body.assignedRoom === "string" &&
+    body.assignedRoom.trim().length > 0 &&
+    booking.status === "APPROVED" &&
+    !body.status;
+
   const updated = await prisma.roomBooking.update({
     where: { id },
     data: {
+      ...(autoComplete ? { status: "COMPLETED" as const } : {}),
       ...(isExec && body.status ? { status: body.status } : {}),
       ...(isExec && body.status === "SUBMITTED_TO_ARC" ? { submittedToArcAt: new Date() } : {}),
       ...(str(body.eventName) ? { eventName: body.eventName } : {}),
@@ -72,18 +86,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   await createAuditLog({
     societyId: membership!.societyId,
     userId: session!.user.id,
-    action: body.status ? "STATUS_CHANGE" : "UPDATE",
+    action: body.status || autoComplete ? "STATUS_CHANGE" : "UPDATE",
     entityType: "RoomBooking",
     entityId: id,
-    ...(body.status ? { metadata: { from: booking.status, to: body.status } } : {}),
+    ...(body.status || autoComplete
+      ? { metadata: { from: booking.status, to: body.status ?? "COMPLETED" } }
+      : {}),
   });
 
-  if (isExec && body.status && body.status !== booking.status) {
+  // Tell the submitter their booking moved — unless they are the one who moved it.
+  const newStatus = body.status && isExec && body.status !== booking.status
+    ? body.status
+    : autoComplete
+      ? "COMPLETED"
+      : null;
+  if (newStatus && booking.submittedById !== session!.user.id) {
     await createNotification({
       userId: booking.submittedById,
       type: "STATUS_CHANGE",
       title: `Room Booking Updated: ${booking.eventName}`,
-      body: `Status changed to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
+      body: autoComplete && !body.status
+        ? `Room confirmed as ${body.assignedRoom.trim()}. Marked completed.`
+        : `Status changed to ${String(newStatus).replace(/_/g, " ").toLowerCase()}.`,
       link: `/requests/room-booking/${id}`,
     });
   }

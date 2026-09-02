@@ -220,6 +220,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
               societySlug={societySlug}
               bookingId={booking.id}
               assignedRoom={booking.assignedRoom}
+              status={booking.status}
               canEdit={canEdit}
             />
           )}

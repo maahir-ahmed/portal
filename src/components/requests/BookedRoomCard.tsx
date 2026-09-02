@@ -16,11 +16,13 @@ export function BookedRoomCard({
   societySlug,
   bookingId,
   assignedRoom,
+  status,
   canEdit,
 }: {
   societySlug: string;
   bookingId: string;
   assignedRoom: string | null;
+  status: string;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -37,7 +39,17 @@ export function BookedRoomCard({
     });
     setSaving(false);
     if (res.ok) {
-      toast.success(value.trim() ? "Booked room saved" : "Booked room cleared");
+      // Recording the room closes the booking, so say so rather than letting the
+      // status badge change behind them.
+      const updated = await res.json().catch(() => null);
+      const completed = updated?.status === "COMPLETED" && status !== "COMPLETED";
+      toast.success(
+        !value.trim()
+          ? "Booked room cleared"
+          : completed
+            ? "Booked room saved · booking marked completed"
+            : "Booked room saved"
+      );
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));
@@ -54,29 +66,24 @@ export function BookedRoomCard({
       </CardHeader>
       <CardContent className="space-y-2">
         {canEdit ? (
-          <>
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (dirty) save();
-              }}
-            >
-              <Input
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="e.g. Ainsworth 202"
-                aria-label="Booked room"
-                maxLength={120}
-              />
-              <Button type="submit" size="sm" disabled={saving || !dirty}>
-                {saving ? "Saving…" : "Save"}
-              </Button>
-            </form>
-            <p className="text-xs text-muted-foreground">
-              The room Arc gave us. Everyone on the booking sees it.
-            </p>
-          </>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (dirty) save();
+            }}
+          >
+            <Input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="e.g. Ainsworth 202"
+              aria-label="Booked room"
+              maxLength={120}
+            />
+            <Button type="submit" size="sm" disabled={saving || !dirty}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </form>
         ) : (
           <p className="text-sm">
             {assignedRoom || <span className="text-muted-foreground">Not recorded yet</span>}
