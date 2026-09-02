@@ -59,8 +59,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEditCore && typeof body.rubricRequired === "boolean" ? { rubricRequired: body.rubricRequired } : {}),
       ...(canEditCore && body.otherNotes !== undefined ? { otherNotes: body.otherNotes || null } : {}),
       ...(isMarketing && body.finishedBlurb !== undefined ? { finishedBlurb: body.finishedBlurb || null } : {}),
-      ...(isMarketing && typeof body.bannerDone === "boolean" ? { bannerDone: body.bannerDone } : {}),
-      ...(isMarketing && typeof body.blurbDone === "boolean" ? { blurbDone: body.blurbDone } : {}),
+      // blurbDone is derived, not sent: handing in a blurb is what "done" means, and
+      // clearing it undoes that. Same idea as bannerDone below.
+      ...(isMarketing && body.finishedBlurb !== undefined
+        ? { blurbDone: String(body.finishedBlurb ?? "").trim().length > 0 }
+        : {}),
     },
   });
 
@@ -80,6 +83,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     await prisma.contentDeliverable.deleteMany({
       where: { id: { in: body.removeDeliverableIds }, contentRequestId: id },
     });
+  }
+
+  // bannerDone follows whether any graphic is actually attached, counted after the
+  // adds and removes above rather than taken from the client. Uploading is what marks
+  // it done; deleting the last file marks it undone again.
+  if (isMarketing && (body.addDeliverables !== undefined || body.removeDeliverableIds !== undefined)) {
+    const files = await prisma.contentDeliverable.count({ where: { contentRequestId: id } });
+    await prisma.contentRequest.update({ where: { id }, data: { bannerDone: files > 0 } });
   }
 
   await createAuditLog({

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Upload, Download, X, Loader2, CheckCircle2, Megaphone } from "lucide-react";
+import { Upload, Download, X, Loader2, CheckCircle2, Megaphone, Check } from "lucide-react";
 
 interface Deliverable {
   id: string;
@@ -27,6 +27,15 @@ interface Props {
   deliverables: Deliverable[];
 }
 
+/**
+ * The graphics and the blurb are handed in separately — different people, usually on
+ * different days — so each half saves on its own and neither waits on the other.
+ *
+ * There is no "done" checkbox: handing the work in is what done means. The server
+ * derives bannerDone from whether any file is attached and blurbDone from whether the
+ * blurb is non-empty, so the two can never disagree with what is actually here. Both
+ * halves stay editable afterwards; saving again just replaces what was there.
+ */
 export function MarketingContentPanel({
   societySlug, requestId, bannerRequired, blurbRequired, currentStatus,
   initialBlurb, initialBannerDone, initialBlurbDone, deliverables,
@@ -35,13 +44,15 @@ export function MarketingContentPanel({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [blurb, setBlurb] = useState(initialBlurb);
-  const [bannerDone, setBannerDone] = useState(initialBannerDone);
-  const [blurbDone, setBlurbDone] = useState(initialBlurbDone);
+  const [savedBlurb, setSavedBlurb] = useState(initialBlurb);
   const [existing, setExisting] = useState<Deliverable[]>(deliverables);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<{ fileName: string; fileUrl: string }[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState<"banner" | "blurb" | "complete" | null>(null);
+
+  const graphicsDirty = newFiles.length > 0 || removedIds.length > 0;
+  const blurbDirty = blurb !== savedBlurb;
 
   async function handleFiles(files: FileList) {
     setUploading(true);
@@ -59,39 +70,50 @@ export function MarketingContentPanel({
     setUploading(false);
   }
 
-  async function save(markComplete = false) {
-    setSaving(true);
+  async function patch(which: "banner" | "blurb" | "complete", body: Record<string, unknown>) {
+    setBusy(which);
     const res = await fetch(`/api/societies/${societySlug}/content-requests/${requestId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        finishedBlurb: blurb,
-        bannerDone,
-        blurbDone,
-        addDeliverables: newFiles,
-        removeDeliverableIds: removedIds,
-        ...(markComplete ? { status: "COMPLETED" } : {}),
-      }),
+      body: JSON.stringify(body),
     });
-    setSaving(false);
-    if (res.ok) {
-      toast.success(markComplete ? "Marked complete" : "Saved");
-      setNewFiles([]);
-      setRemovedIds([]);
-      router.refresh();
-    } else {
+    setBusy(null);
+    if (!res.ok) {
       toast.error("Failed to save");
+      return false;
     }
+    router.refresh();
+    return true;
   }
+
+  async function saveGraphics() {
+    const ok = await patch("banner", { addDeliverables: newFiles, removeDeliverableIds: removedIds });
+    if (!ok) return;
+    setNewFiles([]);
+    setRemovedIds([]);
+    toast.success("Graphics saved");
+  }
+
+  async function saveBlurb() {
+    const ok = await patch("blurb", { finishedBlurb: blurb });
+    if (!ok) return;
+    setSavedBlurb(blurb);
+    toast.success(blurb.trim() ? "Blurb saved" : "Blurb cleared");
+  }
+
+  // Shown once something is actually handed in, so the panel says where each half is
+  // without anyone having to tick anything.
+  const handedIn = (label: string) => (
+    <span className="inline-flex items-center gap-1 text-xs text-green-700">
+      <Check className="h-3.5 w-3.5" /> {label}
+    </span>
+  );
 
   const bannerBlock = bannerRequired && (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Label>Finished graphics</Label>
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer text-muted-foreground">
-          <input type="checkbox" checked={bannerDone} onChange={(e) => setBannerDone(e.target.checked)} className="h-3.5 w-3.5 rounded border-input" />
-          Banner done
-        </label>
+        {initialBannerDone && !graphicsDirty && handedIn("Handed in")}
       </div>
 
       <div className="space-y-1.5">
@@ -116,23 +138,28 @@ export function MarketingContentPanel({
       </div>
 
       <input ref={fileRef} type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={(e) => { if (e.target.files?.length) handleFiles(e.target.files); e.target.value = ""; }} />
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => fileRef.current?.click()} disabled={uploading}>
-        {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-        Upload graphics
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => fileRef.current?.click()} disabled={uploading || busy !== null}>
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          Upload graphics
+        </Button>
+        <Button type="button" size="sm" onClick={saveGraphics} disabled={!graphicsDirty || uploading || busy !== null}>
+          {busy === "banner" ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : "Save graphics"}
+        </Button>
+      </div>
     </div>
   );
 
   const blurbBlock = blurbRequired && (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Label htmlFor="finishedBlurb">Event blurb</Label>
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer text-muted-foreground">
-          <input type="checkbox" checked={blurbDone} onChange={(e) => setBlurbDone(e.target.checked)} className="h-3.5 w-3.5 rounded border-input" />
-          Blurb done
-        </label>
+        {initialBlurbDone && !blurbDirty && handedIn("Handed in")}
       </div>
       <Textarea id="finishedBlurb" value={blurb} onChange={(e) => setBlurb(e.target.value)} rows={5} placeholder="Paste the finished event blurb here…" />
+      <Button type="button" size="sm" onClick={saveBlurb} disabled={!blurbDirty || busy !== null}>
+        {busy === "blurb" ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving…</> : "Save blurb"}
+      </Button>
     </div>
   );
 
@@ -150,16 +177,21 @@ export function MarketingContentPanel({
           <p className="text-sm text-muted-foreground">No banner or blurb was requested for this event.</p>
         )}
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button size="sm" onClick={() => save(false)} disabled={saving || uploading}>
-            {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> Saving…</> : "Save"}
-          </Button>
-          {currentStatus !== "COMPLETED" && (
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => save(true)} disabled={saving || uploading}>
+        {currentStatus !== "COMPLETED" && (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={async () => {
+                if (await patch("complete", { status: "COMPLETED" })) toast.success("Marked complete");
+              }}
+              disabled={busy !== null || uploading}
+            >
               <CheckCircle2 className="h-4 w-4" /> Mark content complete
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
