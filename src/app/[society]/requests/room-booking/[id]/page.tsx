@@ -9,8 +9,9 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
+import { BookedRoomCard } from "@/components/requests/BookedRoomCard";
 import { formatDate, formatDateTime, isLateArcSubmission, EVENT_TYPE_LABELS } from "@/lib/utils";
-import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil, Tag } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil, Tag, DoorOpen } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
 interface Props {
@@ -62,6 +63,8 @@ export default async function RoomBookingDetailPage({ params }: Props) {
   const isLate = isLateArcSubmission(booking.preferredDate, booking.status);
 
   const canEdit = isExec || booking.submittedById === session.user.id;
+  // Arc names the room when it approves, so the field appears at that point.
+  const roomOpen = booking.status === "APPROVED" || booking.status === "COMPLETED";
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -132,6 +135,12 @@ export default async function RoomBookingDetailPage({ params }: Props) {
                   <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span><strong>Location:</strong> {LOCATION_LABELS[booking.preferredLocation]}</span>
                 </div>
+                {booking.assignedRoom && (
+                  <div className="flex items-center gap-2">
+                    <DoorOpen className="h-4 w-4 text-green-700 flex-shrink-0" />
+                    <span><strong>Booked room:</strong> {booking.assignedRoom}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span><strong>Max Attendees:</strong> {booking.maxAttendees}</span>
@@ -205,6 +214,15 @@ export default async function RoomBookingDetailPage({ params }: Props) {
               </p>
             </CardContent>
           </Card>
+
+          {roomOpen && (
+            <BookedRoomCard
+              societySlug={societySlug}
+              bookingId={booking.id}
+              assignedRoom={booking.assignedRoom}
+              canEdit={canEdit}
+            />
+          )}
 
           {isExec && (
             <StatusUpdater

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { cn, formatDate, isLateArcSubmission } from "@/lib/utils";
-import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users } from "lucide-react";
+import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users, DoorOpen } from "lucide-react";
 
 // Finished bookings sink below the active ones and grey out, same as content requests.
 const CLOSED = new Set(["COMPLETED", "REJECTED"]);
@@ -105,6 +105,9 @@ export default async function RoomBookingsPage({ params }: Props) {
                             <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(b.preferredDate)}</span>
                             <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {b.startTime} – {b.endTime}</span>
                             <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {locationLabels[b.preferredLocation]}</span>
+                            {b.assignedRoom && (
+                              <span className="inline-flex items-center gap-1 text-green-700"><DoorOpen className="h-3 w-3" /> {b.assignedRoom}</span>
+                            )}
                             <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" /> {b.maxAttendees} max</span>
                             {b.hasExternalGuests && (
                               <span className="inline-flex items-center gap-1 text-orange-600"><AlertTriangle className="h-3 w-3" /> External guests</span>

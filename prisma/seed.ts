@@ -397,7 +397,7 @@ async function main() {
         date: at("2026-09-11"), start: "18:30", end: "21:30", location: "ROUNDHOUSE", max: 90,
         description: "Six rounds of security trivia in teams of five, with a break for food halfway through.",
         requirements: "Loose tables rather than fixed seating, PA and a microphone, screen for the question slides.",
-        status: "APPROVED",
+        status: "APPROVED", room: "Roundhouse — Main Floor",
         officer: { name: "Deniz Yilmaz", zid: "z5100004", phone: "0400 999 000" },
       },
       {
@@ -405,7 +405,7 @@ async function main() {
         date: at("2026-07-30"), start: "18:00", end: "20:00", location: "CATS_ROOM", max: 80,
         description: "Beginner-friendly walkthrough of web, crypto and forensics warmups on our own scoreboard.",
         requirements: "Flat room with power at every seat, projector, wired network if possible.",
-        status: "COMPLETED",
+        status: "COMPLETED", room: "CATS Room (K17 G12)",
         officer: { name: "Bob Nguyen", zid: "z5000103", phone: "0411 222 333" },
       },
       {
@@ -451,6 +451,7 @@ async function main() {
           safetyOfficerPhone: r.officer.phone,
           roomRequirements: r.requirements,
           status: r.status as never,
+          assignedRoom: r.room ?? null,
           ...(r.status === "SUBMITTED_TO_ARC" ? { submittedToArcAt: at("2026-08-21") } : {}),
         },
       });

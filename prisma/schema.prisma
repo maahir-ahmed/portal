@@ -373,6 +373,9 @@ model RoomBooking {
   externalGuestsDesc String?           @db.Text
   numExternalGuests  Int?
   preferredLocation  PreferredLocation
+  // Which room Arc actually gave us, once they have. Filled in after approval, so it
+  // is null for everything still in the queue.
+  assignedRoom       String?
   safetyOfficerName  String
   safetyOfficerZid   String
   safetyOfficerPhone String

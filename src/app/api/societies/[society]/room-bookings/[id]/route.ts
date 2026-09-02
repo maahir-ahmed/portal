@@ -27,6 +27,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
   const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : undefined);
 
+  // Arc only names a room once it has approved the booking, so the field opens then
+  // and stays open (it can be moved later). Gated here rather than only in the UI:
+  // the status this is checked against is the stored one, not one the caller sent.
+  // Clearing it back to empty is allowed, which is why "" is handled separately.
+  const roomOpen = booking.status === "APPROVED" || booking.status === "COMPLETED";
+  if (typeof body.assignedRoom === "string" && !roomOpen) {
+    return NextResponse.json(
+      { error: "The booked room can only be set once the booking is approved" },
+      { status: 400 }
+    );
+  }
+
   const updated = await prisma.roomBooking.update({
     where: { id },
     data: {
@@ -51,6 +63,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(str(body.safetyOfficerZid) ? { safetyOfficerZid: body.safetyOfficerZid } : {}),
       ...(str(body.safetyOfficerPhone) ? { safetyOfficerPhone: body.safetyOfficerPhone } : {}),
       ...(str(body.roomRequirements) ? { roomRequirements: body.roomRequirements } : {}),
+      ...(typeof body.assignedRoom === "string"
+        ? { assignedRoom: body.assignedRoom.trim() || null }
+        : {}),
     },
   });
 
