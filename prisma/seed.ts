@@ -430,7 +430,9 @@ async function main() {
     for (const r of roomBookings) {
       await prisma.roomBooking.upsert({
         where: { id: r.id },
-        update: {},
+        // Carried on re-seed, unlike the rest: the field was added after these demo
+        // bookings existed, so an empty update would leave them without a room forever.
+        update: { assignedRoom: r.room ?? null },
         create: {
           id: r.id,
           societyId: society.id,
