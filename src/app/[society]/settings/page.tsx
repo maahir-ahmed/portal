@@ -12,6 +12,7 @@ import { Globe, Link2, Share2 } from "lucide-react";
 import { TitlesManager } from "@/components/settings/TitlesManager";
 import { PortfoliosManager } from "@/components/settings/PortfoliosManager";
 import { RubricSettings } from "@/components/settings/RubricSettings";
+import { DiscordWebhookSettings } from "@/components/settings/DiscordWebhookSettings";
 import { ImageUploadField } from "@/components/settings/ImageUploadField";
 import { SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import type { Society } from "@prisma/client";
@@ -199,6 +200,8 @@ export default function SettingsPage() {
       <PortfoliosManager societySlug={params.society} />
       <TitlesManager societySlug={params.society} />
       <RubricSettings societySlug={params.society} />
+
+      <DiscordWebhookSettings societySlug={params.society} />
     </div>
   );
 }

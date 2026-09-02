@@ -165,6 +165,10 @@ model Society {
   rubricSessionUpdatedAt DateTime?
   rubricSocietyId        String?
   rubricUnionSessionId   String?
+  // Discord webhook the exec queue posts to. Separate from discordUrl above, which is
+  // the public invite: anyone holding this can post into the channel as the society,
+  // so it is encrypted the same way as the Rubric session and never sent to a browser.
+  discordWebhookUrl      String?
   secretarialTier      SecretarialTier @default(BRONZE)
   // The academic year AHEGS is being collated for. Set in Settings because it does
   // not follow the calendar: a submission is prepared over one year and lodged at its
