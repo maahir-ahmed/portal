@@ -3,6 +3,9 @@
 # web config: a mounted file changes nothing compose can see, so an edit to it would
 # silently never reach the running container.
 FROM postgres:16-alpine
+# Without tzdata the container is UTC whatever TZ says, and BACKUP_HOUR=3 would mean
+# 3am UTC — the middle of a Sydney afternoon, backing up while people are using it.
+RUN apk add --no-cache tzdata
 COPY backup.sh /usr/local/bin/backup.sh
 RUN chmod +x /usr/local/bin/backup.sh
 ENTRYPOINT ["/usr/local/bin/backup.sh"]

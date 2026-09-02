@@ -97,6 +97,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       BACKUP_HOUR: ${BACKUP_HOUR:-3}
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      TZ: ${TZ:-Australia/Sydney}   # so BACKUP_HOUR means the local 3am
     volumes:
       - uploads_data:/uploads:ro
       - ${BACKUP_DIR:-../../rubric-backups}:/backups
