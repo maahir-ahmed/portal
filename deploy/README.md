@@ -43,9 +43,28 @@ Two stacks behind your existing cloudflared tunnel:
    ```
 
 ## Backups
+
+The `backup` service in each stack dumps the database and archives the uploads volume
+once a day, and once on start. No crontab: an earlier cron line lived here for months
+without ever being installed, and nothing was backed up.
+
+Files land in `${BACKUP_DIR}` (default `~/containers/rubric-backups`) as
+`<stack>_<date>.sql.gz` and `<stack>_uploads_<date>.tar.gz`, keeping
+`${BACKUP_KEEP_DAYS}` days (14). Change the hour with `BACKUP_HOUR` in the env file.
+
 ```bash
-crontab -e
-0 3 * * *  ~/containers/society-project/deploy/backup.sh >> ~/containers/rubric-backup.log 2>&1
+# back up right now
+docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml run --rm backup once
+# what it has been doing
+docker logs rubric_prod_backup
+
+# restore a database dump (stops the app first — it will not restore under load)
+gunzip -c ~/containers/rubric-backups/rubric_prod_2026-08-28_0300.sql.gz \
+  | docker exec -i rubric_prod-db-1 psql -U society_user -d society_platform
+
+# restore the uploads volume
+docker run --rm -v rubric_prod_uploads_data:/uploads -v ~/containers/rubric-backups:/b alpine \
+  tar xzf /b/rubric_prod_uploads_2026-08-28_0300.tar.gz -C /uploads
 ```
 
 ## Demo stack (no login)

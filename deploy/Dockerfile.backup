@@ -1,0 +1,8 @@
+# Same Postgres version as the db service, so pg_dump always matches the server it
+# is dumping. The script is baked in rather than mounted for the same reason as the
+# web config: a mounted file changes nothing compose can see, so an edit to it would
+# silently never reach the running container.
+FROM postgres:16-alpine
+COPY backup.sh /usr/local/bin/backup.sh
+RUN chmod +x /usr/local/bin/backup.sh
+ENTRYPOINT ["/usr/local/bin/backup.sh"]
