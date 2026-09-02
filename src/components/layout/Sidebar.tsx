@@ -18,6 +18,7 @@ import {
   GraduationCap,
   SquareKanban,
   Award,
+  ScrollText,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,12 @@ const navItems = [
     label: "Exec Queue",
     icon: Shield,
     tour: "queue",
+    minRole: "EXECUTIVE" as const,
+  },
+  {
+    href: "/executive/audit",
+    label: "Audit Log",
+    icon: ScrollText,
     minRole: "EXECUTIVE" as const,
   },
   {
