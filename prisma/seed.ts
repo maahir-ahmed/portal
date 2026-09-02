@@ -641,7 +641,9 @@ async function main() {
     for (const m of meetings) {
       // Two-page minutes: the attendance sheet on page 1 and the meeting after it,
       // which is the layout the AHEGS split relies on.
-      const minutes = { fileUrl: `/uploads/demo/${m.id}.pdf`, fileName: `${m.id}.pdf` };
+      // At the uploads root, not in demo/: the merge deliberately refuses any path
+      // with a slash in it, so a nested file would be skipped as unreadable.
+      const minutes = { fileUrl: `/uploads/${m.id}.pdf`, fileName: `${m.id}.pdf` };
       await prisma.ahegsMeeting.upsert({
         where: { id: m.id },
         update: minutes,
