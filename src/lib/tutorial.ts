@@ -68,7 +68,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "sidebar-society",
     title: "Society + your role",
     body:
-      "Your society's name, logo and colours (set in Settings), with your own role underneath. One account can belong to several societies; each has its own space.",
+      "Your society's name, logo and colours (set in Settings), with your own role underneath.",
   },
   {
     id: "sidebar-user",
@@ -81,7 +81,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "notifications",
     title: "Notifications",
     body:
-      "Refreshes every 30 seconds. A red dot means unread. Each entry links straight to the request that changed, and most also go out by email. “Mark all read” clears the dot.",
+      "Refreshes every 30 seconds. A red dot means unread. Each entry links straight to the request that changed. “Mark all read” clears the dot.",
   },
   {
     id: "page-help",
@@ -314,7 +314,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "treasury-rules",
     path: "/requests/treasury/new",
     target: "treasury-rules",
-    title: "The policy gate",
+    title: "Arc Policy",
     body:
       "Approval for the spend is a Discord conversation and has to happen before you buy. The rest still applies: no alcohol, no personal transport without written pre-approval, nothing older than three weeks, bonding money only once returned. You can save a draft without ticking the box, but you can't submit.",
   },
@@ -420,7 +420,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "printing-cost",
     target: "printing-cost",
-    title: "Live cost estimate",
+    title: "Cost Estimate",
     body:
       "Priced as you type: the highlighted rate above, times pages per copy, times copies. That figure is what gets deducted from the allowance if an exec approves the job.",
   },
@@ -603,7 +603,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Meetings and minutes",
     body:
-      "Log each meeting or workshop your group runs: name, date, how long it went, and who turned up. Directors file against their own portfolio; executives choose the exec team, any portfolio, or the whole committee, and see every group's meetings listed a portfolio at a time. Attach the minutes as a PDF — attendance sheet first, the meeting itself after it — and Arc's evidence builds itself over the year. Delete a meeting and everyone who attended loses those hours again.",
+      "Log each meeting or workshop your group runs: name, date, how long it went, and who turned up. Directors file against their own portfolio; executives choose the exec team, any portfolio, or the whole committee, and see every group's meetings listed a portfolio at a time. Attach minutes as a PDF, attendance on the first page, meeting itself after. Delete a meeting and everyone who attended loses those hours again.",
   },
   {
     id: "ahegs-roster",
