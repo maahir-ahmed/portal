@@ -639,9 +639,12 @@ async function main() {
     ];
 
     for (const m of meetings) {
+      // Two-page minutes: the attendance sheet on page 1 and the meeting after it,
+      // which is the layout the AHEGS split relies on.
+      const minutes = { fileUrl: `/uploads/demo/${m.id}.pdf`, fileName: `${m.id}.pdf` };
       await prisma.ahegsMeeting.upsert({
         where: { id: m.id },
-        update: {},
+        update: minutes,
         create: {
           id: m.id,
           societyId: society.id,

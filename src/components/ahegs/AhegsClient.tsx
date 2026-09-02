@@ -339,6 +339,28 @@ export function AhegsClient({
                       <Download className="h-3.5 w-3.5" /> Download list
                     </a>
                   </Button>
+                  {/* The year's minutes in one file, for the committee's own records.
+                      Separate from the evidence slots below: executives need no Arc
+                      evidence at all, so their minutes had nowhere to be downloaded from. */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["ATTENDANCE", "COMMITMENT"] as const).map((kind) => {
+                      const src = sourcesFor(category, kind);
+                      const label = kind === "ATTENDANCE" ? "Attendance" : "Minutes";
+                      return src > 0 ? (
+                        <Button key={kind} asChild size="sm" variant="outline" className="gap-1.5 text-xs"
+                                title={`From ${src} set${src === 1 ? "" : "s"} of minutes`}>
+                          <a href={`${base}/minutes?year=${year}&category=${category}&kind=${kind}`}>
+                            <FileText className="h-3.5 w-3.5" /> {label}
+                          </a>
+                        </Button>
+                      ) : (
+                        <Button key={kind} size="sm" variant="outline" className="gap-1.5 text-xs" disabled
+                                title="No uploaded minutes for this category yet">
+                          <FileText className="h-3.5 w-3.5" /> {label}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             );
