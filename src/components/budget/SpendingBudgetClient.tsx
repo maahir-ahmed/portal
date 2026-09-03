@@ -250,8 +250,11 @@ function ClaimsTable({ categories, transactions, onReclassify, societySlug }: {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground tabnums">
+                {/* When filtering, the noun follows the total, not the shown count:
+                    "1 of 5 claims", never "1 of 5 claim". */}
                 {filtering ? `${shown.length} of ${transactions.length}` : shown.length}
-                {shown.length === 1 ? " claim" : " claims"} · {formatCurrency(total)} counted
+                {(filtering ? transactions.length : shown.length) === 1 ? " claim" : " claims"}
+                {" · "}{formatCurrency(total)} counted
               </p>
             </div>
             {shown.length === 0 ? (
