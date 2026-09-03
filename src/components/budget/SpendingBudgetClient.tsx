@@ -182,13 +182,81 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
         </CardContent>
       </Card>
 
-      {canEdit && (
+      {canEdit && <ClaimsTable {...{ categories, transactions, onReclassify, societySlug }} />}
+    </div>
+  );
+}
+
+// ── Treasury claims, filterable by category and sortable ──────────────────────
+const ALL = "__all__";
+type ClaimSort = "date-desc" | "date-asc" | "amount-desc" | "amount-asc";
+const SORTS: { value: ClaimSort; label: string }[] = [
+  { value: "date-desc", label: "Newest first" },
+  { value: "date-asc", label: "Oldest first" },
+  { value: "amount-desc", label: "Amount: high to low" },
+  { value: "amount-asc", label: "Amount: low to high" },
+];
+
+function ClaimsTable({ categories, transactions, onReclassify, societySlug }: {
+  categories: Category[]; transactions: Txn[];
+  onReclassify: (id: string, cat: string | null) => void; societySlug: string;
+}) {
+  const [categoryFilter, setCategoryFilter] = useState<string>(ALL);
+  const [sort, setSort] = useState<ClaimSort>("date-desc");
+
+  const filtered = transactions.filter((t) =>
+    categoryFilter === ALL
+      ? true
+      : categoryFilter === UNCLASSIFIED
+        ? t.budgetCategoryId === null
+        : t.budgetCategoryId === categoryFilter
+  );
+
+  const shown = [...filtered].sort((a, b) => {
+    switch (sort) {
+      case "amount-desc": return b.amount - a.amount;
+      case "amount-asc": return a.amount - b.amount;
+      case "date-asc": return new Date(a.date).getTime() - new Date(b.date).getTime();
+      default: return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+  });
+
+  // Rejected claims are struck through in the table and excluded here for the same
+  // reason: the point of narrowing to a category is seeing what it actually spent.
+  const total = Math.round(shown.filter((t) => t.counts).reduce((s, t) => s + t.amount, 0) * 100) / 100;
+  const filtering = categoryFilter !== ALL;
+
+  return (
       <Card data-tour="budget-claims">
         <CardHeader className="pb-3"><CardTitle className="text-base">Treasury Claims</CardTitle></CardHeader>
         <CardContent>
           {transactions.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">No treasury claims yet.</p>
           ) : (
+            <>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="h-9 w-[13rem]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All categories</SelectItem>
+                  <SelectItem value={UNCLASSIFIED}>Unclassified</SelectItem>
+                  {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={sort} onValueChange={(v) => setSort(v as ClaimSort)}>
+                <SelectTrigger className="h-9 w-[12rem]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SORTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground tabnums">
+                {filtering ? `${shown.length} of ${transactions.length}` : shown.length}
+                {shown.length === 1 ? " claim" : " claims"} · {formatCurrency(total)} counted
+              </p>
+            </div>
+            {shown.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No claims in that category.</p>
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -202,7 +270,7 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((t) => (
+                  {shown.map((t) => (
                     <tr key={t.id} className="border-b last:border-0">
                       <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{formatDate(t.date)}</td>
                       <td className="py-2 pr-3">
@@ -227,15 +295,15 @@ function CurrentYearView({ categories, transactions, totalBudget, totalUsage, on
                   ))}
                 </tbody>
               </table>
-              <p className="text-xs text-muted-foreground mt-3">
-                Struck-through amounts (rejected claims) don’t count toward spend. Drafts are excluded entirely.
-              </p>
             </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">
+              Struck-through amounts (rejected claims) don’t count toward spend. Drafts are excluded entirely.
+            </p>
+            </>
           )}
         </CardContent>
       </Card>
-      )}
-    </div>
   );
 }
 
