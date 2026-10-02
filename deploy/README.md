@@ -2,7 +2,9 @@
 
 Two stacks behind your existing cloudflared tunnel:
 - `main` branch → **rubric_prod** → your production hostname (private, login required)
-- `dev` branch → **rubric_dev** → your demo hostname (public showcase, `DEMO_MODE=1`)
+- `demo` branch → **rubric_dev** → your demo hostname (public showcase, `DEMO_MODE=1`)
+
+`dev` is the working branch and deploys nowhere. Move the demo forward by merging into `demo`.
 
 ## One-time setup
 
@@ -31,7 +33,7 @@ Two stacks behind your existing cloudflared tunnel:
    ```
    The runner needs docker access (its user in the `docker` group).
 
-6. **First deploy:** push to `dev` and `main`, or run manually:
+6. **First deploy:** push to `demo` and `main`, or run manually:
    ```bash
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build --remove-orphans
    ```

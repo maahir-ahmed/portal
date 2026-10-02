@@ -1,10 +1,13 @@
-# Self-hosted runner on the mini PC. push to main -> prod, push to dev -> dev.
+# Self-hosted runner on the mini PC. push to main -> prod, push to demo -> the public
+# demo stack. dev is the working branch and deploys nowhere. The demo stack keeps the
+# rubric_dev project name and deploy/.env.dev so its containers, volumes and nginx
+# upstream are untouched by the branch switch.
 # Deploys from the PERSISTENT clone (~/containers/society-project) which holds the
 # gitignored .env files and the named volumes, NOT the runner's throwaway checkout.
 name: Deploy
 on:
   push:
-    branches: [main, dev]
+    branches: [main, demo]
 
 jobs:
   deploy:
