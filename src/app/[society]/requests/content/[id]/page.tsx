@@ -13,7 +13,7 @@ import { RubricForm } from "./RubricForm";
 import { RubricQrCode } from "@/components/requests/RubricQrCode";
 import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog";
 import { AssignRubricEvent } from "@/components/requests/AssignRubricEvent";
-import { formatDate, formatDateTime, formatTimeRange } from "@/lib/utils";
+import { formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
 import { ArrowLeft, Calendar, MapPin, Clock, Hourglass, QrCode, ExternalLink, Send, Pencil } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
@@ -75,7 +75,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
             <StatusBadge status={request.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Submitted by {request.submittedBy.name} · {formatDateTime(request.createdAt)}
+            Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt)}
           </p>
         </div>
         {canEdit && (
@@ -200,7 +200,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
                   <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                     <Send className="h-4 w-4 flex-shrink-0" />
                     <span>
-                      Submitted to Rubric on {formatDateTime(request.rubricSubmittedAt)}.
+                      Submitted to Rubric on {formatTimestamp(request.rubricSubmittedAt)}.
                       Check your Rubric portal for the live event link.
                     </span>
                   </div>

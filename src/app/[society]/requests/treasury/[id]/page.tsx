@@ -13,7 +13,7 @@ import { ClaimCategoryCard } from "@/components/requests/ClaimCategoryCard";
 import { SubmitClaimButton } from "@/components/requests/SubmitClaimButton";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
-import { formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, formatTimestamp } from "@/lib/utils";
 import { ArrowLeft, Receipt, FileText, MessagesSquare } from "lucide-react";
 import type { TreasuryStatus } from "@prisma/client";
 
@@ -82,7 +82,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
             <StatusBadge status={request.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Submitted by {request.submittedBy.name} · {formatDateTime(request.createdAt)}
+            Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt)}
           </p>
         </div>
         {canEdit && (

@@ -10,7 +10,7 @@ import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
 import { BookedRoomCard } from "@/components/requests/BookedRoomCard";
-import { formatDate, formatDateTime, isLateArcSubmission, EVENT_TYPE_LABELS } from "@/lib/utils";
+import { formatDate, isLateArcSubmission, EVENT_TYPE_LABELS, formatTimestamp } from "@/lib/utils";
 import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil, Tag, DoorOpen } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
@@ -80,7 +80,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
             <StatusBadge status={booking.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Submitted by {booking.submittedBy.name} · {formatDateTime(booking.createdAt)}
+            Submitted by {booking.submittedBy.name} · {formatTimestamp(booking.createdAt)}
           </p>
         </div>
         {canEdit && (
