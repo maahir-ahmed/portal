@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { AhegsClient } from "@/components/ahegs/AhegsClient";
 import { ahegsScope, canTouchPortfolio, resolveRow } from "@/lib/ahegs";
-import { Award } from "lucide-react";
+import { ahegsYearOf, FIRST_YEAR, parseYear } from "@/lib/years";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -25,17 +25,18 @@ export default async function AhegsPage({ params, searchParams }: Props) {
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
     include: {
-      society: { select: { name: true, ahegsYear: true } },
+      society: { select: { name: true } },
       user: { select: { name: true, email: true, zId: true, phone: true } },
     },
   });
   if (!membership || membership.role === "SUBCOMMITTEE") redirect(`/${societySlug}/dashboard`);
 
   const scope = ahegsScope(membership.role, membership.portfolioId);
-  // The settings value is the club's "current" year; the calendar is only a fallback.
-  const defaultYear = membership.society.ahegsYear ?? new Date().getFullYear();
-  const parsed = Number(yearParam);
-  const year = Number.isInteger(parsed) && parsed > 2000 && parsed < 2100 ? parsed : defaultYear;
+  // AHEGS years end with Term 3 (src/lib/years.ts), so the page rolls over to the next
+  // year only once this year's Term 3 is over, not on 1 January.
+  const calendar = await prisma.societyYear.findMany({ where: { societyId: membership.societyId } });
+  const defaultYear = ahegsYearOf(calendar, new Date());
+  const year = parseYear(yearParam) ?? defaultYear;
 
   const [memberships, entries, evidence, allMeetings, portfolios] = await Promise.all([
     prisma.societyMembership.findMany({
@@ -121,9 +122,6 @@ export default async function AhegsPage({ params, searchParams }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-          <Award className="h-5 w-5 text-primary-foreground" />
-        </div>
         <div>
           <h1 className="text-2xl font-bold">AHEGS</h1>
           <p className="text-sm text-muted-foreground">
@@ -137,7 +135,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
       <AhegsClient
         societySlug={societySlug}
         year={year}
-        years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2]}
+        years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2].filter((y) => y >= FIRST_YEAR)}
         scope={scope}
         rows={rows}
         meetings={meetings}

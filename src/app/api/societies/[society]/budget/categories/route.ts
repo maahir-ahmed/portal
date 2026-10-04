@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
-import { serialiseCategory } from "@/lib/budget";
+import { allocationData, allocationSchema, ensureAllocations, serialiseCategory } from "@/lib/budget";
 
 // List budget categories (any member, the treasury form needs them too).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -13,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
+  await ensureAllocations(membership!.societyId);
   const categories = await prisma.budgetCategory.findMany({
     where: { societyId: membership!.societyId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -20,21 +21,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
   return NextResponse.json(categories.map(serialiseCategory));
 }
 
-const nullableMoney = z.number().min(0).nullable().optional();
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   group: z.enum(["PORTFOLIO", "OTHER"]).optional(),
-  yearlyBudget: z.number().min(0).default(0),
-  budget2024: nullableMoney,
-  budget2024v2: nullableMoney,
-  budget2025: nullableMoney,
-  usage2025: nullableMoney,
-  worstCase: nullableMoney,
+  // Omitted while the chosen year's budget hasn't been set, so the new category waits
+  // in the set-budget form rather than making the year look set.
+  allocation: allocationSchema.optional(),
   reasoning: z.string().max(5000).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
 });
 
-// Create a category (exec only).
+// Create a category (exec only), with its amount for the year being viewed.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
@@ -43,10 +40,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   if (memErr) return memErr;
 
   try {
-    const body = createSchema.parse(await req.json());
+    const { allocation, ...body } = createSchema.parse(await req.json());
     const count = await prisma.budgetCategory.count({ where: { societyId: membership!.societyId } });
     const created = await prisma.budgetCategory.create({
-      data: { societyId: membership!.societyId, sortOrder: count, ...body },
+      data: {
+        societyId: membership!.societyId, sortOrder: count, ...body,
+        ...(allocation && { allocations: { create: await allocationData(membership!.societyId, allocation) } }),
+      },
     });
     await createAuditLog({
       societyId: membership!.societyId,

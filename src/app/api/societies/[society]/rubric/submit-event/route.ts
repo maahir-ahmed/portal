@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { z } from "zod";
+import { syncEventToDiscord } from "@/lib/discordEvents";
 
 // The Rubric submitEvent call itself goes through the server proxy
 // (/rubric/call, allowlisted and executive-only). This route only stamps the
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         rubricEventLink: parsed.data.rubricEventLink,
       },
     });
+    await syncEventToDiscord(parsed.data.contentRequestId);
   }
 
   return NextResponse.json({ ok: true });

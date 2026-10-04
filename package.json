@@ -12,6 +12,7 @@
     "check:passphrase": "npx tsx scripts/check-passphrase.ts",
     "check:ahegs": "npx tsx scripts/check-ahegs.ts",
     "check:bookings": "npx tsx scripts/check-bookings.ts",
+    "check:years": "npx tsx scripts/check-years.ts",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",

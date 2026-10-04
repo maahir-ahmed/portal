@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createNotification } from "@/lib/notifications";
+import { syncEventToDiscord } from "@/lib/discordEvents";
 import { createAuditLog } from "@/lib/audit";
 
 type Params = { society: string; id: string };
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     body: "An executive has attached the Rubric event link and QR code to your request.",
     link: `/requests/content/${id}`,
   });
+
+  await syncEventToDiscord(id); // ticks the Rubric event off in the marketing channel
 
   return NextResponse.json(updated);
 }

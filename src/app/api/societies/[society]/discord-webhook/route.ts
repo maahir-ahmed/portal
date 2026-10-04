@@ -9,6 +9,13 @@ import { z } from "zod";
 // back to the browser — anyone holding it can post into the channel as the society,
 // so this reports only whether one is set, the same shape as the Rubric credentials.
 
+// Two webhooks share this route, picked by ?channel=: the exec queue (default) and the
+// marketing events channel, which also has a role to ping on each new request.
+type Channel = "queue" | "events";
+const channelOf = (req: NextRequest): Channel =>
+  req.nextUrl.searchParams.get("channel") === "events" ? "events" : "queue";
+const COLUMN = { queue: "discordWebhookUrl", events: "eventsWebhookUrl" } as const;
+
 async function requireExec(userId: string, society: string) {
   const { membership, error } = await requireMembership(userId, society);
   if (error) return { error };
@@ -18,19 +25,23 @@ async function requireExec(userId: string, society: string) {
   return { membership };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
   const { society } = await params;
   const { membership, error } = await requireExec(session!.user.id, society);
   if (error) return error;
 
+  const channel = channelOf(req);
   const soc = await prisma.society.findUnique({
     where: { id: membership!.societyId },
-    select: { discordWebhookUrl: true },
+    select: { discordWebhookUrl: true, eventsWebhookUrl: true, eventsWebhookRoleId: true },
   });
 
-  return NextResponse.json({ configured: !!soc?.discordWebhookUrl });
+  return NextResponse.json({
+    configured: !!soc?.[COLUMN[channel]],
+    ...(channel === "events" ? { roleId: soc?.eventsWebhookRoleId ?? null } : {}),
+  });
 }
 
 // null disconnects, so a webhook that leaks or points at the wrong channel can be
@@ -45,7 +56,12 @@ const schema = z.object({
       (u) => /^https:\/\/(canary\.|ptb\.)?discord(app)?\.com\/api\/webhooks\//.test(u),
       "That is not a Discord webhook URL"
     )
-    .nullable(),
+    .nullable()
+    .optional(), // left out when only the events role is being changed
+  // Events channel only. A Discord role ID (a snowflake); "" or null clears it.
+  roleId: z
+    .union([z.string().regex(/^\d{17,20}$/, "A role ID is the 17 to 20 digit number from Copy Role ID"), z.literal(""), z.null()])
+    .optional(),
 });
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -65,9 +81,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  const channel = channelOf(req);
   await prisma.society.update({
     where: { id: membership!.societyId },
-    data: { discordWebhookUrl: body.webhookUrl ? encryptSecret(body.webhookUrl) : null },
+    data: {
+      // undefined leaves the URL alone, so the role can be changed without re-pasting it.
+      ...(body.webhookUrl !== undefined
+        ? { [COLUMN[channel]]: body.webhookUrl ? encryptSecret(body.webhookUrl) : null }
+        : {}),
+      ...(channel === "events" && body.roleId !== undefined ? { eventsWebhookRoleId: body.roleId || null } : {}),
+    },
   });
 
   await createAuditLog({
@@ -76,32 +99,41 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     action: "UPDATE",
     entityType: "DiscordWebhook",
     entityId: membership!.societyId,
-    metadata: { configured: !!body.webhookUrl },
+    metadata: { channel, configured: !!body.webhookUrl },
   });
 
-  return NextResponse.json({ configured: !!body.webhookUrl });
+  const soc = await prisma.society.findUnique({
+    where: { id: membership!.societyId },
+    select: { discordWebhookUrl: true, eventsWebhookUrl: true, eventsWebhookRoleId: true },
+  });
+  return NextResponse.json({
+    configured: !!soc?.[COLUMN[channel]],
+    ...(channel === "events" ? { roleId: soc?.eventsWebhookRoleId ?? null } : {}),
+  });
 }
 
 // Fires a test post, so an exec finds out the webhook works now rather than when the
 // first real submission quietly fails to appear.
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
   const { society } = await params;
   const { membership, error } = await requireExec(session!.user.id, society);
   if (error) return error;
 
+  const channel = channelOf(req);
   const soc = await prisma.society.findUnique({
     where: { id: membership!.societyId },
-    select: { discordWebhookUrl: true, name: true },
+    select: { discordWebhookUrl: true, eventsWebhookUrl: true, eventsWebhookRoleId: true, name: true },
   });
-  if (!soc?.discordWebhookUrl) {
+  const stored = soc?.[COLUMN[channel]];
+  if (!soc || !stored) {
     return NextResponse.json({ error: "No webhook saved yet" }, { status: 400 });
   }
 
   let url: string;
   try {
-    url = decryptSecret(soc.discordWebhookUrl);
+    url = decryptSecret(stored);
   } catch {
     return NextResponse.json({ error: "The saved webhook could not be read" }, { status: 500 });
   }
@@ -113,10 +145,16 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ so
       signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
         username: "Society Portal",
+        // Shows the role tag so you can check it's the right role, without pinging it.
+        ...(channel === "events" && soc.eventsWebhookRoleId
+          ? { content: `New requests will ping <@&${soc.eventsWebhookRoleId}>.`, allowed_mentions: { roles: [] } }
+          : {}),
         embeds: [
           {
             title: "Webhook connected",
-            description: `${session!.user.name} sent this test from ${soc.name}'s portal. Exec queue notifications will arrive here.`,
+            description: `${session!.user.name} sent this test from ${soc.name}'s portal. ${
+              channel === "events" ? "New event and marketing requests" : "Exec queue notifications"
+            } will arrive here.`,
             color: 0x00ffd1,
             timestamp: new Date().toISOString(),
           },

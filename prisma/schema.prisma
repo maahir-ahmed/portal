@@ -169,12 +169,18 @@ model Society {
   // the public invite: anyone holding this can post into the channel as the society,
   // so it is encrypted the same way as the Rubric session and never sent to a browser.
   discordWebhookUrl      String?
+  // A second webhook, for marketing: every submitted event request is posted there in
+  // full and kept up to date (src/lib/discordEvents.ts). Encrypted like the one above.
+  eventsWebhookUrl       String?
+  // The Discord role pinged on each new request (the marketing director role). A role
+  // ID, not a secret; Discord only pings a role by its numeric ID.
+  eventsWebhookRoleId    String?
   secretarialTier      SecretarialTier @default(BRONZE)
   // The academic year AHEGS is being collated for. Set in Settings because it does
   // not follow the calendar: a submission is prepared over one year and lodged at its
   // end, so the page must not roll over to a new, empty year on 1 January. Null falls
   // back to the calendar year.
-  ahegsYear            Int?
+  ahegsYear            Int?   // superseded by SocietyYear.term3End; unread, kept so db push drops nothing
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -192,6 +198,26 @@ model Society {
   ahegsEntries     AhegsEntry[]
   ahegsEvidence    AhegsEvidence[]
   ahegsMeetings    AhegsMeeting[]
+  years            SocietyYear[]
+}
+
+// The two dates each year that decide which year a record belongs to. Records keep
+// only their own date (expense date, meeting date), and every page buckets them by
+// these at read time, so a past year stays viewable as-is and a new year needs only
+// its dates. Events need neither: they go by calendar year. See src/lib/years.ts.
+model SocietyYear {
+  id        String    @id @default(cuid())
+  societyId String
+  year      Int
+  // The AGM held in this year's Term 3 closes this financial year and opens the next
+  // one, which is named after the following year (Oct 2025 AGM opens "2026").
+  agmDate   DateTime?
+  // AHEGS year N runs from the end of Term 3 in N-1 to the end of Term 3 in N.
+  term3End  DateTime?
+
+  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@unique([societyId, year])
 }
 
 model User {
@@ -227,6 +253,7 @@ model User {
   auditLogs         AuditLog[]
   boardCards        BoardCard[]
   ahegsMeetings     AhegsMeeting[]
+  eventPhotos       EventPhoto[]
 }
 
 model SocietyMembership {
@@ -331,6 +358,9 @@ model ContentRequest {
   rubricSubmittedAt DateTime?
   activityGrantStatus ActivityGrantStatus @default(NOT_SUBMITTED)
   finishedBlurb   String?              @db.Text   // marketing pastes the final event blurb here
+  // The events-webhook message this request was posted as, so an edit here edits it
+  // there instead of posting again. Null until the request is first submitted.
+  discordMessageId String?
   bannerDone      Boolean              @default(false)
   blurbDone       Boolean              @default(false)
   createdAt       DateTime             @default(now())
@@ -341,9 +371,27 @@ model ContentRequest {
   assignedTo   User?   @relation("ContentRequestAssignee", fields: [assignedToId], references: [id])
   thread       Thread?
   deliverables ContentDeliverable[]
+  photos       EventPhoto[]
+  expenses     TreasuryRequest[]
 
   @@index([societyId])
   @@index([status])
+}
+
+// Photos taken at the event. Arc's activity grant asks for evidence the event ran,
+// so these are uploaded after the fact, by anyone who can edit the event.
+model EventPhoto {
+  id               String   @id @default(cuid())
+  contentRequestId String
+  fileName         String
+  fileUrl          String
+  uploadedById     String
+  uploadedAt       DateTime @default(now())
+
+  contentRequest ContentRequest @relation(fields: [contentRequestId], references: [id], onDelete: Cascade)
+  uploadedBy     User           @relation(fields: [uploadedById], references: [id])
+
+  @@index([contentRequestId])
 }
 
 // Finished graphics/banners uploaded by marketing, for download.
@@ -411,6 +459,8 @@ model TreasuryRequest {
   amount           Decimal        @db.Decimal(10, 2)
   bankAccountId    String?
   budgetCategoryId String?
+  // The event this was spent on, if any. Deleting the event keeps the claim.
+  contentRequestId String?
   status           TreasuryStatus @default(DRAFT)
   acknowledgedRules Boolean       @default(false)
   createdAt        DateTime       @default(now())
@@ -420,12 +470,14 @@ model TreasuryRequest {
   submittedBy    User                 @relation("TreasurySubmitter", fields: [submittedById], references: [id])
   bankAccount    BankAccount?         @relation(fields: [bankAccountId], references: [id])
   budgetCategory BudgetCategory?      @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+  contentRequest ContentRequest?      @relation(fields: [contentRequestId], references: [id], onDelete: SetNull)
   receipts       TreasuryAttachment[]
   thread         Thread?
 
   @@index([societyId])
   @@index([status])
   @@index([budgetCategoryId])
+  @@index([contentRequestId])
 }
 
 model TreasuryAttachment {
@@ -594,7 +646,11 @@ model BudgetCategory {
   societyId    String
   name         String
   group        String   @default("PORTFOLIO") // "PORTFOLIO" | "OTHER", for subtotals
-  yearlyBudget Decimal  @default(0) @db.Decimal(10, 2) // the current-year (2026) budget
+  // LEGACY: one column per hard-coded year, before amounts moved to BudgetAllocation.
+  // Copied across by ensureAllocations (src/lib/budget.ts) and no longer read.
+  // ponytail: kept so db push drops nothing; delete these and that shim once every
+  // stack has opened its budget page on this version.
+  yearlyBudget Decimal  @default(0) @db.Decimal(10, 2)
   budget2024   Decimal? @db.Decimal(10, 2)
   budget2024v2 Decimal? @db.Decimal(10, 2)
   budget2025   Decimal? @db.Decimal(10, 2)
@@ -608,9 +664,30 @@ model BudgetCategory {
 
   society          Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
   treasuryRequests TreasuryRequest[]
+  allocations      BudgetAllocation[]
 
   @@unique([societyId, name])
   @@index([societyId])
+}
+
+// One category's budget for one financial year (AGM to AGM, see SocietyYear). A year
+// with no rows has not been set yet, which is what prompts the budget page to ask.
+model BudgetAllocation {
+  id         String   @id @default(cuid())
+  categoryId String
+  year       Int
+  amount     Decimal  @db.Decimal(10, 2)
+  // A mid-year revision of the amount, when the committee changed it (2024 had one).
+  revised    Decimal? @db.Decimal(10, 2)
+  worstCase  Decimal? @db.Decimal(10, 2)
+  // What was actually spent, typed in for years before claims lived in this app.
+  // When null, usage is summed from that year's claims instead.
+  actualUsage Decimal? @db.Decimal(10, 2)
+  updatedAt  DateTime @updatedAt
+
+  category BudgetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, year])
 }
 
 // ─── AHEGS ────────────────────────────────────────────────────────────────────

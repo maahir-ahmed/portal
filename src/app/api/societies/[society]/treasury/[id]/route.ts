@@ -16,6 +16,8 @@ const EDITABLE_STATUSES: TreasuryStatus[] = ["DRAFT", "REIMBURSEMENT_PENDING"];
 const patchSchema = z.object({
   status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING", "REJECTED", "REIMBURSED"]).optional(),
   budgetCategoryId: z.string().min(1).nullable().optional(),
+  // The event this was spent on. null = unlink.
+  contentRequestId: z.string().min(1).nullable().optional(),
   contactEmail: z.string().email().optional(),
   // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
   // new Date() would turn into an Invalid Date.
@@ -26,6 +28,8 @@ const patchSchema = z.object({
   amount: z.number().nonnegative().finite().optional(),
   addReceipts: z.array(z.object({ fileName: z.string().optional(), fileUrl: z.string().min(1) })).optional(),
   removeReceiptIds: z.array(z.string()).optional(),
+  // Sent with a draft submit when the policy wasn't ticked at draft time.
+  acknowledgedRules: z.literal(true).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
@@ -70,6 +74,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         { status: 400 }
       );
     }
+    // Same rule as the new-claim form: no submit without the policy acknowledged.
+    if (!request.acknowledgedRules && !body.acknowledgedRules) {
+      return NextResponse.json({ error: "Acknowledge the reimbursement policy before submitting." }, { status: 400 });
+    }
   }
 
   // Only execs classify a claim into a budget category. null = unclassify.
@@ -85,8 +93,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     }
   }
 
+  // A linked event must belong to this society. Unlike the category, the submitter
+  // sets this themselves, so it is an ordinary field edit (canEdit below).
+  if (body.contentRequestId) {
+    const event = await prisma.contentRequest.findUnique({ where: { id: body.contentRequestId } });
+    if (!event || event.societyId !== membership!.societyId) {
+      return NextResponse.json({ error: "Invalid event" }, { status: 400 });
+    }
+  }
+
   const editsFields =
-    [body.contactEmail, body.expenseDate, body.locationSupplier, body.description, body.amount]
+    [body.contactEmail, body.expenseDate, body.locationSupplier, body.description, body.amount, body.contentRequestId]
       .some((v) => v !== undefined) ||
     Array.isArray(body.addReceipts) || Array.isArray(body.removeReceiptIds);
   if (editsFields && !canEdit) {
@@ -102,7 +119,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
       ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
       ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
+      ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
       ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
+      ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
     },
   });
 

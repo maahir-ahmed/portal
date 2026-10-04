@@ -10,22 +10,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Upload, X, FileText, Loader2 } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 interface Receipt { id: string; fileName: string; fileUrl: string; }
+interface LinkableEvent { id: string; eventName: string; startDate: string; }
+
+const NO_EVENT = "__none__";
+
+// Event times are wall-clock stored as UTC (see dtLocal in ContentRequestForm), so drop
+// the "Z" and read them as local; otherwise an evening event shows as the next day here.
+const eventDate = (iso: string) => formatDate(iso.slice(0, 19));
 
 interface Props {
   societySlug: string;
   requestId: string;
   initial: { description: string; amount: number; expenseDate: string; locationSupplier: string; contactEmail: string };
   receipts: Receipt[];
+  // The currently linked event, passed in so it stays selectable even once it falls
+  // outside what /events lists (older than its window, or since cancelled).
+  linkedEvent: LinkableEvent | null;
 }
 
 function toDateInput(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export function EditTreasuryClaim({ societySlug, requestId, initial, receipts }: Props) {
+export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, linkedEvent }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -37,10 +49,27 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts }:
   const [expenseDate, setExpenseDate] = useState(toDateInput(initial.expenseDate));
   const [locationSupplier, setLocationSupplier] = useState(initial.locationSupplier);
   const [contactEmail, setContactEmail] = useState(initial.contactEmail);
+  const [eventId, setEventId] = useState(linkedEvent?.id ?? NO_EVENT);
+  const [events, setEvents] = useState<LinkableEvent[]>([]);
 
   const [existing, setExisting] = useState<Receipt[]>(receipts);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<{ fileName: string; fileUrl: string }[]>([]);
+
+  // Fetched on first open, not on page load: most views of a claim never edit it.
+  const [eventsLoaded, setEventsLoaded] = useState(false);
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    if (!next || eventsLoaded) return;
+    setEventsLoaded(true);
+    fetch(`/api/societies/${societySlug}/events`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setEvents(Array.isArray(data) ? data : []))
+      .catch(() => setEvents([]));
+  }
+
+  const eventOptions =
+    linkedEvent && !events.some((e) => e.id === linkedEvent.id) ? [linkedEvent, ...events] : events;
 
   async function handleFiles(files: FileList) {
     setUploading(true);
@@ -69,6 +98,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts }:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         description, amount: Number(amount), expenseDate, locationSupplier, contactEmail,
+        contentRequestId: eventId === NO_EVENT ? null : eventId,
         addReceipts: newFiles,
         removeReceiptIds: removedIds,
       }),
@@ -85,7 +115,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts }:
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5"><Pencil className="h-3.5 w-3.5" /> Edit claim</Button>
       </DialogTrigger>
@@ -117,6 +147,18 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts }:
           <div className="space-y-1.5">
             <Label htmlFor="e-email">Contact email</Label>
             <Input id="e-email" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Event</Label>
+            <Select value={eventId} onValueChange={setEventId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_EVENT}>No event</SelectItem>
+                {eventOptions.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{e.eventName}, {eventDate(e.startDate)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

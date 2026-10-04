@@ -92,9 +92,7 @@ export default async function AuditLogPage({ params, searchParams }: Props) {
   return (
     <div className="max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ScrollText className="h-5 w-5" /> Audit Log
-        </h1>
+        <h1 className="text-2xl font-bold">Audit Log</h1>
         <p className="text-muted-foreground text-sm mt-0.5">
           Every recorded action in this society, newest first. {total} {total === 1 ? "entry" : "entries"}.
         </p>

@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { YearPicker } from "@/components/shared/YearPicker";
+import { eventYearRange, parseYear, yearOptions } from "@/lib/years";
 import { formatDate, formatTimeRange, statusLabel, cn } from "@/lib/utils";
 import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, Clock, MapPin } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
 interface Props {
   params: Promise<{ society: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; year?: string }>;
 }
 
 // Tab order: ASSIGNED / Awaiting exec action removed; "Need more information" sits before In Progress.
@@ -48,7 +50,7 @@ function daysLabel(dueDate: Date, status: string): string | null {
 
 export default async function ContentRequestsPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
-  const { status } = await searchParams;
+  const { status, year: yearParam } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -58,10 +60,23 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
   if (!membership) redirect("/");
 
   const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
-  const scope = {
+  const owner = {
     societyId: membership.societyId,
     ...(!canSeeAll ? { submittedById: session.user.id } : {}),
   };
+
+  // Events go by calendar year (src/lib/years.ts). The picker offers every year from the
+  // first event to whichever is later of this year and the furthest-out event.
+  const thisYear = new Date().getUTCFullYear();
+  const year = parseYear(yearParam) ?? thisYear;
+  const { start, end } = eventYearRange(year);
+  const scope = { ...owner, startDate: { gte: start, lt: end } };
+  const span = await prisma.contentRequest.aggregate({ where: owner, _min: { startDate: true }, _max: { startDate: true } });
+  const years = yearOptions(
+    span._min.startDate?.getUTCFullYear() ?? null,
+    Math.max(thisYear, span._max.startDate?.getUTCFullYear() ?? thisYear)
+  ).map((y) => ({ value: y, label: String(y) }));
+  const withYear = (qs: string) => `/${societySlug}/requests/content?${qs}${qs ? "&" : ""}year=${year}`;
 
   const [rows, counts] = await Promise.all([
     prisma.contentRequest.findMany({
@@ -86,9 +101,9 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Content Requests / Events</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Events &amp; Content Requests</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Marketing &amp; promotional requests, linked to Rubric events</p>
         </div>
         <Button asChild data-tour="content-new">
@@ -98,15 +113,19 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
         </Button>
       </div>
 
-      {/* Status filter with counts */}
+      <div data-tour="content-year" className="w-fit">
+        <YearPicker years={years} value={year} label="Events in" />
+      </div>
+
+      {/* Status filter with counts, for the chosen year */}
       <div data-tour="content-tabs" className="flex gap-2 flex-wrap">
-        <Link href={`/${societySlug}/requests/content`}>
+        <Link href={withYear("")}>
           <Button variant={!status ? "default" : "outline"} size="sm" className="gap-1.5">
             All <span className={cn("tabnums text-xs", !status ? "opacity-70" : "text-muted-foreground")}>{totalCount}</span>
           </Button>
         </Link>
         {TABS.map((s) => (
-          <Link key={s} href={`/${societySlug}/requests/content?status=${s}`}>
+          <Link key={s} href={withYear(`status=${s}`)}>
             <Button variant={status === s ? "default" : "outline"} size="sm" className="gap-1.5">
               {statusLabel(s)}
               <span className={cn("tabnums text-xs", status === s ? "opacity-70" : "text-muted-foreground")}>{countFor(s)}</span>
@@ -120,7 +139,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
         <Card>
           <CardContent className="py-12 flex flex-col items-center gap-3">
             <FileText className="h-8 w-8 text-muted-foreground" />
-            <p className="text-muted-foreground">No content requests found.</p>
+            <p className="text-muted-foreground">No events or content requests in {year}{status ? ` with this status` : ""}.</p>
             <Button asChild size="sm">
               <Link href={`/${societySlug}/requests/content/new`}>Create your first request</Link>
             </Button>
@@ -134,7 +153,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`} data-tour={i === 0 ? "content-card" : undefined}>
                 <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityClasses(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:items-start min-[400px]:justify-between min-[400px]:gap-4">
                       <div className="flex items-start gap-3 min-w-0">
                         <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
                         <div className="min-w-0">
@@ -157,7 +176,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <div className="flex flex-row flex-wrap items-center pl-9 min-[400px]:pl-0 min-[400px]:flex-col min-[400px]:items-end gap-1.5 flex-shrink-0">
                         <StatusBadge status={r.status} />
                         {label && (
                           <span className="text-[11px] font-medium text-muted-foreground tabnums">{label}</span>

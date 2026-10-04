@@ -8,23 +8,59 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Loader2, MessageSquare, Send, Trash2 } from "lucide-react";
 
+const COPY = {
+  queue: {
+    title: "Discord notifications",
+    blurb: "Post everything that lands in the exec queue to a Discord channel.",
+  },
+  events: {
+    title: "Discord: events and marketing",
+    blurb:
+      "Post every new event or marketing request, in full, to your marketing channel, pinging the role below. When the request is edited on the portal, the same Discord message is edited to match.",
+  },
+} as const;
+
 /**
- * The webhook the exec queue posts to. The saved URL is never sent back here — the
- * server reports only whether one exists — so the field is always blank on load and
+ * A Discord webhook: the exec queue's, or the marketing channel's (`channel="events"`,
+ * which also takes the role to ping). The saved URL is never sent back here, the
+ * server reports only whether one exists, so the field is always blank on load and
  * saving replaces whatever is stored.
  */
-export function DiscordWebhookSettings({ societySlug }: { societySlug: string }) {
-  const base = `/api/societies/${societySlug}/discord-webhook`;
+export function DiscordWebhookSettings({
+  societySlug,
+  channel = "queue",
+}: {
+  societySlug: string;
+  channel?: "queue" | "events";
+}) {
+  const base = `/api/societies/${societySlug}/discord-webhook${channel === "events" ? "?channel=events" : ""}`;
+  const copy = COPY[channel];
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [url, setUrl] = useState("");
-  const [busy, setBusy] = useState<"save" | "test" | "remove" | null>(null);
+  const [roleId, setRoleId] = useState("");
+  const [busy, setBusy] = useState<"save" | "test" | "remove" | "role" | null>(null);
 
   useEffect(() => {
     fetch(base)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setConfigured(d?.configured ?? false))
+      .then((d) => {
+        setConfigured(d?.configured ?? false);
+        setRoleId(d?.roleId ?? "");
+      })
       .catch(() => setConfigured(false));
   }, [base]);
+
+  async function saveRole() {
+    setBusy("role");
+    try {
+      await send("PUT", { roleId: roleId.trim() || null });
+      toast.success(roleId.trim() ? "Role saved" : "Role cleared, new requests won't ping anyone");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the role");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function send(method: "PUT" | "POST", body?: unknown) {
     const res = await fetch(base, {
@@ -81,14 +117,13 @@ export function DiscordWebhookSettings({ societySlug }: { societySlug: string })
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" /> Discord Notifications
+          <MessageSquare className="h-4 w-4" /> {copy.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Post everything that lands in the exec queue to a Discord channel. In Discord:
-          Server Settings → Integrations → Webhooks → New Webhook, pick the channel, then
-          copy the URL.
+          {copy.blurb} In Discord: Server Settings → Integrations → Webhooks → New Webhook,
+          pick the channel, then copy the URL.
         </p>
 
         {configured && (
@@ -98,9 +133,9 @@ export function DiscordWebhookSettings({ societySlug }: { societySlug: string })
         )}
 
         <div className="space-y-1.5">
-          <Label htmlFor="discordWebhook">Webhook URL</Label>
+          <Label htmlFor={`discordWebhook-${channel}`}>Webhook URL</Label>
           <Input
-            id="discordWebhook"
+            id={`discordWebhook-${channel}`}
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -126,6 +161,29 @@ export function DiscordWebhookSettings({ societySlug }: { societySlug: string })
             </>
           )}
         </div>
+
+        {channel === "events" && (
+          <div className="space-y-1.5 border-t pt-3">
+            <Label htmlFor="eventsRoleId">Role to ping</Label>
+            <p className="text-xs text-muted-foreground">
+              The marketing director role&apos;s ID. In Discord, turn on User Settings → Advanced →
+              Developer Mode, then Server Settings → Roles, right-click the role and Copy Role ID.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Input
+                id="eventsRoleId"
+                inputMode="numeric"
+                value={roleId}
+                onChange={(e) => setRoleId(e.target.value.replace(/\D/g, ""))}
+                placeholder="e.g. 112233445566778899"
+                className="min-w-0 flex-1 tabnums"
+              />
+              <Button size="sm" variant="outline" onClick={saveRole} disabled={busy !== null}>
+                {busy === "role" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save role"}
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

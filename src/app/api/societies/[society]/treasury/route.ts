@@ -21,6 +21,8 @@ const schema = z.object({
   acknowledgedRules: z.boolean().optional(),
   receiptUrls: z.array(z.string()).optional(),
   budgetCategoryId: z.string().nullable().optional(),
+  // The event this was spent on, if any.
+  contentRequestId: z.string().nullable().optional(),
   status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING"]).default("REIMBURSEMENT_PENDING"),
 });
 
@@ -51,6 +53,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       const cat = await prisma.budgetCategory.findUnique({ where: { id: body.budgetCategoryId } });
       if (!cat || cat.societyId !== membership!.societyId) {
         return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+      }
+    }
+
+    // Same for a linked event.
+    if (body.contentRequestId) {
+      const event = await prisma.contentRequest.findUnique({ where: { id: body.contentRequestId } });
+      if (!event || event.societyId !== membership!.societyId) {
+        return NextResponse.json({ error: "Invalid event" }, { status: 400 });
       }
     }
 
@@ -91,6 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         amount: body.amount ?? 0,
         bankAccountId,
         budgetCategoryId: body.budgetCategoryId ?? null,
+        contentRequestId: body.contentRequestId ?? null,
         acknowledgedRules: body.acknowledgedRules ?? false,
         status: body.status, // "DRAFT" or "REIMBURSEMENT_PENDING"
       },

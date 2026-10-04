@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { TUTORIAL_MARKER as MARK } from "@/lib/tutorial";
+import { financialYearOf } from "@/lib/years";
 
 // Demo records for the guided tour. Everything created here is prefixed with the
 // tutorial marker and owned by the caller, which is also how it gets cleaned up:
@@ -16,6 +17,12 @@ function at(days: number, hour: number) {
   d.setHours(hour, 0, 0, 0);
   return d;
 }
+
+// Budget categories have no owner column, so the owner goes in the name: one exec
+// finishing a tour must not delete another exec's in-progress demo category (and
+// two execs on the same name would collide on the unique societyId+name).
+// The id, not the name, because a rename mid-tour would orphan the row.
+const demoCategoryName = (userId: string) => `${MARK} Events (${userId.slice(-6)})`;
 
 async function wipe(societyId: string, userId: string) {
   const mine = { societyId, submittedById: userId };
@@ -41,7 +48,8 @@ async function wipe(societyId: string, userId: string) {
     prisma.roomBooking.deleteMany({ where: { id: { in: ids(rooms) } } }),
     prisma.treasuryRequest.deleteMany({ where: { id: { in: ids(claims) } } }),
     prisma.printingRequest.deleteMany({ where: { ...mine, fileName: { startsWith: MARK } } }),
-    prisma.budgetCategory.deleteMany({ where: { societyId, name: { startsWith: MARK } } }),
+    // `${MARK} Events` is the pre-owner name, wiped so old leftovers still self-heal.
+    prisma.budgetCategory.deleteMany({ where: { societyId, name: { in: [demoCategoryName(userId), `${MARK} Events`] } } }),
     prisma.notification.deleteMany({ where: { userId, title: { startsWith: MARK } } }),
   ]);
 }
@@ -59,17 +67,22 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
 
   // A budget category is an executive-level object, so only make one for an exec.
   // The tour explains the budget page either way.
+  const thisYear = financialYearOf(await prisma.societyYear.findMany({ where: { societyId } }), new Date());
   const category =
     membership!.role === "EXECUTIVE"
       ? await prisma.budgetCategory.create({
           data: {
             societyId,
-            name: `${MARK} Events`,
+            name: demoCategoryName(userId),
             group: "PORTFOLIO",
-            yearlyBudget: 500,
-            budget2025: 400,
-            usage2025: 380,
-            worstCase: 700,
+            // This financial year's budget and last year's, so both the bars and the
+            // comparison view have a demo row.
+            allocations: {
+              create: [
+                { year: thisYear, amount: 500, worstCase: 700 },
+                { year: thisYear - 1, amount: 400, actualUsage: 380 },
+              ],
+            },
             reasoning: "Demo category created by the guided tour. Deleted when the tour ends.",
             notes: "Rows with reasoning or notes expand in the Comparison view. This is what that looks like.",
             sortOrder: 999,

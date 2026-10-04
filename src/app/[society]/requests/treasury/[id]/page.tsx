@@ -14,7 +14,7 @@ import { SubmitClaimButton } from "@/components/requests/SubmitClaimButton";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/utils";
-import { ArrowLeft, Receipt, FileText, MessagesSquare } from "lucide-react";
+import { ArrowLeft, Receipt, FileText, MessagesSquare, CalendarDays } from "lucide-react";
 import type { TreasuryStatus } from "@prisma/client";
 
 interface Props {
@@ -42,6 +42,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
         receipts: true,
         bankAccount: true,
         budgetCategory: { select: { id: true, name: true } },
+        contentRequest: { select: { id: true, eventName: true, startDate: true } },
         thread: {
           include: {
             comments: {
@@ -88,7 +89,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
         {canEdit && (
           <div data-tour="claim-edit" className="flex items-center gap-2">
             {request.status === "DRAFT" && (
-              <SubmitClaimButton societySlug={societySlug} requestId={request.id} />
+              <SubmitClaimButton societySlug={societySlug} requestId={request.id} acknowledged={request.acknowledgedRules} />
             )}
             <EditTreasuryClaim
               societySlug={societySlug}
@@ -101,6 +102,11 @@ export default async function TreasuryDetailPage({ params }: Props) {
                 contactEmail: request.contactEmail,
               }}
               receipts={request.receipts.map((r) => ({ id: r.id, fileName: r.fileName, fileUrl: r.fileUrl }))}
+              linkedEvent={
+                request.contentRequest
+                  ? { ...request.contentRequest, startDate: request.contentRequest.startDate.toISOString() }
+                  : null
+              }
             />
             <ConfirmDelete
               endpoint={`/api/societies/${societySlug}/treasury/${request.id}`}
@@ -143,6 +149,18 @@ export default async function TreasuryDetailPage({ params }: Props) {
                 <p className="text-sm text-muted-foreground">Description</p>
                 <p className="text-sm mt-0.5 whitespace-pre-wrap">{request.description}</p>
               </div>
+              {request.contentRequest && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Event</p>
+                  <Link
+                    href={`/${societySlug}/requests/content/${request.contentRequest.id}`}
+                    className="text-sm mt-0.5 inline-flex items-center gap-1.5 text-blue-600 hover:underline"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" />
+                    {request.contentRequest.eventName}, {formatDate(request.contentRequest.startDate)}
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 

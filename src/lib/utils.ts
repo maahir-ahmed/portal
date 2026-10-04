@@ -48,6 +48,14 @@ export function formatTimeRange(start: Date | string, end?: Date | string | null
   return `${formatTime(s)} – ${isSameDay(s, e) ? formatTime(e) : formatDateTime(e)}`;
 }
 
+// Arc's activity grant has to be claimed within 30 days of the event; past that the
+// claim is dead. Shared by the exec queue's countdown and the web portal's grant list.
+export const ACTIVITY_GRANT_DAYS = 30;
+
+export function grantDeadline(eventStart: Date | string): Date {
+  return new Date(new Date(eventStart).getTime() + ACTIVITY_GRANT_DAYS * 86_400_000);
+}
+
 export function timeAgo(date: Date | string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 }
@@ -108,16 +116,16 @@ export function statusColor(status: string): string {
 
 const STATUS_LABEL_OVERRIDES: Record<string, string> = {
   AWAITING_INFORMATION: "Need more information",
-  PENDING_ARC_SUBMISSION: "Pending Arc Submission",
-  READY_FOR_PICKUP: "Ready for Pickup",
+  PENDING_ARC_SUBMISSION: "Pending Arc submission",
+  SUBMITTED_TO_ARC: "Submitted to Arc",
 };
 
 export function statusLabel(status: string): string {
   if (STATUS_LABEL_OVERRIDES[status]) return STATUS_LABEL_OVERRIDES[status];
   return status
-    .split("_")
-    .map((w) => w[0] + w.slice(1).toLowerCase())
-    .join(" ");
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/^./, (c) => c.toUpperCase()); // sentence case: "Under review", not "Under Review"
 }
 
 export function truncate(str: string, n: number): string {

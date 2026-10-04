@@ -166,6 +166,20 @@ async function main() {
   // The invented dataset below is for the public no-login demo only. It must never
   // run against the live society database, so it is opt-in: SEED_DEMO_DATA=1.
   if (process.env.SEED_DEMO_DATA === "1") {
+    // The society calendar: AGMs and Term 3 ends, so treasury and the budget split into
+    // financial years and AHEGS into its Term 3 to Term 3 years (src/lib/years.ts).
+    for (const y of [
+      { year: 2025, agmDate: "2025-10-20", term3End: "2025-11-29" },
+      { year: 2026, agmDate: "2026-10-19", term3End: "2026-11-28" },
+    ]) {
+      const dates = { agmDate: new Date(`${y.agmDate}T00:00:00Z`), term3End: new Date(`${y.term3End}T00:00:00Z`) };
+      await prisma.societyYear.upsert({
+        where: { societyId_year: { societyId: society.id, year: y.year } },
+        update: {},
+        create: { societyId: society.id, year: y.year, ...dates },
+      });
+    }
+
     // ---------------------------------------------------------------------------
     // Demo records for the public no-login stack. Every person, email, zID, phone
     // and bank detail below is invented; the event names deliberately mirror the
@@ -233,10 +247,22 @@ async function main() {
     for (const [i, b] of budgets.entries()) {
       const row = await prisma.budgetCategory.upsert({
         where: { societyId_name: { societyId: society.id, name: b.name } },
-        update: { group: b.group, yearlyBudget: b.yearlyBudget, sortOrder: i },
-        create: { societyId: society.id, ...b, sortOrder: i },
+        update: { group: b.group, sortOrder: i },
+        create: { societyId: society.id, name: b.name, group: b.group, sortOrder: i },
       });
       budgetIds[b.name] = row.id;
+      // Per financial year (src/lib/years.ts): 2025 with the spend typed in from before
+      // claims lived here, 2026 summed from the claims below.
+      for (const a of [
+        { year: 2025, amount: b.budget2025, actualUsage: b.usage2025 },
+        { year: 2026, amount: b.yearlyBudget, actualUsage: null },
+      ]) {
+        await prisma.budgetAllocation.upsert({
+          where: { categoryId_year: { categoryId: row.id, year: a.year } },
+          update: {},
+          create: { categoryId: row.id, ...a },
+        });
+      }
     }
 
     // Fake bank details. 123-456 is not a real BSB prefix in use.
@@ -282,6 +308,9 @@ async function main() {
         start: at("2026-09-11", "18:30"), deadline: at("2026-08-28"), location: "Whitehouse",
         keyPoints: "Six rounds, teams of five, prize for best team name. Need a banner and a ticket link by the 28th.",
         status: "IN_PROGRESS", banner: true, blurb: true, rubric: true, bannerDone: true, blurbDone: false,
+        // Its Rubric event is attached and it has happened, so it sits in the exec
+        // queue's activity grants with its 30-day countdown running.
+        linked: true,
       },
       {
         id: "demo-cr-5", eventName: "Intro to Binary Exploitation", by: "yuki", assigned: null,
@@ -334,7 +363,7 @@ async function main() {
           blurbDone: c.blurbDone ?? false,
           finishedBlurb: c.finishedBlurb ?? null,
           activityGrantStatus: (c.grant ?? "NOT_SUBMITTED") as never,
-          ...(c.rubric && c.status === "COMPLETED"
+          ...(c.rubric && (c.status === "COMPLETED" || c.linked)
             ? { rubricEventId: "9101", rubricEventLink: "https://portal.hellorubric.com/events/9101", rubricSubmittedAt: c.deadline }
             : {}),
         },
@@ -466,17 +495,17 @@ async function main() {
 
     const treasury = [
       {
-        id: "demo-tr-1", by: "bob", email: "bob@example.com", date: at("2026-07-30"),
+        id: "demo-tr-1", event: "demo-cr-1", by: "bob", email: "bob@example.com", date: at("2026-07-30"),
         supplier: "Pizza Hub Kensington", description: "Twelve pizzas for the CTF Beginners Workshop, receipt attached.",
         amount: 214.5, category: "CTF", status: "REIMBURSED",
       },
       {
-        id: "demo-tr-2", by: "hana", email: "hana@example.com", date: at("2026-07-16"),
+        id: "demo-tr-2", event: "demo-cr-2", by: "hana", email: "hana@example.com", date: at("2026-07-16"),
         supplier: "Officeworks Kingsford", description: "Lanyards and name badges for Industry Night.",
         amount: 96.4, category: "Marketing", status: "REIMBURSED",
       },
       {
-        id: "demo-tr-3", by: "deniz", email: "deniz@example.com", date: at("2026-08-19"),
+        id: "demo-tr-3", event: "demo-cr-4", by: "deniz", email: "deniz@example.com", date: at("2026-08-19"),
         supplier: "Kmart Eastgardens", description: "Prizes for Security Trivia Night — three gift cards and a novelty trophy.",
         amount: 158.0, category: "Socials", status: "REIMBURSEMENT_PENDING",
       },
@@ -486,7 +515,7 @@ async function main() {
         amount: 87.98, category: "Creatives", status: "REIMBURSEMENT_PENDING",
       },
       {
-        id: "demo-tr-5", by: "yuki", email: "yuki@example.com", date: at("2026-08-24"),
+        id: "demo-tr-5", event: "demo-cr-5", by: "yuki", email: "yuki@example.com", date: at("2026-08-24"),
         supplier: "Bunnings Randwick", description: "Extension leads and power boards for the binary exploitation workshop.",
         amount: 64.85, category: "Education", status: "DRAFT",
       },
@@ -512,6 +541,7 @@ async function main() {
           amount: t.amount,
           bankAccountId: t.by === "bob" ? bank.id : null,
           budgetCategoryId: budgetIds[t.category],
+          contentRequestId: "event" in t ? t.event : null,
           status: t.status as never,
           acknowledgedRules: t.status !== "DRAFT",
         },

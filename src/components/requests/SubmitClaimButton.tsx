@@ -7,17 +7,39 @@ import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
 
 // Moves a DRAFT claim into the payout queue. The owner may submit their own draft;
-// the API enforces that transition (and alerts the execs).
-export function SubmitClaimButton({ societySlug, requestId }: { societySlug: string; requestId: string }) {
+// the API enforces that transition (and alerts the execs). A draft saved without the
+// policy ticked has to acknowledge it here, or the API refuses the submit.
+export function SubmitClaimButton({
+  societySlug,
+  requestId,
+  acknowledged,
+}: {
+  societySlug: string;
+  requestId: string;
+  acknowledged: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function submit() {
+    if (
+      !acknowledged &&
+      !confirm(
+        "Reimbursement policy:\n\n" +
+          "• The spend was approved in the committee Discord before you bought it.\n" +
+          "• No alcohol.\n" +
+          "• No personal transport (Uber, taxi, fuel) unless approved in writing first.\n" +
+          "• Claims more than 3 weeks after the purchase may not be reimbursed.\n" +
+          "• Bond money only once it has been returned.\n\n" +
+          "I have read and understood the reimbursement policy."
+      )
+    )
+      return;
     setLoading(true);
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "REIMBURSEMENT_PENDING" }),
+      body: JSON.stringify({ status: "REIMBURSEMENT_PENDING", ...(acknowledged ? {} : { acknowledgedRules: true }) }),
     });
     setLoading(false);
     if (res.ok) {
