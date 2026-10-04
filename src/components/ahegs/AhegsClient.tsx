@@ -717,7 +717,7 @@ export function AhegsClient({
           <CardContent className="space-y-2 p-4">
             <p className="text-sm font-semibold">Your details for Arc&apos;s form</p>
             <p className="text-xs text-muted-foreground">
-              Click a value to copy it. Then upload the three lists above, plus the evidence files, and sign.
+              Click a value to copy it. Then upload the two lists above, plus the evidence files, and sign.
             </p>
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {arcFields.map(([label, value]) => (
