@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
+import { BrandMark } from "@/components/shared/BrandMark";
+import type { Brand } from "@/lib/branding";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export type DemoCredentials = { email: string; password: string };
 
-export default function LoginForm({ demo }: { demo: DemoCredentials | null }) {
+export default function LoginForm({ demo, brand }: { demo: DemoCredentials | null; brand: Brand }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
@@ -67,12 +69,9 @@ export default function LoginForm({ demo }: { demo: DemoCredentials | null }) {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-[380px] space-y-7">
         <div className="flex flex-col items-center gap-3.5 text-center">
-          <div className="h-14 w-14 rounded-2xl bg-[#0b0b0d] flex items-center justify-center p-2.5 ring-1 ring-black/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/secsoc-logo.png" alt="UNSW Security Society" className="h-full w-full object-contain" />
-          </div>
+          <BrandMark brand={brand} />
           <div className="space-y-1">
-            <h1 className="text-xl font-semibold tracking-tight">UNSW Security Society</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{brand.name}</h1>
             <p className="text-sm text-muted-foreground">
               {signingInToDemo ? "Opening the demo…" : "Sign in to the society portal"}
             </p>

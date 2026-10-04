@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getBrand } from "@/lib/branding";
 import { Outfit, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { SessionProvider } from "@/components/shared/SessionProvider";
@@ -15,10 +16,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "UNSW Security Society",
-  description: "UNSW Security Society management platform",
-};
+// The society's own name, so each stack's tab reads as its society (see lib/branding).
+export async function generateMetadata(): Promise<Metadata> {
+  const { name } = await getBrand();
+  return { title: name, description: `${name} portal` };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
