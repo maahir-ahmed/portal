@@ -3,6 +3,12 @@
 Two stacks behind your existing cloudflared tunnel:
 - `main` branch → **rubric_prod** → your production hostname (private, login required)
 - `demo` branch → **rubric_dev** → your demo hostname (public showcase, `DEMO_MODE=1`)
+- `main` branch → **pcsoc_portal** → portal.unswpcsoc.com (UNSW PC Society, port 3003, `deploy/.env.pcsoc`)
+
+Every stack on `main` runs the same code with its own database, uploads, backups and
+secrets. To add another society, copy an env file with a new `STACK`, `APP_PORT`,
+`SOCIETY_SLUG` and fresh secrets, add its `project:envfile` pair to the workflow, and
+point a tunnel hostname at the port.
 
 `dev` is the working branch and deploys nowhere. Move the demo forward by merging into `demo`.
 
