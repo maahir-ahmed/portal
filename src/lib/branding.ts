@@ -11,8 +11,8 @@ const FALLBACK: Brand = { name: "Society Portal", logo: null };
 /**
  * The name and logo for pages shown before sign-in (login, 404, the tab title). One
  * image serves several societies, so this comes from the stack's own society row
- * (SOCIETY_SLUG), never from the code. Uploaded logos live behind auth in /uploads,
- * so only a logo from /public can be shown to someone not yet signed in.
+ * (SOCIETY_SLUG), never from the code. An uploaded logo works too: the uploads route
+ * serves a society's current logo without a login.
  */
 export async function getBrand(): Promise<Brand> {
   try {
@@ -23,8 +23,9 @@ export async function getBrand(): Promise<Brand> {
       select: { name: true, logoUrl: true },
     });
     if (!society) return FALLBACK;
-    const publicLogo = society.logoUrl?.startsWith("/") && !society.logoUrl.startsWith("/uploads/");
-    return { name: society.name, logo: publicLogo ? society.logoUrl : null };
+    // Same-origin paths only (/public files and /uploads), never an outside URL.
+    const logo = society.logoUrl?.startsWith("/") && !society.logoUrl.startsWith("//") ? society.logoUrl : null;
+    return { name: society.name, logo };
   } catch {
     return FALLBACK; // no database at build time, when static pages are prerendered
   }

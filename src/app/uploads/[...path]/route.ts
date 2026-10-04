@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { readFile } from "fs/promises";
 import { join, normalize } from "path";
 import { requireAuth } from "@/lib/api";
+import { prisma } from "@/lib/db";
 
 // Uploaded files live in process.cwd()/uploads (a mounted volume in prod).
 // Next only serves /public statically, so this handler serves /uploads/* itself.
@@ -18,16 +19,20 @@ const MIME: Record<string, string> = {
 };
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  // Uploaded files (invoices, receipts, docs) require a logged-in user.
-  // Same-origin <img>/<a> requests carry the session cookie automatically.
-  const { error } = await requireAuth();
-  if (error) return error;
-
   const { path } = await params;
   // Join + normalise, then reject any traversal outside the uploads dir.
   const safe = normalize(path.join("/")).replace(/^(\.\.(\/|\\|$))+/, "");
   if (safe.includes("..") || safe.startsWith("/")) {
     return new Response("Not found", { status: 404 });
+  }
+
+  // Uploaded files (invoices, receipts, docs) require a logged-in user; same-origin
+  // <img>/<a> requests carry the session cookie automatically. The one exception is a
+  // society's current logo, which the login page shows before anyone has signed in.
+  const { error } = await requireAuth();
+  if (error) {
+    const isLogo = await prisma.society.findFirst({ where: { logoUrl: `/uploads/${safe}` }, select: { id: true } });
+    if (!isLogo) return error;
   }
 
   try {
