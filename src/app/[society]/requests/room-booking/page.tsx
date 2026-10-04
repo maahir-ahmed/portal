@@ -59,7 +59,7 @@ export default async function RoomBookingsPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Room Booking Requests</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Arc room and resource bookings</p>
@@ -87,7 +87,7 @@ export default async function RoomBookingsPage({ params }: Props) {
             const isLate = isLateArcSubmission(b.preferredDate, b.status);
             return (
               <Link key={b.id} href={`/${societySlug}/requests/room-booking/${b.id}`} data-tour={i === 0 ? "room-card" : undefined}>
-                <Card className={cn("hover:border-blue-300 transition-colors cursor-pointer", CLOSED.has(b.status) && "opacity-70")}>
+                <Card className={cn("hover:border-foreground/20 transition-colors cursor-pointer", CLOSED.has(b.status) && "opacity-70")}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 min-w-0">

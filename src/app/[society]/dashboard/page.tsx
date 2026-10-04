@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import {
-  FileText, Building2, Wallet, AlertCircle, Plus, Printer
+  FileText, Building2, Wallet, AlertCircle, Plus
 } from "lucide-react";
 
 interface Props {
@@ -76,7 +76,7 @@ export default async function DashboardPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
@@ -91,10 +91,10 @@ export default async function DashboardPage({ params }: Props) {
           </Button>
           <Button asChild size="sm" variant="outline">
             <Link href={`/${societySlug}/requests/printing/new`}>
-              <Printer className="h-4 w-4 mr-1" /> Printing Request
+              <Plus className="h-4 w-4 mr-1" /> Printing Request
             </Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="outline">
             <Link href={`/${societySlug}/requests/treasury/new`}>
               <Plus className="h-4 w-4 mr-1" /> Reimbursement
             </Link>
@@ -103,7 +103,7 @@ export default async function DashboardPage({ params }: Props) {
       </div>
 
       {/* Stats */}
-      <div data-tour="dash-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="dash-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} color="blue" />
         <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />
         <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} color="green" />

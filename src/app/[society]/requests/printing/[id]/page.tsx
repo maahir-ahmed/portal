@@ -11,7 +11,7 @@ import { SIDED_LABELS, type Sided } from "@/lib/printing";
 import { PrintingDecisionButtons } from "@/components/requests/PrintingDecisionButtons";
 import { PrintingStageButton } from "@/components/requests/PrintingStageButton";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
-import { ArrowLeft, FileText, Printer } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string; id: string }>;
@@ -75,9 +75,6 @@ export default async function PrintingRequestDetailPage({ params }: Props) {
 
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Printer className="h-5 w-5 text-white" />
-          </div>
           <div>
             <h1 className="text-xl font-bold">Printing Request</h1>
             <p className="text-sm text-muted-foreground">{request.clubName}</p>

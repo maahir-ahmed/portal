@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { PrintingRates } from "@/components/requests/PrintingRates";
-import { Printer, Plus, FileText, Info } from "lucide-react";
+import { Plus, FileText, Info } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -47,9 +47,6 @@ export default async function PrintingRequestsPage({ params }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Printer className="h-5 w-5 text-white" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold">Printing Requests</h1>
             <p className="text-sm text-muted-foreground">Club printing via Arc Front Desk</p>
@@ -66,11 +63,14 @@ export default async function PrintingRequestsPage({ params }: Props) {
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-sm text-muted-foreground">Secretarial Allowance ({tier.charAt(0) + tier.slice(1).toLowerCase()} Tier)</p>
-              <p className="text-2xl font-bold">
-                ${remaining.toFixed(2)} <span className="text-sm font-normal text-muted-foreground">remaining of ${allowance.toFixed(2)}</span>
+              <p className={`text-2xl font-bold ${remaining < 0 ? "text-red-600" : ""}`}>
+                {formatCurrency(Math.abs(remaining))}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {remaining < 0 ? `over the ${formatCurrency(allowance)} allowance` : `left of ${formatCurrency(allowance)}`}
+                </span>
               </p>
             </div>
-            <p className="text-sm text-muted-foreground">${spent.toFixed(2)} spent</p>
+            <p className="text-sm text-muted-foreground">{formatCurrency(spent)} spent</p>
           </div>
           <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
             <div className={`h-full rounded-full ${remaining < 0 ? "bg-red-500" : pct > 85 ? "bg-amber-500" : "bg-green-500"}`} style={{ width: `${pct}%` }} />

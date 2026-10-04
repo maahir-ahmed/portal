@@ -108,16 +108,16 @@ export function statusColor(status: string): string {
 
 const STATUS_LABEL_OVERRIDES: Record<string, string> = {
   AWAITING_INFORMATION: "Need more information",
-  PENDING_ARC_SUBMISSION: "Pending Arc Submission",
-  READY_FOR_PICKUP: "Ready for Pickup",
+  PENDING_ARC_SUBMISSION: "Pending Arc submission",
+  SUBMITTED_TO_ARC: "Submitted to Arc",
 };
 
 export function statusLabel(status: string): string {
   if (STATUS_LABEL_OVERRIDES[status]) return STATUS_LABEL_OVERRIDES[status];
   return status
-    .split("_")
-    .map((w) => w[0] + w.slice(1).toLowerCase())
-    .join(" ");
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/^./, (c) => c.toUpperCase()); // sentence case: "Under review", not "Under Review"
 }
 
 export function truncate(str: string, n: number): string {

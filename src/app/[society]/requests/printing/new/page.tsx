@@ -9,7 +9,7 @@ import { DateTimeField } from "@/components/ui/datetime";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Printer, Loader2, Upload } from "lucide-react";
+import { ArrowLeft, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { computePrintingCost, type PaperSize, type Sided, type Colour } from "@/lib/printing";
 import { PrintingRates } from "@/components/requests/PrintingRates";
@@ -97,9 +97,6 @@ export default function NewPrintingRequestPage() {
       </Button>
 
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
-          <Printer className="h-5 w-5 text-white" />
-        </div>
         <div>
           <h1 className="text-2xl font-bold">Club Printing Request</h1>
           <p className="text-sm text-muted-foreground">Submit at least <strong>two full business days</strong> before collection.</p>

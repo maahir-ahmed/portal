@@ -9,7 +9,7 @@ interface UserAvatarProps {
 }
 
 const sizeMap = {
-  sm: "h-6 w-6 text-xs",
+  sm: "h-6 w-6 text-[10px]",
   md: "h-8 w-8 text-sm",
   lg: "h-10 w-10 text-base",
 };
@@ -25,7 +25,7 @@ export function UserAvatar({ name, avatarUrl, className, size = "md" }: UserAvat
   return (
     <Avatar className={cn(sizeMap[size], className)}>
       <AvatarImage src={avatarUrl ?? ""} alt={name} />
-      <AvatarFallback className="bg-blue-100 text-blue-700 font-medium">{initials}</AvatarFallback>
+      <AvatarFallback className="bg-secondary text-foreground/70 font-semibold ring-1 ring-border">{initials}</AvatarFallback>
     </Avatar>
   );
 }

@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { PiggyBank, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export interface Category {
@@ -81,9 +81,6 @@ export function SpendingBudgetClient({ societySlug, categories, transactions, is
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-[#00ffd1] flex items-center justify-center">
-            <PiggyBank className="h-5 w-5 text-black" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold">Spending Budget</h1>
             <p className="text-sm text-muted-foreground">Track this year&apos;s spend, and compare budgets across years.</p>

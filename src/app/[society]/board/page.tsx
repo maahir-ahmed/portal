@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { BoardClient } from "@/components/board/BoardClient";
-import { SquareKanban } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -29,9 +28,6 @@ export default async function BoardPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
-          <SquareKanban className="h-5 w-5 text-primary-foreground" />
-        </div>
         <div>
           <h1 className="text-2xl font-bold">Board</h1>
           <p className="text-sm text-muted-foreground">

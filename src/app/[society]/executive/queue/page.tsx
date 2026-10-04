@@ -9,7 +9,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
 import { PrintingStageButton } from "@/components/requests/PrintingStageButton";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Shield, QrCode, Building2, Banknote, CheckCircle, Printer } from "lucide-react";
+import { QrCode, Building2, Banknote, CheckCircle, Printer } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -61,9 +61,6 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
-          <Shield className="h-5 w-5 text-white" />
-        </div>
         <div>
           <h1 className="text-2xl font-bold">Executive Queue</h1>
           <p className="text-sm text-muted-foreground">
@@ -83,7 +80,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
           <div className="space-y-2">
             {rubricPending.map((r) => (
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`}>
-                <Card className="hover:border-orange-300 border-orange-200 bg-orange-50/30 transition-colors cursor-pointer">
+                <Card className="hover:border-foreground/20 border-orange-200 bg-orange-50/30 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <div className="flex items-center gap-3 min-w-0">
@@ -118,7 +115,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
           </h2>
           <div className="space-y-2">
             {roomPending.map((b) => (
-              <Card key={b.id} className="hover:border-purple-300 transition-colors">
+              <Card key={b.id} className="hover:border-foreground/20 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <Link href={`/${societySlug}/requests/room-booking/${b.id}`} className="flex items-center gap-3 min-w-0 flex-1">
@@ -155,7 +152,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
           </h2>
           <div className="space-y-2">
             {printingPending.map((p) => (
-              <Card key={p.id} className="hover:border-blue-300 transition-colors">
+              <Card key={p.id} className="hover:border-foreground/20 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <Link href={`/${societySlug}/requests/printing/${p.id}`} className="flex items-center gap-3 min-w-0 flex-1">

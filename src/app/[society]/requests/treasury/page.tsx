@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Plus, Wallet } from "lucide-react";
+import { Calendar, Plus, Store, Wallet } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -39,7 +39,7 @@ export default async function TreasuryPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Treasury Requests</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Reimbursements and expense claims</p>
@@ -67,7 +67,7 @@ export default async function TreasuryPage({ params }: Props) {
             const amount = Number(r.amount);
             return (
               <Link key={r.id} href={`/${societySlug}/requests/treasury/${r.id}`} data-tour={i === 0 ? "treasury-card" : undefined}>
-                <Card className="hover:border-blue-300 transition-colors cursor-pointer">
+                <Card className="hover:border-foreground/20 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                       <div className="flex items-start gap-3 min-w-0">
@@ -75,8 +75,8 @@ export default async function TreasuryPage({ params }: Props) {
                         <div className="min-w-0">
                           <p className="font-semibold truncate">{r.description}</p>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                            <span>📅 {formatDate(r.expenseDate)}</span>
-                            <span>🏪 {r.locationSupplier}</span>
+                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(r.expenseDate)}</span>
+                            <span className="flex items-center gap-1"><Store className="h-3 w-3" />{r.locationSupplier}</span>
                             <span className="font-medium text-green-700">{formatCurrency(amount)}</span>
                           </div>
                         </div>
