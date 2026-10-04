@@ -21,11 +21,15 @@ export default function SettingsPage() {
   const params = useParams<{ society: string }>();
   const [saving, setSaving] = useState(false);
   const [society, setSociety] = useState<Society | null>(null);
+  const [primaryColor, setPrimaryColor] = useState("");
 
   useEffect(() => {
     fetch(`/api/societies/${params.society}`)
       .then((r) => r.json())
-      .then(setSociety);
+      .then((data) => {
+        setSociety(data);
+        setPrimaryColor(data.primaryColor ?? "");
+      });
   }, [params.society]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -132,41 +136,42 @@ export default function SettingsPage() {
         <Card data-tour="settings-branding">
           <CardHeader>
             <CardTitle className="text-base">Branding</CardTitle>
-            <CardDescription>Customise your society&apos;s colours and logo</CardDescription>
+            <CardDescription>Your society&apos;s colour and logo</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="primaryColor">Primary Colour</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" name="primaryColor" defaultValue={society.primaryColor} className="h-10 w-10 rounded border cursor-pointer" />
-                  <Input name="primaryColorText" defaultValue={society.primaryColor} placeholder="#0052CC" className="flex-1" />
-                </div>
+            {/* Only the primary colour and logo are shown anywhere (the sidebar). The
+                secondary colour and banner were saved but never displayed, so they're
+                no longer offered; their columns stay in the schema. */}
+            <div className="space-y-2">
+              <Label htmlFor="primaryColor">Primary Colour</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="Pick primary colour"
+                  value={/^#[0-9a-fA-F]{6}$/.test(primaryColor) ? primaryColor : "#000000"}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="h-10 w-10 rounded border cursor-pointer"
+                />
+                <Input
+                  id="primaryColor"
+                  name="primaryColor"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  pattern="#[0-9a-fA-F]{6}"
+                  title="A hex colour like #0052CC"
+                  placeholder="#0052CC"
+                  className="flex-1"
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="secondaryColor">Secondary Colour</Label>
-                <div className="flex items-center gap-2">
-                  <input type="color" name="secondaryColor" defaultValue={society.secondaryColor} className="h-10 w-10 rounded border cursor-pointer" />
-                  <Input name="secondaryColorText" defaultValue={society.secondaryColor} placeholder="#00B8D9" className="flex-1" />
-                </div>
-              </div>
+              <p className="text-xs text-muted-foreground">Fills the sidebar tile when there&apos;s no logo.</p>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <ImageUploadField
-                name="logoUrl"
-                label="Logo"
-                defaultValue={society.logoUrl}
-                shape="square"
-                hint="Square image (PNG with transparency works best)."
-              />
-              <ImageUploadField
-                name="bannerUrl"
-                label="Banner"
-                defaultValue={society.bannerUrl}
-                shape="wide"
-                hint="Wide image shown across the top of your page."
-              />
-            </div>
+            <ImageUploadField
+              name="logoUrl"
+              label="Logo"
+              defaultValue={society.logoUrl}
+              shape="square"
+              hint="Square image (PNG with transparency works best). Shows in the sidebar after you next sign in."
+            />
           </CardContent>
         </Card>
 
