@@ -4,6 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { syncEventToDiscord } from "@/lib/discordEvents";
 import type { ContentRequestStatus } from "@prisma/client";
 
 const createSchema = z.object({
@@ -106,6 +107,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           `/requests/content/${request.id}`
         );
       }
+
+      // The marketing channel gets the full request and pings the marketing director.
+      await syncEventToDiscord(request.id);
     }
 
     return NextResponse.json(request, { status: 201 });

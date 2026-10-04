@@ -183,7 +183,10 @@ export default function SettingsPage() {
       <TitlesManager societySlug={params.society} />
       <RubricSettings societySlug={params.society} />
 
-      <DiscordWebhookSettings societySlug={params.society} />
+      <div data-tour="settings-discord" className="space-y-6">
+        <DiscordWebhookSettings societySlug={params.society} />
+        <DiscordWebhookSettings societySlug={params.society} channel="events" />
+      </div>
     </div>
   );
 }

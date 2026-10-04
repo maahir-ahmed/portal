@@ -169,6 +169,12 @@ model Society {
   // the public invite: anyone holding this can post into the channel as the society,
   // so it is encrypted the same way as the Rubric session and never sent to a browser.
   discordWebhookUrl      String?
+  // A second webhook, for marketing: every submitted event request is posted there in
+  // full and kept up to date (src/lib/discordEvents.ts). Encrypted like the one above.
+  eventsWebhookUrl       String?
+  // The Discord role pinged on each new request (the marketing director role). A role
+  // ID, not a secret; Discord only pings a role by its numeric ID.
+  eventsWebhookRoleId    String?
   secretarialTier      SecretarialTier @default(BRONZE)
   // The academic year AHEGS is being collated for. Set in Settings because it does
   // not follow the calendar: a submission is prepared over one year and lodged at its
@@ -352,6 +358,9 @@ model ContentRequest {
   rubricSubmittedAt DateTime?
   activityGrantStatus ActivityGrantStatus @default(NOT_SUBMITTED)
   finishedBlurb   String?              @db.Text   // marketing pastes the final event blurb here
+  // The events-webhook message this request was posted as, so an edit here edits it
+  // there instead of posting again. Null until the request is first submitted.
+  discordMessageId String?
   bannerDone      Boolean              @default(false)
   blurbDone       Boolean              @default(false)
   createdAt       DateTime             @default(now())
