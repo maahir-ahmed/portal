@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatDateTime } from "@/lib/utils";
+import { formatTimestamp } from "@/lib/utils";
 import { ScrollText } from "lucide-react";
 import type { AuditAction } from "@prisma/client";
 
@@ -149,7 +149,7 @@ export default async function AuditLogPage({ params, searchParams }: Props) {
                     )}
                   </div>
                   <span className="flex-shrink-0 whitespace-nowrap text-xs text-muted-foreground">
-                    {formatDateTime(e.createdAt)}
+                    {formatTimestamp(e.createdAt)}
                   </span>
                 </div>
               );
