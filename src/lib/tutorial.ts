@@ -47,11 +47,11 @@ export const TOUR_STEPS: TourStep[] = [
     id: "welcome",
     kind: "welcome",
     path: "/dashboard",
-    title: "Tour of the platform",
+    title: "Tour",
     body:
-      "This walks through every part of the dashboard: requests, the budget, the Rubric portal, members and your account.\n\n" +
-      "To make the pages worth looking at, it first creates a handful of demo records (a content request, a room booking, a reimbursement claim and a printing job) all tagged “[Tutorial demo]”. They are deleted again when the tour ends.\n\n" +
-      "Arrow keys move between steps; Esc leaves and cleans up.",
+      "This tutorial walks you through each part of the platform: requests, the budget, the Rubric portal, members and your account.\n\n" +
+      "Just so the pages have something on them, the tour first adds a few demo records (a content request, a room booking, a reimbursement claim and a printing job), each marked “[Tutorial demo]”. They're deleted when the tour ends.\n\n" +
+      "Use the arrow keys to move between steps. Press Esc to leave at any point, which also removes the demo records.",
   },
 
   // ── Layout ─────────────────────────────────────────────────────────────────
@@ -61,41 +61,40 @@ export const TOUR_STEPS: TourStep[] = [
     target: "sidebar",
     title: "The sidebar",
     body:
-      "Everything lives here, and the menu is filtered by role: subcommittee members get the request tools, directors also get the Rubric Events tab, executives get the exec queue, member directory and settings on top.",
+      "All the pages available are here, and what you see depends on your role privileges. Subcommittee members only get the request pages. Directors also get AHEGS and Rubric events. Executives also get the exec queue, audit log, board, members and settings.",
   },
   {
     id: "sidebar-society",
     target: "sidebar-society",
-    title: "Society + your role",
-    body:
-      "Your society's name, logo and colours (set in Settings), with your own role underneath.",
+    title: "Society and role",
+    body: "Your society's name and logo, both set in Settings, with your role underneath.",
   },
   {
     id: "sidebar-user",
     target: "sidebar-user",
-    title: "You, and the way out",
-    body: "Your name and email, and the sign-out button on the right.",
+    title: "Your account",
+    body: "Your name and email. The button on the right signs you out.",
   },
   {
     id: "notifications",
     target: "notifications",
     title: "Notifications",
     body:
-      "Refreshes every 30 seconds. A red dot means unread. Each entry links straight to the request that changed. “Mark all read” clears the dot.",
+      "A red dot means you have something unread. Each notification links to the request that changed, and “Mark all read” clears them. The list checks for new ones every 30 seconds.",
   },
   {
     id: "page-help",
     target: "page-help",
-    title: "Help for one page",
+    title: "Help for this page",
     body:
-      "The question mark runs just the steps for the page you're on, with no demo records created or deleted. It's there on every page the tour covers, and hidden on the few it doesn't.",
+      "The question mark runs only the steps for the page you're on, without creating any demo records. It appears on every page the tour covers.",
   },
   {
     id: "launcher",
     target: "tour-launcher-sidebar",
-    title: "Restarting this tour",
+    title: "Taking the tour again",
     body:
-      "“Take the tour” at the bottom of the menu reopens this walkthrough whenever you want it. Restarting always starts from the beginning and re-creates fresh demo records.",
+      "“Take the tour” at the bottom of the menu starts this walkthrough again from the beginning, with fresh demo records.",
   },
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -103,22 +102,22 @@ export const TOUR_STEPS: TourStep[] = [
     id: "dash-stats",
     path: "/dashboard",
     target: "dash-stats",
-    title: "Your counters",
+    title: "Quick Overview",
     body:
-      "Open content requests, pending room bookings and active reimbursements. Executives get a fourth card counting claims still waiting to be paid out. Reimbursement counts are yours alone unless you're an exec, because claims are private to their submitter.",
+      "Shows how many content requests are open, room bookings are pending and reimbursements are in progress. Executives can also see how many claims are waiting to be paid. Unless you're an executive, the reimbursement count only includes your own claims, because claims are private to the person who made them.",
   },
   {
     id: "dash-actions",
     target: "dash-actions",
-    title: "Quick create",
-    body: "Shortcuts to the three forms people open most: content request, printing request, reimbursement.",
+    title: "Shortcuts",
+    body: "Start a content request, printing request or reimbursement straight from here.",
   },
   {
     id: "dash-recent",
     target: "dash-recent",
     title: "Recent activity",
     body:
-      "The five most recently touched records of each type, with submitter, status badge and the date that matters (content deadline, booking date, claim amount). Click any row to open it.",
+      "The five most recently updated content requests, room bookings and claims. Each row shows who submitted it, its status, and the content deadline, booking date or claim amount. Click a row to open it.",
   },
 
   // ── Content requests ───────────────────────────────────────────────────────
@@ -126,30 +125,31 @@ export const TOUR_STEPS: TourStep[] = [
     id: "nav-content",
     path: "/requests/content",
     target: "nav-content",
-    title: "Content requests / events",
+    title: "Content requests and events",
     body:
-      "The marketing workflow, and in practice the society's event register: one record per event, carrying its graphics, blurb and Rubric event.",
+      "Marketing requests, which also serve as the society's list of events. Each event gets one request, with someone being able to request graphics, blurbs and a Rubric event.",
   },
   {
     id: "content-tabs",
     target: "content-tabs",
-    title: "Status tabs with counts",
+    title: "Filter by status",
     body:
-      "Filter by status (Submitted, Need more information, In Progress, Completed, Cancelled) with a live count on each. “All” shows everything.",
+      "Each tab shows only the requests with that status, with a count next to it. “All” shows everything.",
   },
   {
     id: "content-card",
     target: "content-card",
-    title: "Reading a request at a glance",
+    title: "Reading a request",
     body:
-      "Cards are colour-coded by how close the content deadline is: green with plenty of time, yellow inside two weeks, amber inside a week, red inside two days, deep red overdue. Open requests sort soonest-deadline-first; finished ones drop to the bottom.\n\n" +
-      "The little chips show what was asked for (Banner, Blurb, Rubric) and turn green as each is delivered.",
+      "Each card is coloured by how close its content deadline is: green when there's plenty of time, yellow within two weeks, amber within a week, red within two days, and deep red once it's overdue. Open requests are sorted by deadline, soonest first, and finished ones go to the bottom.\n\n" +
+      "The small tags show what was asked for (banner, blurb, Rubric event) and turn green once each one is delivered.",
   },
   {
     id: "content-new",
     target: "content-new",
     title: "New request",
-    body: "Anyone in the society can raise one. Let's look at the form.",
+    body:
+      "Anyone in the society can make one. Here's the form.",
   },
   {
     id: "content-form",
@@ -157,34 +157,36 @@ export const TOUR_STEPS: TourStep[] = [
     target: "content-form",
     title: "The request form",
     body:
-      "Event name, start (and optional end), location, key points, and the content deadline, which is the date the card's colour is based on. Key points are what marketing writes the blurb from, so bullet points beat a sentence.",
+      "Event name, start time (and end time if there is one), location, key points and the content deadline, which is what sets the card's colour. Marketing writes the blurb from your key points, so bullet points work better than full sentences.",
   },
   {
     id: "content-required",
     target: "content-required",
     title: "What you're asking for",
     body:
-      "Tick any mix of banner/graphic, written blurb and Rubric event. Ticking Rubric adds the request to the executive queue, because only an exec can create the event and attach its link.",
+      "Tick any combination of banner, blurb and Rubric event. Ticking Rubric event adds the request to the exec queue, because only an executive can create the event and attach its link.",
   },
   {
     id: "content-submit",
     target: "content-submit",
     title: "Submit or save as draft",
     body:
-      "Submit notifies the executives immediately. Save as draft keeps it private to you until you're ready; drafts never appear in anyone's queue.",
+      "Submitting notifies the executives straight away. Saving as a draft keeps it private to you until you're ready, and drafts never show up in anyone's queue.",
   },
   {
     id: "content-details",
     path: detail("contentId", "/requests/content", "/requests/content"),
     target: "content-details",
     title: "A request in full",
-    body: "Date, time, location and deadline up top, then the key points and any extra notes.",
+    body:
+      "The date, time, location and deadline at the top, then the key points and any extra notes.",
   },
   {
     id: "content-flags",
     target: "content-flags",
-    title: "Delivery checklist",
-    body: "The same banner / blurb / Rubric chips, ticked off as the work lands.",
+    title: "What's been delivered",
+    body:
+      "Marked green as each one is done.",
   },
   {
     id: "marketing-panel",
@@ -192,36 +194,36 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Marketing deliverables",
     body:
-      "Visible to executives and anyone whose title mentions marketing. Upload the finished graphics (they become downloads for the requester), paste the final blurb, tick “banner done” / “blurb done”, then Save. “Mark content complete” closes the request out.",
+      "Shown to executives and anyone with “marketing” in their title. Upload the finished graphics and press “Save graphics”, then paste in the final blurb and press “Save blurb”. Each one counts as delivered once it's saved, and the requester can download the graphics. “Mark content complete” closes the request.",
   },
   {
     id: "content-rubric",
     target: "content-rubric",
     title: "The Rubric event",
     body:
-      "Where the event gets its ticketing page. An exec creates it on the Rubric portal and assigns it here (or attaches a link by hand); the QR code is then generated automatically with a transparent background, ready to drop into a poster. Once linked you also get attendance stats and the Arc activity-grant status.",
+      "Where the event's ticketing page comes from. An executive creates the event on the Rubric portal and assigns it here, or pastes in a link. A QR code with a transparent background is then made automatically, ready to drop into a poster. Once it's linked you also see attendance numbers and the status of the Arc activity grant.",
   },
   {
     id: "thread",
     target: "thread",
     title: "Discussion",
     body:
-      "Every request has a thread. Comments notify the people involved. Executives can also post internal notes (the yellow ones) that the submitter never sees.",
+      "Every request has its own thread, and comments notify the people involved. Executives can also leave internal notes (the yellow ones), which the submitter never sees.",
   },
   {
     id: "status-updater",
     target: "status-updater",
     minRole: "EXECUTIVE",
-    title: "Moving the status",
+    title: "Changing the status",
     body:
-      "Executives drive the status from here: Draft → Submitted → Need more information / In Progress → Completed, or Cancelled. Every change notifies the submitter and lands in the audit log.",
+      "Executives set the status here: Draft, Submitted, Need more information, In progress, Completed or Cancelled. Each change notifies the submitter and is recorded in the audit log.",
   },
   {
     id: "content-edit",
     target: "content-edit",
     title: "Editing",
     body:
-      "The submitter, any director or any exec can edit a request until it's completed or cancelled. It's the same form you filled in, prefilled.",
+      "The submitter, any director or any executive can edit a request until it's completed or cancelled. It opens the same form you filled in, with your answers already there.",
   },
 
   // ── Room bookings ──────────────────────────────────────────────────────────
@@ -230,62 +232,66 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/requests/room-booking",
     target: "nav-room",
     title: "Room bookings",
-    body: "Arc room and resource requests, tracked from submission through to Arc's decision.",
+    body:
+      "Requests for Arc rooms and equipment",
   },
   {
     id: "room-card",
     target: "room-card",
     title: "The booking list",
     body:
-      "Date, time, requested location and attendee cap on each row, sorted by event date. A red “Late submission” pill appears on any booking whose event is less than seven business days away.",
+      "Each row shows the date, time, the location you asked for and the attendee limit, plus the room you were given once it's known. Open bookings come first, soonest event first, and finished ones go to the bottom. A red “Late submission” tag appears while a booking still hasn't gone to Arc and its event is less than seven business days away.",
   },
   {
     id: "room-new",
     target: "room-new",
     title: "New booking",
-    body: "Onward to the form. It mirrors what Arc asks for, so it can be copy-pasted straight across.",
+    body:
+      "Here's the form. It asks the same questions Arc does, so you can copy your answers straight across.",
   },
   {
     id: "room-notice",
     path: "/requests/room-booking/new",
     target: "room-notice",
-    title: "Arc's seven-day rule",
-    body: "Every booking has to reach Arc at least seven business days before the event, external guests or not. The reminder is here and the warning follows the booking around.",
+    title: "Arc Rule",
+    body:
+      "Every booking has to reach Arc at least seven business days before the event, whether or not there are external guests. If it's later than that, a warning stays on the booking until it's been submitted to Arc.",
   },
   {
     id: "room-external",
     target: "room-external",
     title: "External guests",
     body:
-      "Answering “yes” opens two required fields: who they are and how many. Arc looks hardest at these, and they are the single most common reason a booking gets bounced.",
+      "Answering “yes” adds two required questions: who the guests are and how many are coming.",
   },
   {
     id: "room-safety",
     target: "room-safety",
     title: "Safety officer",
-    body: "Arc requires a named event safety officer with their zID and phone number. No officer, no booking.",
+    body:
+      "Arc needs a named safety officer for the event, with their zID and phone number.",
   },
   {
     id: "room-submit",
     target: "room-submit",
     title: "Submit",
     body:
-      "Room requirements (building, AV, accessibility) go in the box above, then submit. The executives get notified, with an urgency flag if the seven-day rule is already broken.",
+      "Put any room requirements (building, AV, accessibility) in the box above, then submit. The executives are notified, and the notification is marked urgent if the seven-day deadline has already passed.",
   },
   {
     id: "room-detail",
     path: detail("roomId", "/requests/room-booking", "/requests/room-booking"),
     target: "room-detail",
-    title: "A booking in full",
+    title: "Booking Overview",
     body:
-      "Everything Arc needs on one page, with the external-guest and safety-officer detail called out separately. Executives move it through Under review → Submitted to Arc (which timestamps the submission) → Approved / Rejected / Completed.",
+      "Once it's approved, a Booked Room box appears. When an executive records the room Arc gave you there, the booking is marked Completed and you're notified.",
   },
   {
     id: "room-delete",
     target: "delete-button",
     title: "Deleting a booking",
     body:
-      "The submitter or any exec can delete a booking. It takes the comment thread and stale notifications with it. If Arc already has the booking, you still need to cancel it there.",
+      "The submitter or any executive can delete a booking, which also deletes its comments and notifications. If Arc already has the booking, you'll need to cancel it with Arc too.",
   },
 
   // ── Treasury ───────────────────────────────────────────────────────────────
@@ -295,84 +301,87 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-treasury",
     title: "Treasury",
     body:
-      "Reimbursement claims. A claim is visible only to the person who submitted it and to executives; even directors don't see other people's money.",
+      "Reimbursement claims. Only the person who made a claim and the executives can see it, so directors can't see anyone else's claims.",
   },
   {
     id: "treasury-card",
     target: "treasury-card",
     title: "The claim list",
     body:
-      "Amount, supplier and expense date per row, with the status on the right: draft, awaiting reimbursement, reimbursed, or rejected.",
+      "Each row shows the amount, the supplier and the date of the expense, with the status on the right: Draft, Reimbursement pending, Reimbursed or Rejected. Newest claims come first.",
   },
   {
     id: "treasury-new",
     target: "treasury-new",
     title: "New claim",
-    body: "The reimbursement form is the longest in the app, so it's worth a walk-through.",
+    body:
+      "This is the longest form in the app, so here's a walk through it.",
   },
   {
     id: "treasury-rules",
     path: "/requests/treasury/new",
     target: "treasury-rules",
-    title: "Arc Policy",
+    title: "Reimbursement policy",
     body:
-      "Approval for the spend is a Discord conversation and has to happen before you buy. The rest still applies: no alcohol, no personal transport without written pre-approval, nothing older than three weeks, bonding money only once returned. You can save a draft without ticking the box, but you can't submit.",
+      "Get the spend approved in the committee Discord before you buy anything (as it's the fastest way. The other rules still apply: no alcohol, no personal transport unless it was approved in writing first, nothing more than three weeks old, and bond money only once it's been returned. You can save a draft without ticking the box, but you can't submit until you do.",
   },
   {
     id: "treasury-amount",
     target: "treasury-amount",
     title: "Amount and supplier",
     body:
-      "What you actually paid, and who you paid. Approval for the spend happens in the committee Discord before you buy, so nothing here is waiting on a sign-off: this is the record that gets you paid back.",
+      "How much you paid, and who you paid. The spend was already approved in Discord, so nothing here waits for a sign-off.",
   },
   {
     id: "treasury-category",
     target: "treasury-category",
     title: "Budget category",
     body:
-      "Which pot the money comes out of. This is what the Spending Budget tab totals up. “Not sure” is a fine answer; an exec can classify it later.",
+      "Which part of the budget the money comes out of. This is what the Spending Budget page adds up. If you're not sure, pick “Not sure” and an executive will sort it out later.",
   },
   {
     id: "treasury-receipts",
     target: "treasury-receipts",
     title: "Receipts",
-    body: "PDF, PNG or JPG, up to 10 MB each, as many as you need. Attach them now or add them later while the claim is still pending.",
+    body:
+      "PDF, PNG or JPG files, up to 10 MB each, as many as you need. Add them now, or later while the claim is still pending.",
   },
   {
     id: "treasury-bank",
     target: "treasury-bank",
     title: "Bank details",
     body:
-      "Use the account saved on your profile, or type one in. Your first manual entry is saved to your profile for next time; claims already submitted keep the details they went in with.",
+      "Use the account saved on your profile, or type one in. The first account you type in is saved to your profile for next time. Claims you've already submitted keep the details they were sent with.",
   },
   {
     id: "treasury-submit",
     target: "treasury-submit",
-    title: "Submit or draft",
+    title: "Submit or save as draft",
     body:
-      "Submitting puts the claim straight into the payout queue and alerts the executives. A draft can be incomplete; the app only enforces the full field set at submission.",
+      "Submitting sends the claim straight to the payout queue and notifies the executives. A draft doesn't need every field filled in. They're only all required when you submit.",
   },
   {
     id: "claim-payout",
     path: detail("treasuryId", "/requests/treasury", "/requests/treasury"),
     target: "claim-payout",
-    title: "Getting paid out",
+    title: "Getting paid",
     body:
-      "Because the spend was approved on Discord, a submitted claim is already in the payout queue. An executive transfers the money and hits “Mark reimbursed”, which notifies you. Rejecting a claim (from Manage Request) is how a no on Discord gets recorded here.",
+      "An executive transfers the money and presses “Mark Reimbursed”, which notifies you. If the answer in Discord was no, an executive rejects the claim from Manage Request.",
   },
   {
     id: "claim-category",
     target: "claim-category",
     minRole: "EXECUTIVE",
     title: "Reclassifying",
-    body: "Executives can move a claim between budget categories (or unclassify it) at any point. The budget page updates immediately.",
+    body:
+      "Executives can move a claim to a different budget category, or back to unclassified, at any time. The budget page updates straight away.",
   },
   {
     id: "claim-actions",
     target: "claim-edit",
     title: "Editing, submitting and deleting",
     body:
-      "Until a claim is paid out, its owner can edit the details, add or remove receipts, submit a draft, and delete it. Executives can do all of that at any stage; deleting a claim removes its receipts and comments with it.",
+      "Until a claim is paid or rejected, the person who made it can edit the details, add or remove receipts, submit a draft, or delete it. Executives can do all of this at any stage. Deleting a claim also deletes its receipts and comments.",
   },
 
   // ── Printing ───────────────────────────────────────────────────────────────
@@ -381,33 +390,36 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/requests/printing",
     target: "nav-printing",
     title: "Printing",
-    body: "Club printing through the Arc Front Desk, costed against your society's secretarial allowance.",
+    body:
+      "Society printing through the Arc front desk, paid for out of your secretarial allowance.",
   },
   {
     id: "printing-allowance",
     target: "printing-allowance",
     title: "Secretarial allowance",
     body:
-      "Your Arc club tier sets the yearly pot (Bronze $150, Silver $225, Gold $405) and the bar tracks it. Only approved jobs are deducted, so pending requests don't eat the budget.",
+      "Your Arc club tier sets the allowance (Bronze $150, Silver $225, Gold $405), and the bar shows how much is used. Only approved jobs count against it, so pending requests don't use any of it up. Deleting an approved job gives its cost back.",
   },
   {
     id: "printing-rates",
     target: "printing-rates",
-    title: "What printing costs",
+    title: "Printing Costs",
     body:
-      "Arc's per-page rates for every combination of size, sides and colour. The same table appears on the request form, with your current options highlighted.",
+      "Arc's price per page for each paper size, single or double sided, in black and white or colour. The request form shows the same table, with your choices highlighted.",
   },
   {
     id: "printing-card",
     target: "printing-card",
     title: "The job list",
-    body: "Each row summarises the job (copies × pages, size, colour), its cost and where it is in the pipeline. One request per document.",
+    body:
+      "Each row shows the job (copies × pages, size, colour), what it costs and where it's up to. Make a separate request for each document.",
   },
   {
     id: "printing-new",
     target: "printing-new",
     title: "New printing request",
-    body: "Two full business days' notice minimum, and the file needs to be print-ready.",
+    body:
+      "Give at least two full business days' notice, or it may not be printed at all. Your file needs to be ready to print.",
   },
   {
     id: "printing-options",
@@ -415,14 +427,14 @@ export const TOUR_STEPS: TourStep[] = [
     target: "printing-options",
     title: "The print job",
     body:
-      "Copies, pages per copy, A4 or A3, single or double sided (and which edge it flips on), black-and-white or colour, plus the document itself as PDF or Word.",
+      "Number of copies, pages per copy, A4 or A3, single or double sided (and which edge it flips on), black and white or colour, and the document itself as a PDF or Word file.",
   },
   {
     id: "printing-cost",
     target: "printing-cost",
-    title: "Cost Estimate",
+    title: "Cost estimate",
     body:
-      "Priced as you type: the highlighted rate above, times pages per copy, times copies. That figure is what gets deducted from the allowance if an exec approves the job.",
+      "Worked out as you fill in the form: the highlighted rate, times pages per copy, times copies. If an executive approves the job, this is the amount taken off the allowance.",
   },
   {
     id: "printing-decision",
@@ -431,7 +443,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Approving a print job",
     body:
-      "Approve deducts the cost from the allowance and moves the job to “pending Arc submission”. From there an exec submits it on the Arc portal, marks it submitted, and finally marks it ready for pickup. Each step notifies the requester. Rejection is final.",
+      "Approving takes the cost off the allowance and moves the job to “Pending Arc submission”. An executive then submits it on the Arc portal, marks it as submitted, and finally marks it ready for pickup. The requester is notified at each step. A rejected job can't be reopened.",
   },
 
   // ── Spending budget ────────────────────────────────────────────────────────
@@ -441,42 +453,44 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-budget",
     title: "Spending budget",
     body:
-      "The yearly budget tracker that replaced the committee spreadsheet. Everyone can see the totals; only executives see individual claims and can edit the figures.",
+      "Everyone can see the totals, but only executives can see individual claims and change the figures.",
   },
   {
     id: "budget-totals",
     target: "budget-totals",
-    title: "Budget vs spend",
+    title: "Budget and spending",
     body:
-      "This year's budget, what's been spent, and what's left. Spend is summed live from claims that are awaiting reimbursement or already reimbursed; drafts and rejected claims are excluded.",
+      "This year's budget, how much has been spent and how much is left. Spending is added up live from claims that are waiting to be paid or already paid, and have been given a category. Drafts, rejected claims and claims without a category aren't counted.",
   },
   {
     id: "budget-categories",
     target: "budget-categories",
     title: "By category",
-    body: "One bar per category with the percentage left. It turns amber past 85% and red once the category is over budget.",
+    body:
+      "One bar for each category, with the percentage left. A bar turns amber once more than 85% is spent, and red once the category goes over budget.",
   },
   {
     id: "budget-claims",
     target: "budget-claims",
     minRole: "EXECUTIVE",
-    title: "Claims and classification",
+    title: "Claims and categories",
     body:
-      "Every non-draft claim, with a dropdown to file it against a category. Struck-through amounts are rejected claims and don't count; anything left unclassified sits outside the category bars.",
+      "Every claim except drafts, with a menu to give each one a category. You can filter by category and sort by date or amount. Crossed-out amounts are rejected claims and don't count. Claims without a category aren't included in the bars or the totals.",
   },
   {
     id: "budget-tabs",
     target: "budget-tabs",
-    title: "Current year vs comparison",
-    body: "Switch to Comparison for the archival view.",
+    title: "This year and past years",
+    body:
+      "Switch to Comparison to see past years.",
   },
   {
     id: "budget-comparison",
     target: "budget-comparison",
     click: "budget-tab-comparison",
-    title: "Year-by-year",
+    title: "Year by year",
     body:
-      "2024, the 2024 revision, 2025 budget and actual usage, this year's budget and a worst case, plus a totals row. Rows with reasoning or notes expand, which is where the “why is this number this number” lives.",
+      "The 2024 budget and its revision, the 2025 budget and what was actually spent, this year's budget and a worst case, with totals at the bottom. Rows with reasons or notes can be expanded, which is where you'll find why each number is what it is.",
   },
   {
     id: "budget-add",
@@ -484,7 +498,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Editing the budget",
     body:
-      "Add a category, or click the pencil on any row to edit its figures, reasoning and notes. Previous years are tucked behind a collapsible section. The same dialog deletes a category. Current-year usage is computed, never typed.",
+      "Add a category, or click the pencil on any row to change its figures, reasoning and notes. Past years are in a section you can expand, and the same dialog deletes a category. This year's spending is worked out from claims, so you never type it in.",
   },
 
   // ── Executive queue ────────────────────────────────────────────────────────
@@ -495,37 +509,39 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Executive queue",
     body:
-      "One page with everything waiting on an executive: Rubric events to create, room bookings to lodge with Arc, printing to move along, and claims to pay out. There's a total count in the header, and “All clear” when it's empty.",
+      "Everything waiting on an executive, on one page: Rubric events to create, room bookings to send to Arc, printing to move along and claims to pay. The total is at the top, and the page says “All clear!” when there's nothing left. If a Discord webhook is set up in Settings, each new item is also posted to Discord.",
   },
   {
     id: "queue-rubric",
     target: "queue-rubric",
     minRole: "EXECUTIVE",
-    title: "Rubric events required",
-    body: "Content requests that asked for a Rubric event and don't have one yet, soonest deadline first.",
+    title: "Rubric events to create",
+    body:
+      "Content requests that asked for a Rubric event and don't have one yet, soonest deadline first.",
   },
   {
     id: "queue-rooms",
     target: "queue-rooms",
     minRole: "EXECUTIVE",
-    title: "Room bookings to lodge",
-    body: "Bookings still submitted or under review, each with a shortcut into the embedded Arc portal with its details ready to paste.",
+    title: "Room bookings to send to Arc",
+    body:
+      "Bookings that are submitted or under review. “Submit on Rubric” opens the Rubric portal inside the app, with the booking's details ready to copy.",
   },
   {
     id: "queue-printing",
     target: "queue-printing",
     minRole: "EXECUTIVE",
-    title: "Printing in flight",
+    title: "Printing in progress",
     body:
-      "Everything not yet collected: waiting on approval, waiting to be lodged with Arc, or at Arc. The button changes to match the stage: Review, Submit on Rubric, Ready for pickup.",
+      "Every job that hasn't been picked up yet: waiting for approval, waiting to go to Arc, or at Arc. The button changes with each stage: Review, Submit on Rubric, then Ready for pickup.",
   },
   {
     id: "queue-reimburse",
     target: "queue-reimburse",
     minRole: "EXECUTIVE",
-    title: "Pending reimbursement",
+    title: "Claims to pay",
     body:
-      "Claims waiting to be paid, with the recipient's BSB and account number right there, and a “Mark reimbursed” button to close them once the transfer is done.",
+      "Claims waiting to be paid. Click the amount, BSB, account number or name to copy just that value, ready to paste into your banking app. Once you've made the transfer, press “Mark Reimbursed” and confirm the payee to close the claim.",
   },
 
   // ── Members ────────────────────────────────────────────────────────────────
@@ -536,15 +552,15 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "The board",
     body:
-      "A shared board for the exec team: things to do, and things coming up. Nothing here is tied to a request — it's the notepad the committee used to keep in a group chat.",
+      "A shared to-do board for the executive team, for things to do and things coming up.",
   },
   {
     id: "board-columns",
     target: "board-columns",
     minRole: "EXECUTIVE",
-    title: "Three columns, drag between them",
+    title: "Moving cards",
     body:
-      "To do, In progress, Done. Drag a card from one to the next; it saves as soon as you drop it. Cards sort by due date, soonest first, and anything undated sinks to the bottom.",
+      "To do, In progress and Done. Drag a card to another column and it saves as soon as you let go. Cards are sorted by due date, soonest first, with undated cards at the bottom.",
   },
   {
     id: "board-add",
@@ -552,7 +568,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Adding a card",
     body:
-      "Give it a name and, if it matters, a due date — that date turns amber inside a week and red once it's passed. Click any card to add notes or delete it. Everyone on the exec sees the same board.",
+      "Give it a name and, if it has one, a due date. The date turns amber within a week of being due and red once it's passed, unless the card is in Done. Click a card to add notes or delete it. All executives see the same board.",
   },
   {
     id: "nav-members",
@@ -560,15 +576,16 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-members",
     minRole: "EXECUTIVE",
     title: "Members",
-    body: "The committee directory, grouped by portfolio, with titles, zIDs and phone numbers. Executives only.",
+    body:
+      "The committee list, grouped by portfolio, with each person's title, zID and phone number. Only executives can see it.",
   },
   {
     id: "member-totals",
     target: "member-totals",
     minRole: "EXECUTIVE",
-    title: "Who is on the committee",
+    title: "Who's on the committee",
     body:
-      "Head counts for executives, directors and subcommittee across the whole society. Underneath, the executive team comes first, then one section per portfolio (Careers, Conferences, Creatives, CTF, Education, Marketing, Projects, Socials, Media) with directors before subcommittee.",
+      "How many executives, directors and subcommittee members the society has. Below that, the executive team comes first, then a section for each portfolio, with directors listed before subcommittee. Anyone without a portfolio is listed under “No portfolio”.",
   },
   {
     id: "member-invite",
@@ -576,7 +593,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Adding a member",
     body:
-      "Name, email, role and title. There's no portfolio to pick: the title decides it, so \u201cCreative Subcom\u201d puts them in Creatives, and the dialog shows which portfolio the chosen title implies. A brand-new account comes back with a temporary password in the toast, so copy it before it disappears.",
+      "Enter their name, email, role and title. You don't choose a portfolio, because the title decides it: “Creative Subcom” goes in Creatives, and the dialog shows which portfolio your chosen title belongs to. A new account gets a four-word temporary passphrase, shown in a message that stays until you close it. They choose their own password the first time they sign in.",
   },
   {
     id: "member-edit",
@@ -584,7 +601,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Editing a member",
     body:
-      "The pencil on a member card changes their role, title or phone number, or resets their password. Changing the title moves them to that title's portfolio; executives hold none. Titles matter beyond grouping too: one containing “marketing” unlocks the marketing deliverables panel on content requests.",
+      "The pencil on a member's card changes their role, title or phone number, resets their password (the new passphrase is shown once, in the dialog), or removes them from the society. Changing their title moves them to that title's portfolio, and executives don't have one. A title with “marketing” in it also gives access to the marketing panel on content requests.",
   },
 
   // ── Rubric portal ──────────────────────────────────────────────────────────
@@ -595,7 +612,8 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "AHEGS recognition",
     body:
-      "Arc's Contributing Members Recognition, collated across the whole year instead of in a panic each November. Two lists go up: the executives, and everyone else — directors are submitted as sub-committee rather than on Arc's separate mentors form, so there is one set of supporting documents instead of two. Executives see the whole club; directors see their own portfolio, themselves included. Subcommittee members don't see this tab at all.",
+      "Arc's Contributing Members Recognition, put together across the year rather than in a rush each November. Two lists are sent: the executives, and everyone else. Directors go on the subcommittee list instead of Arc's separate mentors form, so there's only one set of supporting documents.\n\n" +
+      "Executives see the whole society, directors see their own portfolio (including themselves), and subcommittee members don't see this page.",
   },
   {
     id: "ahegs-meetings",
@@ -603,23 +621,24 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Meetings and minutes",
     body:
-      "Log each meeting or workshop your group runs: name, date, how long it went, and who turned up. Directors file against their own portfolio; executives choose the exec team, any portfolio, or the whole committee, and see every group's meetings listed a portfolio at a time. Attach minutes as a PDF, attendance on the first page, meeting itself after. Delete a meeting and everyone who attended loses those hours again.",
+      "Record each meeting or workshop your group runs: its name, date, how long it went and who came. Directors record meetings for their own portfolio. Executives can choose the executive team, any portfolio or the whole committee, and see every group's meetings, one portfolio at a time.\n\n" +
+      "Attach the minutes as a PDF, with the attendance sheet on the first page and the meeting notes after it. Deleting a meeting takes those hours away from everyone who attended.",
   },
   {
     id: "ahegs-roster",
     target: "ahegs-roster",
     minRole: "DIRECTOR",
-    title: "The roster, and hours",
+    title: "The roster and hours",
     body:
-      "Everyone is filled in from the member directory, so mostly you're correcting: the name as printed on the Student ID, a missing zID, the dates someone actually served. Hours are summed from the meetings each person attended, and “Adjust” credits work done outside them — running an event, marking a CTF. Untick anyone who shouldn't be put forward.",
+      "Everyone is filled in from the member list, so mostly you're making corrections: their name as it appears on their student ID, a missing zID, or the dates they actually served. Hours are added up from the meetings each person attended, and “Adjust” adds hours for work done outside meetings, like running an event or marking a CTF. Untick anyone who shouldn't be put forward.",
   },
   {
     id: "ahegs-ready",
     target: "ahegs-ready",
     minRole: "EXECUTIVE",
-    title: "Is it ready to send?",
+    title: "Ready to send?",
     body:
-      "One card per category: how many people, how much evidence is still missing, and how many rows Arc would reject. A card turns green when that list is good to go. “Download list” gives you Arc's own spreadsheet, already filled in.",
+      "One card for each list, showing how many people are on it, how much evidence is still missing and how many rows Arc would reject. A card turns green when its list is ready. “Download list” gives you Arc's own spreadsheet, already filled in.",
   },
   {
     id: "ahegs-evidence",
@@ -628,7 +647,8 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Arc's supporting documents",
     body:
-      "Behind the sub-committee list Arc wants training resources, attendance records and proof of commitment — one combined file each. “Combine” builds two of them straight from the logged minutes, with a contents page in front: because a set of minutes opens with its attendance sheet, the attendance file takes page 1 of each and the commitment file takes everything after it. More meetings get logged all year, so the button becomes “Rebuild”. Training resources aren't a meeting, so that one is uploaded or linked by hand. Executives need none of this.",
+      "For the subcommittee list, Arc wants training resources, attendance records and proof of commitment, each as one combined file. “Combine” builds the attendance and commitment files from the uploaded PDF minutes, with a contents page at the front. Each set of minutes starts with its attendance sheet, so the attendance file takes the first page of each and the commitment file takes the rest. Minutes added as links are left out.\n\n" +
+      "As more meetings are added during the year, the button changes to “Rebuild”. Training resources aren't a meeting, so upload or link that file yourself. The executive list doesn't need any of this.",
   },
   {
     id: "ahegs-arc",
@@ -636,7 +656,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Filling in Arc's form",
     body:
-      "Arc asks about you before it asks for the lists. Click any value to copy it, then upload the three spreadsheets and the evidence files on Arc's site and sign. Note that hours never leave this app — Arc's templates have no hours column, so they're only here to help you decide who goes forward.",
+      "Arc asks about you before it asks for the lists. Click any value to copy it, then upload the two spreadsheets and the evidence files on Arc's site and sign. Hours stay in this app, because Arc's spreadsheets have no column for them. They're only here to help you decide who to put forward.",
   },
   {
     id: "nav-rubric",
@@ -645,7 +665,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Rubric portal",
     body:
-      "A window onto hellorubric.com: your events, ticket sales, members, grants and settlements, read live. Executives see all of it; directors get the Events tab only.",
+      "A view of your society on hellorubric.com: events, ticket sales, members, grants and settlements, read live from Rubric. Executives see everything, directors see the Events tab only. On the public demo the data is a saved sample, and a banner says so.",
   },
   {
     id: "rubric-tabs",
@@ -653,14 +673,15 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "The tabs",
     body:
-      "Overview, Events, Members, Merch & Orders, Grants, Settlements and the embedded Web Portal. If Rubric credentials haven't been set up yet, each tab says so and links to Settings.",
+      "Executives get Overview, Events, Members, Merch & Orders, Grants, Settlements and Web Portal. Directors get Events only. Until Rubric is connected in Settings, every tab apart from Web Portal says so and links there.",
   },
   {
     id: "rubric-stats",
     target: "rubric-stats",
     minRole: "EXECUTIVE",
     title: "Overview",
-    body: "Ticket revenue, grant count, active members and total events, pulled from Rubric on load, plus your Rubric team and quick links into the real portal.",
+    body:
+      "Ticket revenue, number of grants, active members and total events, loaded from Rubric when you open the page, plus your Rubric team and links into the real portal.",
   },
   {
     id: "rubric-events",
@@ -669,7 +690,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "DIRECTOR",
     title: "Events",
     body:
-      "Every event on Rubric with tickets sold, scanned-in count and revenue. Open one for per-ticket detail, jump to its public page, or archive it. The button up here submits a new event (including the Arc affiliation questions) straight from this app.",
+      "Every event on Rubric, with tickets sold, how many were scanned in and the revenue. Open an event for ticket-by-ticket detail or to go to its public page. Executives can also archive an event, and use the button up here to submit a new one to Rubric, including Arc's affiliation questions, without leaving this app.",
   },
   {
     id: "rubric-members",
@@ -678,7 +699,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Members",
     body:
-      "Active, expired and pending membership lists with counts, degree and study-year detail, and a CSV export of whichever list you're looking at.",
+      "Active, expired and pending members, with counts, degrees and year of study, and a CSV export of the list you're looking at.",
   },
   {
     id: "rubric-rest",
@@ -687,7 +708,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Merch, grants and settlements",
     body:
-      "Merch listings with stock and sales plus the order list; grant funding with paid and remaining balances; and settlements with per-settlement detail and a running total.",
+      "Merch listings with stock and sales, and the list of orders. Grant funding with what's been paid and what's left. Settlements, each with its own detail, and a total across all of them.",
   },
   {
     id: "rubric-web",
@@ -696,7 +717,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Web portal",
     body:
-      "Rubric's own site embedded, with a details panel beside it. Pick a room booking, printing job or activity grant and click any field to copy it. The browser won't let us type into someone else's site, so this is the next best thing. The Submit-on-Rubric buttons elsewhere in the app land you here with the right record already selected.",
+      "Rubric's own site inside the app, with a details panel beside it. Choose a room booking, printing job or activity grant, then click any field to copy it. Browsers don't let one site type into another, so copying is the next best thing. The “Submit on Rubric” buttons elsewhere in the app bring you here with the right record already chosen.",
   },
 
   // ── Settings ───────────────────────────────────────────────────────────────
@@ -706,21 +727,24 @@ export const TOUR_STEPS: TourStep[] = [
     target: "nav-settings",
     minRole: "EXECUTIVE",
     title: "Society settings",
-    body: "Executive-only configuration for the whole society.",
+    body:
+      "Settings for the whole society. Only executives can change them.",
   },
   {
     id: "settings-general",
     target: "settings-general",
     minRole: "EXECUTIVE",
     title: "General",
-    body: "Society name, description and contact email.",
+    body:
+      "The society's name, description and contact email.",
   },
   {
     id: "settings-tier",
     target: "settings-tier",
     minRole: "EXECUTIVE",
     title: "Club tier",
-    body: "Your Arc tier, which is what sets the printing allowance on the Printing page.",
+    body:
+      "Your Arc club tier, which sets the printing allowance on the Printing page.",
   },
   {
     id: "settings-ahegs",
@@ -728,21 +752,23 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "The AHEGS year",
     body:
-      "Which year the AHEGS tab opens on. It is set here rather than read off the calendar, because a submission is collated all year and lodged at the end of it — you don't want the page rolling over to an empty year on 1 January while you're still finishing the last one. Leave it blank to follow the calendar.",
+      "Which year the AHEGS page opens on. You set it here instead of it following the calendar, because a submission is put together all year and sent at the end. That way the page doesn't switch to an empty new year on 1 January while you're still finishing the last one. Leave it blank to follow the calendar.",
   },
   {
     id: "settings-branding",
     target: "settings-branding",
     minRole: "EXECUTIVE",
     title: "Branding",
-    body: "Primary and secondary colours, plus logo and banner uploads. The logo is what you see in the sidebar.",
+    body:
+      "Your logo, which appears in the sidebar the next time you sign in. If there's no logo, the sidebar shows your primary colour instead.",
   },
   {
     id: "settings-social",
     target: "settings-social",
     minRole: "EXECUTIVE",
     title: "Links",
-    body: "Website, Facebook, Instagram, Discord and LinkedIn.",
+    body:
+      "Your website, Facebook, Instagram, Discord and LinkedIn.",
   },
   {
     id: "settings-portfolios",
@@ -750,7 +776,8 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Portfolios",
     body:
-      "The nine areas the committee is split into. Add, rename and remove them here; deleting one unassigns its titles and members rather than removing them. Nobody is put in a portfolio directly, so each one needs its titles set up below.",
+      "The areas the committee is split into. A new society starts with none, and one button adds the nine standard ones. You can add, rename and remove portfolios here.\n\n" +
+      "Removing a portfolio takes its titles and members out of it rather than deleting them, and its AHEGS meetings become whole-committee meetings. Nobody is put in a portfolio directly, so each portfolio needs titles set up below.",
   },
   {
     id: "settings-titles",
@@ -758,7 +785,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Roles & titles",
     body:
-      "The title options offered when adding or editing a member, grouped by role level. Each director and subcom title points at a portfolio, and that is what groups its holders on the Members page: move a title to another portfolio and everyone holding it moves too. Executive titles have no portfolio.",
+      "The titles you can choose from when adding or editing a member, grouped by role. Each director and subcommittee title belongs to a portfolio, and that's what groups people on the Members page. Move a title to another portfolio and everyone with that title moves too. Executive titles don't have a portfolio.",
   },
   {
     id: "settings-rubric",
@@ -766,7 +793,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Rubric integration",
     body:
-      "Paste your Rubric session ID and numeric society ID to switch the Rubric portal on, then use Test Connection. The session is stored server side and never handed to a browser: every Rubric call is made by this app on your behalf, against a fixed list of permitted calls.",
+      "Paste in your Rubric session ID and numeric society ID, press “Save Credentials”, then “Test Connection” to switch on the Rubric portal. The session ID is kept on the server and never sent to anyone's browser. The app makes every Rubric request for you, and only from a fixed list of allowed requests.",
   },
 
   // ── Account ────────────────────────────────────────────────────────────────
@@ -775,25 +802,29 @@ export const TOUR_STEPS: TourStep[] = [
     path: "/account",
     target: "nav-account",
     title: "My account",
-    body: "Your own settings, available to everyone whatever your role.",
+    body:
+      "Your own settings. Everyone has this page, whatever their role.",
   },
   {
     id: "account-profile",
     target: "account-profile",
     title: "Profile",
-    body: "Name and email. Changing your email needs your current password; the sidebar updates without re-logging in.",
+    body:
+      "Your name and email. You need your current password to change your email. The sidebar updates without you having to sign in again.",
   },
   {
     id: "account-bank",
     target: "account-bank",
     title: "Bank details",
-    body: "Saved once here, then offered as “details on file” on every reimbursement form.",
+    body:
+      "Save your bank details here once, and every reimbursement form will offer them as “details on file”.",
   },
   {
     id: "account-password",
     target: "account-password",
     title: "Password",
-    body: "Current password, new password twice, minimum eight characters.",
+    body:
+      "Enter your current password, then your new one twice. It needs at least eight characters.",
   },
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
@@ -801,9 +832,9 @@ export const TOUR_STEPS: TourStep[] = [
     id: "cleanup",
     kind: "cleanup",
     path: "/dashboard",
-    title: "That's the whole thing",
+    title: "That's the tour",
     body:
-      "Finishing deletes the demo records the tour created: the content request, room booking, claim, printing job, demo budget category and demo notification. Leaving early (Esc) cleans up too, and starting the tour again always clears anything left behind first.",
+      "Finishing removes the demo records the tour made: the content request, room booking, claim and printing job, their comment threads, the demo notification and, for executives, the demo budget category. Leaving early with Esc cleans up too, and starting the tour again clears anything left over first.",
   },
 ];
 
