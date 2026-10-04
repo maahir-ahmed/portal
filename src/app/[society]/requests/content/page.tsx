@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { YearPicker } from "@/components/shared/YearPicker";
+import { eventYearRange, parseYear, yearOptions } from "@/lib/years";
 import { formatDate, formatTimeRange, statusLabel, cn } from "@/lib/utils";
 import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, Clock, MapPin } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
 interface Props {
   params: Promise<{ society: string }>;
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; year?: string }>;
 }
 
 // Tab order: ASSIGNED / Awaiting exec action removed; "Need more information" sits before In Progress.
@@ -48,7 +50,7 @@ function daysLabel(dueDate: Date, status: string): string | null {
 
 export default async function ContentRequestsPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
-  const { status } = await searchParams;
+  const { status, year: yearParam } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -58,10 +60,23 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
   if (!membership) redirect("/");
 
   const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
-  const scope = {
+  const owner = {
     societyId: membership.societyId,
     ...(!canSeeAll ? { submittedById: session.user.id } : {}),
   };
+
+  // Events go by calendar year (src/lib/years.ts). The picker offers every year from the
+  // first event to whichever is later of this year and the furthest-out event.
+  const thisYear = new Date().getUTCFullYear();
+  const year = parseYear(yearParam) ?? thisYear;
+  const { start, end } = eventYearRange(year);
+  const scope = { ...owner, startDate: { gte: start, lt: end } };
+  const span = await prisma.contentRequest.aggregate({ where: owner, _min: { startDate: true }, _max: { startDate: true } });
+  const years = yearOptions(
+    span._min.startDate?.getUTCFullYear() ?? null,
+    Math.max(thisYear, span._max.startDate?.getUTCFullYear() ?? thisYear)
+  ).map((y) => ({ value: y, label: String(y) }));
+  const withYear = (qs: string) => `/${societySlug}/requests/content?${qs}${qs ? "&" : ""}year=${year}`;
 
   const [rows, counts] = await Promise.all([
     prisma.contentRequest.findMany({
@@ -98,15 +113,19 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
         </Button>
       </div>
 
-      {/* Status filter with counts */}
+      <div data-tour="content-year" className="w-fit">
+        <YearPicker years={years} value={year} label="Events in" />
+      </div>
+
+      {/* Status filter with counts, for the chosen year */}
       <div data-tour="content-tabs" className="flex gap-2 flex-wrap">
-        <Link href={`/${societySlug}/requests/content`}>
+        <Link href={withYear("")}>
           <Button variant={!status ? "default" : "outline"} size="sm" className="gap-1.5">
             All <span className={cn("tabnums text-xs", !status ? "opacity-70" : "text-muted-foreground")}>{totalCount}</span>
           </Button>
         </Link>
         {TABS.map((s) => (
-          <Link key={s} href={`/${societySlug}/requests/content?status=${s}`}>
+          <Link key={s} href={withYear(`status=${s}`)}>
             <Button variant={status === s ? "default" : "outline"} size="sm" className="gap-1.5">
               {statusLabel(s)}
               <span className={cn("tabnums text-xs", status === s ? "opacity-70" : "text-muted-foreground")}>{countFor(s)}</span>
@@ -120,7 +139,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
         <Card>
           <CardContent className="py-12 flex flex-col items-center gap-3">
             <FileText className="h-8 w-8 text-muted-foreground" />
-            <p className="text-muted-foreground">No content requests found.</p>
+            <p className="text-muted-foreground">No events or content requests in {year}{status ? ` with this status` : ""}.</p>
             <Button asChild size="sm">
               <Link href={`/${societySlug}/requests/content/new`}>Create your first request</Link>
             </Button>

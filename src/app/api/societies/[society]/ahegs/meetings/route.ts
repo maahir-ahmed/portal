@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
+import { ahegsYearOf } from "@/lib/years";
 
 // A meeting a portfolio ran, with its minutes. Directors log their own portfolio's
 // meetings; executives can log any, including whole-of-committee ones.
@@ -53,7 +54,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         createdById: session.user.id,
         portfolioId,
         execTeam,
-        year: body.year,
+        // Which AHEGS year a meeting counts towards follows from its date and the
+        // Term 3 end dates in Settings, not from whatever year the page was showing.
+        year: ahegsYearOf(
+          await prisma.societyYear.findMany({ where: { societyId: membership.societyId } }),
+          new Date(`${body.date}T00:00:00Z`)
+        ),
         title: body.title,
         date: new Date(`${body.date}T00:00:00Z`),
         hours: body.hours,

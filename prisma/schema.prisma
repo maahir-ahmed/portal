@@ -174,7 +174,7 @@ model Society {
   // not follow the calendar: a submission is prepared over one year and lodged at its
   // end, so the page must not roll over to a new, empty year on 1 January. Null falls
   // back to the calendar year.
-  ahegsYear            Int?
+  ahegsYear            Int?   // superseded by SocietyYear.term3End; unread, kept so db push drops nothing
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -192,6 +192,26 @@ model Society {
   ahegsEntries     AhegsEntry[]
   ahegsEvidence    AhegsEvidence[]
   ahegsMeetings    AhegsMeeting[]
+  years            SocietyYear[]
+}
+
+// The two dates each year that decide which year a record belongs to. Records keep
+// only their own date (expense date, meeting date), and every page buckets them by
+// these at read time, so a past year stays viewable as-is and a new year needs only
+// its dates. Events need neither: they go by calendar year. See src/lib/years.ts.
+model SocietyYear {
+  id        String    @id @default(cuid())
+  societyId String
+  year      Int
+  // The AGM held in this year's Term 3 closes this financial year and opens the next
+  // one, which is named after the following year (Oct 2025 AGM opens "2026").
+  agmDate   DateTime?
+  // AHEGS year N runs from the end of Term 3 in N-1 to the end of Term 3 in N.
+  term3End  DateTime?
+
+  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@unique([societyId, year])
 }
 
 model User {

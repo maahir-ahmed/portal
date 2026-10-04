@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
+import { ahegsYearOf } from "@/lib/years";
 
 type Params = { society: string; id: string };
 
@@ -47,7 +48,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         where: { id },
         data: {
           ...(body.title ? { title: body.title } : {}),
-          ...(body.date ? { date: new Date(`${body.date}T00:00:00Z`) } : {}),
+          ...(body.date
+            ? {
+                date: new Date(`${body.date}T00:00:00Z`),
+                // A new date can move the meeting into another AHEGS year.
+                year: ahegsYearOf(
+                  await tx.societyYear.findMany({ where: { societyId: membership.societyId } }),
+                  new Date(`${body.date}T00:00:00Z`)
+                ),
+              }
+            : {}),
           ...(body.hours !== undefined ? { hours: body.hours } : {}),
           ...(body.fileUrl !== undefined ? { fileUrl: body.fileUrl || null } : {}),
           ...(body.fileName !== undefined ? { fileName: body.fileName || null } : {}),
