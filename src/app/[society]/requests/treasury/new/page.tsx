@@ -76,16 +76,21 @@ export default function NewTreasuryPage() {
     setLoading(true);
     const form = new FormData(formRef.current);
 
-    // Upload files first
+    // Upload files first. Stop on the first failure: creating the claim without a
+    // receipt the submitter thinks is attached is worse than making them fix it.
     const fileUrls: string[] = [];
     for (const file of files) {
       const fd = new FormData();
       fd.append("file", file);
       const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-      if (uploadRes.ok) {
-        const { url } = await uploadRes.json();
-        fileUrls.push(url);
+      if (!uploadRes.ok) {
+        const d = await uploadRes.json().catch(() => ({}));
+        toast.error(`${file.name} couldn't be uploaded${d.error ? `: ${d.error}` : ""}. Remove it or pick another file.`);
+        setLoading(false);
+        return;
       }
+      const { url } = await uploadRes.json();
+      fileUrls.push(url);
     }
 
     const body: Record<string, unknown> = {

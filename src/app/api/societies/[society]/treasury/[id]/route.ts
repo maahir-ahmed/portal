@@ -26,6 +26,8 @@ const patchSchema = z.object({
   amount: z.number().nonnegative().finite().optional(),
   addReceipts: z.array(z.object({ fileName: z.string().optional(), fileUrl: z.string().min(1) })).optional(),
   removeReceiptIds: z.array(z.string()).optional(),
+  // Sent with a draft submit when the policy wasn't ticked at draft time.
+  acknowledgedRules: z.literal(true).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
@@ -70,6 +72,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         { status: 400 }
       );
     }
+    // Same rule as the new-claim form: no submit without the policy acknowledged.
+    if (!request.acknowledgedRules && !body.acknowledgedRules) {
+      return NextResponse.json({ error: "Acknowledge the reimbursement policy before submitting." }, { status: 400 });
+    }
   }
 
   // Only execs classify a claim into a budget category. null = unclassify.
@@ -103,6 +109,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
       ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
       ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
+      ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
     },
   });
 

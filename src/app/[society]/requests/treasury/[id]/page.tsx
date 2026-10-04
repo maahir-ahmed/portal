@@ -88,7 +88,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
         {canEdit && (
           <div data-tour="claim-edit" className="flex items-center gap-2">
             {request.status === "DRAFT" && (
-              <SubmitClaimButton societySlug={societySlug} requestId={request.id} />
+              <SubmitClaimButton societySlug={societySlug} requestId={request.id} acknowledged={request.acknowledgedRules} />
             )}
             <EditTreasuryClaim
               societySlug={societySlug}
