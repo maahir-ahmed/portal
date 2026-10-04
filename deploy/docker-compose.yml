@@ -67,6 +67,9 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@society.local}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
+      # Encrypts the Rubric session and Discord webhook URLs at rest (src/lib/secrets.ts).
+      # Optional: empty stores them in plain text, which is how older stacks still run.
+      RUBRIC_SECRET_KEY: ${RUBRIC_SECRET_KEY:-}
     volumes:
       - uploads_data:/app/uploads
     depends_on:

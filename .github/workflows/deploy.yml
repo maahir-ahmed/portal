@@ -1,5 +1,5 @@
-# Self-hosted runner on the mini PC. push to main -> prod, push to demo -> the public
-# demo stack. dev is the working branch and deploys nowhere. The demo stack keeps the
+# Self-hosted runner on the mini PC. push to main -> prod and the PC Society portal,
+# push to demo -> the public demo stack. dev is the working branch and deploys nowhere. The demo stack keeps the
 # rubric_dev project name and deploy/.env.dev so its containers, volumes and nginx
 # upstream are untouched by the branch switch.
 # Deploys from the PERSISTENT clone (~/containers/society-project) which holds the
@@ -22,12 +22,18 @@ jobs:
           git fetch origin "$BRANCH"
           git reset --hard "origin/$BRANCH"
 
+          # project:envfile pairs. main runs every society's production stack on the
+          # same code; a stack whose env file isn't on the box is skipped, not failed.
           if [ "$BRANCH" = "main" ]; then
-            PROJECT=rubric_prod; ENVFILE=deploy/.env.prod
+            STACKS="rubric_prod:deploy/.env.prod pcsoc_portal:deploy/.env.pcsoc"
           else
-            PROJECT=rubric_dev;  ENVFILE=deploy/.env.dev
+            STACKS="rubric_dev:deploy/.env.dev"
           fi
 
-          docker compose --env-file "$ENVFILE" -p "$PROJECT" \
-            -f deploy/docker-compose.yml up -d --build --remove-orphans
+          for s in $STACKS; do
+            PROJECT="${s%%:*}"; ENVFILE="${s#*:}"
+            if [ ! -f "$ENVFILE" ]; then echo "skipping $PROJECT: no $ENVFILE"; continue; fi
+            docker compose --env-file "$ENVFILE" -p "$PROJECT" \
+              -f deploy/docker-compose.yml up -d --build --remove-orphans
+          done
           docker image prune -f
