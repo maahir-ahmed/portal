@@ -13,8 +13,9 @@ import { RubricForm } from "./RubricForm";
 import { RubricQrCode } from "@/components/requests/RubricQrCode";
 import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog";
 import { AssignRubricEvent } from "@/components/requests/AssignRubricEvent";
-import { formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
-import { ArrowLeft, Calendar, MapPin, Clock, Hourglass, QrCode, ExternalLink, Send, Pencil } from "lucide-react";
+import { EventPhotos } from "@/components/requests/EventPhotos";
+import { formatCurrency, formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
+import { ArrowLeft, Calendar, MapPin, Clock, Hourglass, QrCode, ExternalLink, Send, Pencil, Receipt } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
 interface Props {
@@ -36,6 +37,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true, email: true } },
       deliverables: { orderBy: { uploadedAt: "asc" } },
+      photos: { orderBy: { uploadedAt: "asc" }, select: { id: true, fileName: true, fileUrl: true } },
       thread: {
         include: {
           comments: {
@@ -50,6 +52,30 @@ export default async function ContentRequestDetailPage({ params }: Props) {
   if (!request || request.societyId !== membership.societyId) notFound();
 
   const isExec = membership.role === "EXECUTIVE";
+
+  // Linked claims follow the treasury ownership rule (execs see all, everyone else only
+  // their own), but the total is open to anyone who can see the event: it reveals a
+  // sum, not who spent what. Drafts aren't claims yet and rejected ones weren't spent.
+  const linkedClaims = { contentRequestId: request.id, societyId: membership.societyId };
+  const [expenses, expenseTotal] = await Promise.all([
+    prisma.treasuryRequest.findMany({
+      where: {
+        ...linkedClaims,
+        status: { not: "DRAFT" },
+        ...(isExec ? {} : { submittedById: session.user.id }),
+      },
+      select: {
+        id: true, description: true, amount: true, status: true,
+        submittedBy: { select: { name: true } },
+      },
+      orderBy: { expenseDate: "asc" },
+    }),
+    prisma.treasuryRequest.aggregate({
+      where: { ...linkedClaims, status: { in: ["REIMBURSEMENT_PENDING", "REIMBURSED"] } },
+      _sum: { amount: true },
+      _count: true,
+    }),
+  ]);
   const isMarketing = isExec || (membership.title?.toLowerCase().includes("marketing") ?? false);
 
   // Assignment / Awaiting exec action removed; "Need more information" ordered before In Progress.
@@ -59,7 +85,10 @@ export default async function ContentRequestDetailPage({ params }: Props) {
   ];
 
   const isOwner = request.submittedById === session.user.id;
-  const canEdit = (isOwner || isExec || membership.role === "DIRECTOR") && !["COMPLETED", "CANCELLED"].includes(request.status);
+  const canManage = isOwner || isExec || membership.role === "DIRECTOR";
+  const canEdit = canManage && !["COMPLETED", "CANCELLED"].includes(request.status);
+  // Photos are taken at the event, so they're still welcome once it's completed.
+  const canManagePhotos = canManage && request.status !== "CANCELLED";
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -305,6 +334,63 @@ export default async function ContentRequestDetailPage({ params }: Props) {
               </CardContent>
             </Card>
           )}
+
+          <EventPhotos
+            societySlug={societySlug}
+            requestId={request.id}
+            photos={request.photos}
+            canManage={canManagePhotos}
+          />
+
+          <Card data-tour="event-expenses">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Receipt className="h-4 w-4" /> Expenses
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {expenses.length > 0 ? (
+                <div className="space-y-1.5">
+                  {expenses.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/${societySlug}/requests/treasury/${c.id}`}
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{c.description || "Untitled claim"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{c.submittedBy.name}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="font-medium tabular-nums">{formatCurrency(Number(c.amount))}</span>
+                        <StatusBadge status={c.status} />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {isExec || expenseTotal._count === 0
+                    ? "No reimbursement claims are linked to this event yet."
+                    : "None of your reimbursement claims are linked to this event."}{" "}
+                  To link one, pick this event in the reimbursement form.
+                </p>
+              )}
+              {expenseTotal._count > 0 && (
+                <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
+                  <span className="text-muted-foreground">
+                    Total pending and reimbursed{!isExec && ", across everyone's claims"}
+                  </span>
+                  <span className="font-semibold tabular-nums">{formatCurrency(Number(expenseTotal._sum.amount ?? 0))}</span>
+                </div>
+              )}
+              {!["DRAFT", "CANCELLED"].includes(request.status) && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/${societySlug}/requests/treasury/new?event=${request.id}`}>Claim an expense for this event</Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Thread */}
           <ThreadView

@@ -247,6 +247,7 @@ model User {
   auditLogs         AuditLog[]
   boardCards        BoardCard[]
   ahegsMeetings     AhegsMeeting[]
+  eventPhotos       EventPhoto[]
 }
 
 model SocietyMembership {
@@ -361,9 +362,27 @@ model ContentRequest {
   assignedTo   User?   @relation("ContentRequestAssignee", fields: [assignedToId], references: [id])
   thread       Thread?
   deliverables ContentDeliverable[]
+  photos       EventPhoto[]
+  expenses     TreasuryRequest[]
 
   @@index([societyId])
   @@index([status])
+}
+
+// Photos taken at the event. Arc's activity grant asks for evidence the event ran,
+// so these are uploaded after the fact, by anyone who can edit the event.
+model EventPhoto {
+  id               String   @id @default(cuid())
+  contentRequestId String
+  fileName         String
+  fileUrl          String
+  uploadedById     String
+  uploadedAt       DateTime @default(now())
+
+  contentRequest ContentRequest @relation(fields: [contentRequestId], references: [id], onDelete: Cascade)
+  uploadedBy     User           @relation(fields: [uploadedById], references: [id])
+
+  @@index([contentRequestId])
 }
 
 // Finished graphics/banners uploaded by marketing, for download.
@@ -431,6 +450,8 @@ model TreasuryRequest {
   amount           Decimal        @db.Decimal(10, 2)
   bankAccountId    String?
   budgetCategoryId String?
+  // The event this was spent on, if any. Deleting the event keeps the claim.
+  contentRequestId String?
   status           TreasuryStatus @default(DRAFT)
   acknowledgedRules Boolean       @default(false)
   createdAt        DateTime       @default(now())
@@ -440,12 +461,14 @@ model TreasuryRequest {
   submittedBy    User                 @relation("TreasurySubmitter", fields: [submittedById], references: [id])
   bankAccount    BankAccount?         @relation(fields: [bankAccountId], references: [id])
   budgetCategory BudgetCategory?      @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+  contentRequest ContentRequest?      @relation(fields: [contentRequestId], references: [id], onDelete: SetNull)
   receipts       TreasuryAttachment[]
   thread         Thread?
 
   @@index([societyId])
   @@index([status])
   @@index([budgetCategoryId])
+  @@index([contentRequestId])
 }
 
 model TreasuryAttachment {

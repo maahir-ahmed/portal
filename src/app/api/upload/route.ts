@@ -24,6 +24,12 @@ const NARROWED: Record<string, { types: string[]; exts: string[]; hint: string }
     exts: ["pdf"],
     hint: "This has to be a PDF so it can be merged into one document. In Word use File → Save As → PDF; in Google Docs, File → Download → PDF.",
   },
+  // Event activity photos: refused here rather than after the file is already on disk.
+  image: {
+    types: ["image/jpeg", "image/png", "image/gif", "image/webp"],
+    exts: ["jpg", "jpeg", "png", "gif", "webp"],
+    hint: "This has to be a photo: JPG, PNG, GIF or WebP.",
+  },
 };
 
 export async function POST(req: NextRequest) {

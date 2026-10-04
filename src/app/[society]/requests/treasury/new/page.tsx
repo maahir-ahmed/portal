@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, AlertCircle, CheckCircle, Upload, Building } from "lucide-react";
 import Link from "next/link";
+import { formatDate } from "@/lib/utils";
 
 const RULES = [
   "Get the spend approved in the committee Discord BEFORE you buy. This form is only for claiming the money back.",
@@ -32,11 +33,23 @@ interface BudgetCategory {
   name: string;
 }
 
+interface LinkableEvent {
+  id: string;
+  eventName: string;
+  startDate: string;
+}
+
 const UNCLASSIFIED = "__none__";
+
+// Event times are wall-clock stored as UTC (see dtLocal in ContentRequestForm), so drop
+// the "Z" and read them as local; otherwise an evening event shows as the next day here.
+const eventDate = (iso: string) => formatDate(iso.slice(0, 19));
+const NO_EVENT = "__none__";
 
 export default function NewTreasuryPage() {
   const router = useRouter();
   const params = useParams<{ society: string }>();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [useExisting, setUseExisting] = useState(true);
@@ -44,6 +57,9 @@ export default function NewTreasuryPage() {
   const [savedAccount, setSavedAccount] = useState<BankAccount | null | undefined>(undefined);
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
   const [categoryId, setCategoryId] = useState<string>(UNCLASSIFIED);
+  const [events, setEvents] = useState<LinkableEvent[]>([]);
+  // The event page's "Expenses" card links here with ?event=<id> to preselect it.
+  const [eventId, setEventId] = useState<string>(searchParams.get("event") ?? NO_EVENT);
   const formRef = useRef<HTMLFormElement>(null);
 
   // Fetch the user's bank account on mount
@@ -64,6 +80,19 @@ export default function NewTreasuryPage() {
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCategories(Array.isArray(data) ? data : []))
       .catch(() => setCategories([]));
+  }, [params.society]);
+
+  useEffect(() => {
+    fetch(`/api/societies/${params.society}/events`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const list: LinkableEvent[] = Array.isArray(data) ? data : [];
+        setEvents(list);
+        // A preselected event that isn't linkable (a draft, or too old) would leave the
+        // select blank, so fall back to "No event" rather than show nothing.
+        setEventId((cur) => (cur === NO_EVENT || list.some((e) => e.id === cur) ? cur : NO_EVENT));
+      })
+      .catch(() => { setEvents([]); setEventId(NO_EVENT); });
   }, [params.society]);
 
   async function submit(status: "DRAFT" | "REIMBURSEMENT_PENDING") {
@@ -103,6 +132,7 @@ export default function NewTreasuryPage() {
       acknowledgedRules: acknowledged,
       receiptUrls: fileUrls,
       budgetCategoryId: categoryId === UNCLASSIFIED ? null : categoryId,
+      contentRequestId: eventId === NO_EVENT ? null : eventId,
       status,
     };
 
@@ -207,6 +237,19 @@ export default function NewTreasuryPage() {
                 placeholder="What was purchased and why? Which event is this for?"
                 rows={3} required
               />
+            </div>
+            <div data-tour="treasury-event" className="space-y-2">
+              <Label>Event</Label>
+              <Select value={eventId} onValueChange={setEventId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_EVENT}>No event</SelectItem>
+                  {events.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.eventName}, {eventDate(e.startDate)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">If this was spent on an event, pick it so the claim shows up on that event&apos;s page.</p>
             </div>
             {categories.length > 0 && (
               <div data-tour="treasury-category" className="space-y-2">

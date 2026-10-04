@@ -16,6 +16,8 @@ const EDITABLE_STATUSES: TreasuryStatus[] = ["DRAFT", "REIMBURSEMENT_PENDING"];
 const patchSchema = z.object({
   status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING", "REJECTED", "REIMBURSED"]).optional(),
   budgetCategoryId: z.string().min(1).nullable().optional(),
+  // The event this was spent on. null = unlink.
+  contentRequestId: z.string().min(1).nullable().optional(),
   contactEmail: z.string().email().optional(),
   // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
   // new Date() would turn into an Invalid Date.
@@ -91,8 +93,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     }
   }
 
+  // A linked event must belong to this society. Unlike the category, the submitter
+  // sets this themselves, so it is an ordinary field edit (canEdit below).
+  if (body.contentRequestId) {
+    const event = await prisma.contentRequest.findUnique({ where: { id: body.contentRequestId } });
+    if (!event || event.societyId !== membership!.societyId) {
+      return NextResponse.json({ error: "Invalid event" }, { status: 400 });
+    }
+  }
+
   const editsFields =
-    [body.contactEmail, body.expenseDate, body.locationSupplier, body.description, body.amount]
+    [body.contactEmail, body.expenseDate, body.locationSupplier, body.description, body.amount, body.contentRequestId]
       .some((v) => v !== undefined) ||
     Array.isArray(body.addReceipts) || Array.isArray(body.removeReceiptIds);
   if (editsFields && !canEdit) {
@@ -108,6 +119,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
       ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
       ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
+      ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
       ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
       ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
     },
