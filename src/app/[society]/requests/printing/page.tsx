@@ -106,7 +106,7 @@ export default async function PrintingRequestsPage({ params }: Props) {
           {requests.map((r, i) => (
             <Link key={r.id} href={`/${societySlug}/requests/printing/${r.id}`} data-tour={i === 0 ? "printing-card" : undefined}>
               <Card className="hover:shadow-sm transition-shadow">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
+                <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} />
                     <div className="min-w-0">

@@ -153,7 +153,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`} data-tour={i === 0 ? "content-card" : undefined}>
                 <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityClasses(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:items-start min-[400px]:justify-between min-[400px]:gap-4">
                       <div className="flex items-start gap-3 min-w-0">
                         <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
                         <div className="min-w-0">
@@ -176,7 +176,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <div className="flex flex-row flex-wrap items-center pl-9 min-[400px]:pl-0 min-[400px]:flex-col min-[400px]:items-end gap-1.5 flex-shrink-0">
                         <StatusBadge status={r.status} />
                         {label && (
                           <span className="text-[11px] font-medium text-muted-foreground tabnums">{label}</span>
