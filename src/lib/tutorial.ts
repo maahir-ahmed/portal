@@ -125,7 +125,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "nav-content",
     path: "/requests/content",
     target: "nav-content",
-    title: "Content requests and events",
+    title: "Events and content requests",
     body:
       "Marketing requests, which also serve as the society's list of events. Each event gets one request, with someone being able to request graphics, blurbs and a Rubric event.",
   },
@@ -135,6 +135,12 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Filter by status",
     body:
       "Each tab shows only the requests with that status, with a count next to it. “All” shows everything.",
+  },
+  {
+    id: "content-year",
+    target: "content-year",
+    title: "One year at a time",
+    body: "Events are listed by calendar year, and this one opens on the current year. Pick another year to look back at past events, or ahead at ones already planned. The tabs and their counts follow the year you pick.",
   },
   {
     id: "content-card",
@@ -202,6 +208,18 @@ export const TOUR_STEPS: TourStep[] = [
     title: "The Rubric event",
     body:
       "Where the event's ticketing page comes from. An executive creates the event on the Rubric portal and assigns it here, or pastes in a link. A QR code with a transparent background is then made automatically, ready to drop into a poster. Once it's linked you also see attendance numbers and the status of the Arc activity grant.",
+  },
+  {
+    id: "event-photos",
+    target: "event-photos",
+    title: "Activity photos",
+    body: "Once the event has run, add a few photos of it here. Arc asks for them as evidence with the activity grant. Whoever made the request, directors and executives can add and remove photos, even after the event is marked complete.",
+  },
+  {
+    id: "event-expenses",
+    target: "event-expenses",
+    title: "What the event cost",
+    body: "Reimbursement claims linked to this event, with the total being paid out. Executives see every claim, everyone else sees only their own, and the total counts everyone's. “Claim an expense for this event” opens the reimbursement form with this event already chosen.",
   },
   {
     id: "thread",
@@ -311,6 +329,18 @@ export const TOUR_STEPS: TourStep[] = [
       "Each row shows the amount, the supplier and the date of the expense, with the status on the right: Draft, Reimbursement pending, Reimbursed or Rejected. Newest claims come first.",
   },
   {
+    id: "treasury-search",
+    target: "treasury-search",
+    title: "Finding a claim",
+    body: "Search by a word from the description, the supplier, the person who claimed it, or an exact amount like 41.20.",
+  },
+  {
+    id: "treasury-year",
+    target: "treasury-year",
+    title: "Financial years",
+    body: "Claims are grouped by financial year, which runs from one AGM to the next and is named after the year that follows the AGM. Pick “All years” to search everything.",
+  },
+  {
     id: "treasury-new",
     target: "treasury-new",
     title: "New claim",
@@ -338,6 +368,12 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Budget category",
     body:
       "Which part of the budget the money comes out of. This is what the Spending Budget page adds up. If you're not sure, pick “Not sure” and an executive will sort it out later.",
+  },
+  {
+    id: "treasury-event",
+    target: "treasury-event",
+    title: "Which event it was for",
+    body: "If the money was spent on an event, pick it here. The claim then counts towards that event's total on its page. Only you and the executives see the claim itself.",
   },
   {
     id: "treasury-receipts",
@@ -456,11 +492,17 @@ export const TOUR_STEPS: TourStep[] = [
       "Everyone can see the totals, but only executives can see individual claims and change the figures.",
   },
   {
+    id: "budget-year",
+    target: "budget-year",
+    title: "Budget years",
+    body: "The budget runs from one AGM to the next, and each year is named after the year that follows its AGM, so the October 2025 AGM starts the 2026 budget. Pick any year to see its figures. The line under the title says exactly which dates the year covers.",
+  },
+  {
     id: "budget-totals",
     target: "budget-totals",
     title: "Budget and spending",
     body:
-      "This year's budget, how much has been spent and how much is left. Spending is added up live from claims that are waiting to be paid or already paid, and have been given a category. Drafts, rejected claims and claims without a category aren't counted.",
+      "The chosen year's budget, how much has been spent and how much is left. Spending is added up live from that year's claims that are waiting to be paid or already paid, and have been given a category. Drafts, rejected claims and claims without a category aren't counted.",
   },
   {
     id: "budget-categories",
@@ -480,9 +522,9 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "budget-tabs",
     target: "budget-tabs",
-    title: "This year and past years",
+    title: "This year and every other",
     body:
-      "Switch to Comparison to see past years.",
+      "The first tab is the year you picked. Switch to Comparison to see every year's budget side by side.",
   },
   {
     id: "budget-comparison",
@@ -490,7 +532,7 @@ export const TOUR_STEPS: TourStep[] = [
     click: "budget-tab-comparison",
     title: "Year by year",
     body:
-      "The 2024 budget and its revision, the 2025 budget and what was actually spent, this year's budget and a worst case, with totals at the bottom. Rows with reasons or notes can be expanded, which is where you'll find why each number is what it is.",
+      "Every year that has a budget, newest first: what was budgeted, any mid-year revision, what was actually spent and any worst case, with totals at the bottom. Rows with reasons or notes can be expanded, which is where you'll find why each number is what it is.",
   },
   {
     id: "budget-add",
@@ -498,7 +540,15 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Editing the budget",
     body:
-      "Add a category, or click the pencil on any row to change its figures, reasoning and notes. Past years are in a section you can expand, and the same dialog deletes a category. This year's spending is worked out from claims, so you never type it in.",
+      "Add a category, or click the pencil on any row to change its name, reasoning and notes, and its figures for the year you're looking at. The same dialog deletes a category. Spending for the current year is worked out from claims, so you never type it in.",
+  },
+  {
+    id: "budget-setup",
+    path: "/budget",
+    target: "budget-setup",
+    minRole: "EXECUTIVE",
+    title: "Setting a new year's budget",
+    body: "When a year starts without a budget, this page asks for one instead of showing empty bars. Each category starts at last year's amount, with earlier years and last year's spending beside it to compare. Leave a category blank to leave it out of the year.",
   },
 
   // ── Executive queue ────────────────────────────────────────────────────────
@@ -518,6 +568,13 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Rubric events to create",
     body:
       "Content requests that asked for a Rubric event and don't have one yet, soonest deadline first.",
+  },
+  {
+    id: "queue-grants",
+    target: "queue-grants",
+    minRole: "EXECUTIVE",
+    title: "Activity grants to submit",
+    body: "Once an event with a Rubric event has happened, it waits here until its activity grant is submitted. Arc only accepts a grant within 30 days of the event, so each one counts down and turns amber in its last week and red in its last two days. It also shows whether anyone has uploaded activity photos yet.",
   },
   {
     id: "queue-rooms",
@@ -622,7 +679,8 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Meetings and minutes",
     body:
       "Record each meeting or workshop your group runs: its name, date, how long it went and who came. Directors record meetings for their own portfolio. Executives can choose the executive team, any portfolio or the whole committee, and see every group's meetings, one portfolio at a time.\n\n" +
-      "Attach the minutes as a PDF, with the attendance sheet on the first page and the meeting notes after it. Deleting a meeting takes those hours away from everyone who attended.",
+      "Attach the minutes as a PDF, with the attendance sheet on the first page and the meeting notes after it. Deleting a meeting takes those hours away from everyone who attended.\n\n" +
+      "An AHEGS year runs from the end of last year's Term 3 to the end of this year's, so a meeting counts towards whichever year its date falls in, and the page moves on to the next year by itself once Term 3 ends.",
   },
   {
     id: "ahegs-roster",
@@ -747,12 +805,11 @@ export const TOUR_STEPS: TourStep[] = [
       "Your Arc club tier, which sets the printing allowance on the Printing page.",
   },
   {
-    id: "settings-ahegs",
-    target: "settings-ahegs",
+    id: "settings-years",
+    target: "settings-years",
     minRole: "EXECUTIVE",
-    title: "The AHEGS year",
-    body:
-      "Which year the AHEGS page opens on. You set it here instead of it following the calendar, because a submission is put together all year and sent at the end. That way the page doesn't switch to an empty new year on 1 January while you're still finishing the last one. Leave it blank to follow the calendar.",
+    title: "Society year",
+    body: "Two dates for each year. The AGM, held in Term 3, closes that year's budget and opens the next one, which is why the Oct 2025 AGM starts the 2026 budget. The end of Term 3 closes that year's AHEGS. Events don't need either, they go by calendar year.\n\nUntil a date is set, a default is used and shown in grey. Changing a Term 3 date moves any AHEGS meetings that now fall in a different year.",
   },
   {
     id: "settings-branding",
@@ -794,6 +851,13 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Rubric integration",
     body:
       "Paste in your Rubric session ID and numeric society ID, press “Save Credentials”, then “Test Connection” to switch on the Rubric portal. The session ID is kept on the server and never sent to anyone's browser. The app makes every Rubric request for you, and only from a fixed list of allowed requests.",
+  },
+  {
+    id: "settings-discord",
+    target: "settings-discord",
+    minRole: "EXECUTIVE",
+    title: "Discord",
+    body: "Two webhooks. The first posts everything that lands in the exec queue. The second posts every new event or marketing request, in full, to your marketing channel and pings the role you set, asking for a thread to be made on it. Edits to a request on the portal then edit that same message, so the channel always shows the latest version.",
   },
 
   // ── Account ────────────────────────────────────────────────────────────────
