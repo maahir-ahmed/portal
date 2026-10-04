@@ -17,6 +17,12 @@ function at(days: number, hour: number) {
   return d;
 }
 
+// Budget categories have no owner column, so the owner goes in the name: one exec
+// finishing a tour must not delete another exec's in-progress demo category (and
+// two execs on the same name would collide on the unique societyId+name).
+// The id, not the name, because a rename mid-tour would orphan the row.
+const demoCategoryName = (userId: string) => `${MARK} Events (${userId.slice(-6)})`;
+
 async function wipe(societyId: string, userId: string) {
   const mine = { societyId, submittedById: userId };
   const [contents, rooms, claims] = await Promise.all([
@@ -41,7 +47,8 @@ async function wipe(societyId: string, userId: string) {
     prisma.roomBooking.deleteMany({ where: { id: { in: ids(rooms) } } }),
     prisma.treasuryRequest.deleteMany({ where: { id: { in: ids(claims) } } }),
     prisma.printingRequest.deleteMany({ where: { ...mine, fileName: { startsWith: MARK } } }),
-    prisma.budgetCategory.deleteMany({ where: { societyId, name: { startsWith: MARK } } }),
+    // `${MARK} Events` is the pre-owner name, wiped so old leftovers still self-heal.
+    prisma.budgetCategory.deleteMany({ where: { societyId, name: { in: [demoCategoryName(userId), `${MARK} Events`] } } }),
     prisma.notification.deleteMany({ where: { userId, title: { startsWith: MARK } } }),
   ]);
 }
@@ -64,7 +71,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
       ? await prisma.budgetCategory.create({
           data: {
             societyId,
-            name: `${MARK} Events`,
+            name: demoCategoryName(userId),
             group: "PORTFOLIO",
             yearlyBudget: 500,
             budget2025: 400,

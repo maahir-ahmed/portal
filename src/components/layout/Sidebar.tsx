@@ -74,6 +74,7 @@ const navItems = [
     href: "/executive/audit",
     label: "Audit Log",
     icon: ScrollText,
+    tour: "audit",
     minRole: "EXECUTIVE" as const,
   },
   {
