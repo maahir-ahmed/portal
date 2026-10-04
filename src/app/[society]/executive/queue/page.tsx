@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { CopyValue } from "@/components/requests/CopyValue";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
 import { PrintingStageButton } from "@/components/requests/PrintingStageButton";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -216,11 +217,18 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                               <span>·</span>
                               <span>{t.submittedBy.name}</span>
                             </div>
-                            {t.bankAccount && (
-                              <span className="break-words">
-                                BSB {t.bankAccount.bsb} · Acct {t.bankAccount.accountNumber} ({t.bankAccount.accountName})
-                              </span>
-                            )}
+                            {/* Each detail copies on its own, amount without the $ or commas,
+                                ready to paste into the matching field of a banking app. */}
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              <CopyValue label="Amount" value={amount.toFixed(2)} />
+                              {t.bankAccount && (
+                                <>
+                                  <CopyValue label="BSB" value={t.bankAccount.bsb} />
+                                  <CopyValue label="Account" value={t.bankAccount.accountNumber} />
+                                  <CopyValue label="Name" value={t.bankAccount.accountName} />
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
