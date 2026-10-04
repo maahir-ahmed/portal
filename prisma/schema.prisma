@@ -637,7 +637,11 @@ model BudgetCategory {
   societyId    String
   name         String
   group        String   @default("PORTFOLIO") // "PORTFOLIO" | "OTHER", for subtotals
-  yearlyBudget Decimal  @default(0) @db.Decimal(10, 2) // the current-year (2026) budget
+  // LEGACY: one column per hard-coded year, before amounts moved to BudgetAllocation.
+  // Copied across by ensureAllocations (src/lib/budget.ts) and no longer read.
+  // ponytail: kept so db push drops nothing; delete these and that shim once every
+  // stack has opened its budget page on this version.
+  yearlyBudget Decimal  @default(0) @db.Decimal(10, 2)
   budget2024   Decimal? @db.Decimal(10, 2)
   budget2024v2 Decimal? @db.Decimal(10, 2)
   budget2025   Decimal? @db.Decimal(10, 2)
@@ -651,9 +655,30 @@ model BudgetCategory {
 
   society          Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
   treasuryRequests TreasuryRequest[]
+  allocations      BudgetAllocation[]
 
   @@unique([societyId, name])
   @@index([societyId])
+}
+
+// One category's budget for one financial year (AGM to AGM, see SocietyYear). A year
+// with no rows has not been set yet, which is what prompts the budget page to ask.
+model BudgetAllocation {
+  id         String   @id @default(cuid())
+  categoryId String
+  year       Int
+  amount     Decimal  @db.Decimal(10, 2)
+  // A mid-year revision of the amount, when the committee changed it (2024 had one).
+  revised    Decimal? @db.Decimal(10, 2)
+  worstCase  Decimal? @db.Decimal(10, 2)
+  // What was actually spent, typed in for years before claims lived in this app.
+  // When null, usage is summed from that year's claims instead.
+  actualUsage Decimal? @db.Decimal(10, 2)
+  updatedAt  DateTime @updatedAt
+
+  category BudgetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, year])
 }
 
 // ─── AHEGS ────────────────────────────────────────────────────────────────────

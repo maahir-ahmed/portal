@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { TUTORIAL_MARKER as MARK } from "@/lib/tutorial";
+import { financialYearOf } from "@/lib/years";
 
 // Demo records for the guided tour. Everything created here is prefixed with the
 // tutorial marker and owned by the caller, which is also how it gets cleaned up:
@@ -66,6 +67,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
 
   // A budget category is an executive-level object, so only make one for an exec.
   // The tour explains the budget page either way.
+  const thisYear = financialYearOf(await prisma.societyYear.findMany({ where: { societyId } }), new Date());
   const category =
     membership!.role === "EXECUTIVE"
       ? await prisma.budgetCategory.create({
@@ -73,10 +75,14 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
             societyId,
             name: demoCategoryName(userId),
             group: "PORTFOLIO",
-            yearlyBudget: 500,
-            budget2025: 400,
-            usage2025: 380,
-            worstCase: 700,
+            // This financial year's budget and last year's, so both the bars and the
+            // comparison view have a demo row.
+            allocations: {
+              create: [
+                { year: thisYear, amount: 500, worstCase: 700 },
+                { year: thisYear - 1, amount: 400, actualUsage: 380 },
+              ],
+            },
             reasoning: "Demo category created by the guided tour. Deleted when the tour ends.",
             notes: "Rows with reasoning or notes expand in the Comparison view. This is what that looks like.",
             sortOrder: 999,
