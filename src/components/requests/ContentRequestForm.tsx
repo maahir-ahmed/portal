@@ -105,7 +105,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="eventName">Event Name *</Label>
-              <Input id="eventName" name="eventName" placeholder="e.g. SecSoc Capture the Flag 2025" defaultValue={initial?.eventName} required />
+              <Input id="eventName" name="eventName" placeholder="e.g. Trivia Night 2026" defaultValue={initial?.eventName} required />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">

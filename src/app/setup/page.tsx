@@ -60,7 +60,7 @@ export default function SetupPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Society Name *</Label>
-                <Input id="name" name="name" placeholder="e.g. UNSW Security Society" required />
+                <Input id="name" name="name" placeholder="e.g. UNSW PC Society" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>

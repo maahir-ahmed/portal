@@ -132,7 +132,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
               <Input
                 id="eventName"
                 name="eventName"
-                placeholder="e.g. SecSoc Weekly Workshop"
+                placeholder="e.g. Weekly Workshop"
                 defaultValue={initial?.eventName}
                 required
               />
