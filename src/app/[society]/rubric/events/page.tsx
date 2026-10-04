@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
@@ -18,6 +19,11 @@ import { flattenEvents, type RubricEvent } from "@/lib/rubricEvents";
 
 export default function RubricEventsPage() {
   const params = useParams<{ society: string }>();
+  // archiveEvent and submitEvent are exec-only on the server; hide them rather than let a director hit a 403.
+  const { data: session } = useSession();
+  const isExec =
+    (session?.user as { memberships?: { society: { slug: string }; role: string }[] } | undefined)
+      ?.memberships?.find((m) => m.society.slug === params.society)?.role === "EXECUTIVE";
   const rubric = useRubricClient(params.society);
   const [events, setEvents] = useState<RubricEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +139,7 @@ export default function RubricEventsPage() {
                           </a>
                         </Button>
                       )}
-                      {id && (
+                      {id && isExec && (
                         <Button
                           size="sm" variant="ghost"
                           className="h-7 text-xs gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -159,13 +165,15 @@ export default function RubricEventsPage() {
     <RubricShell>
       <div data-tour="rubric-events" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{events.length > 0 ? `${events.length} events on Rubric` : ""}</p>
-        <SubmitToRubricDialog
-          societySlug={params.society}
-          defaultEventName=""
-          defaultDescription=""
-          defaultAddress=""
-          defaultStartDate={new Date()}
-        />
+        {isExec && (
+          <SubmitToRubricDialog
+            societySlug={params.society}
+            defaultEventName=""
+            defaultDescription=""
+            defaultAddress=""
+            defaultStartDate={new Date()}
+          />
+        )}
       </div>
       {renderContent()}
     </RubricShell>
