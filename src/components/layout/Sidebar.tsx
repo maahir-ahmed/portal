@@ -34,7 +34,7 @@ const navItems = [
   },
   {
     href: "/requests/content",
-    label: "Content Requests / Events",
+    label: "Events & Content Requests",
     icon: FileText,
     tour: "content",
   },

@@ -119,7 +119,7 @@ export default async function DashboardPage({ params }: Props) {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Content Requests
+                <FileText className="h-4 w-4" /> Events &amp; Content Requests
               </CardTitle>
               <Button asChild variant="ghost" size="sm" className="text-xs h-7">
                 <Link href={`/${societySlug}/requests/content`}>View all</Link>
