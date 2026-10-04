@@ -27,5 +27,11 @@ export default async function RootPage() {
     redirect(`/${membership.society.slug}/dashboard`);
   }
 
+  // A session for a user this database doesn't have (a cookie from another database
+  // on the same host, or a deleted account) is not a new user: send it back to sign
+  // in rather than offering to create a society. In DEMO_MODE that re-signs at once.
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true } });
+  if (!user) redirect("/login");
+
   redirect("/setup");
 }
