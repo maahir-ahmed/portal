@@ -14,6 +14,28 @@ export function formatDateTime(date: Date | string) {
   return format(new Date(date), "d MMM yyyy, h:mm a");
 }
 
+// Two kinds of date live in this app. Times people type in (event start, deadline,
+// pickup) are naive wall-clock stored as UTC, so formatDate/formatDateTime/formatTime
+// show them as-is in the server's UTC; see dtLocal in ContentRequestForm. Real moments
+// (createdAt, submitted-to-Rubric) are true instants and must be shown in the society's
+// own timezone, or a claim made at 11:59 PM reads as 12:59 PM. That's this function.
+const SOCIETY_TZ = "Australia/Sydney";
+const timestampParts = new Intl.DateTimeFormat("en-US", {
+  timeZone: SOCIETY_TZ,
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+
+/** A real moment in Sydney time, in the same "5 Oct 2026, 11:59 PM" shape as formatDateTime. */
+export function formatTimestamp(date: Date | string) {
+  const p = Object.fromEntries(timestampParts.formatToParts(new Date(date)).map((x) => [x.type, x.value]));
+  return `${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute} ${p.dayPeriod}`;
+}
+
 export function formatTime(date: Date | string) {
   return format(new Date(date), "h:mm a");
 }
