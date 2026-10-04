@@ -9,8 +9,8 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { CopyValue } from "@/components/requests/CopyValue";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
 import { PrintingStageButton } from "@/components/requests/PrintingStageButton";
-import { formatDate, formatCurrency } from "@/lib/utils";
-import { QrCode, Building2, Banknote, CheckCircle, Printer } from "lucide-react";
+import { formatDate, formatCurrency, ACTIVITY_GRANT_DAYS, grantDeadline } from "@/lib/utils";
+import { Award, QrCode, Building2, Banknote, CheckCircle, Printer } from "lucide-react";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -28,7 +28,8 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
   const societyId = membership.societyId;
 
-  const [rubricPending, roomPending, reimbursementPending, printingPending] = await Promise.all([
+  const now = new Date();
+  const [rubricPending, roomPending, reimbursementPending, printingPending, grantsDue] = await Promise.all([
     prisma.contentRequest.findMany({
       where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
@@ -54,10 +55,27 @@ export default async function ExecutiveQueuePage({ params }: Props) {
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { pickupAt: "asc" },
     }),
+    prisma.contentRequest.findMany({
+      // Events that have happened and can still be claimed: the same pool the web
+      // portal's grant tab offers (a Rubric event is attached, so Arc has attendance),
+      // from the event date until the claim window closes. Lodged ones drop off.
+      where: {
+        societyId,
+        OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
+        status: { not: "CANCELLED" },
+        activityGrantStatus: "NOT_SUBMITTED",
+        startDate: { lte: now, gte: new Date(now.getTime() - ACTIVITY_GRANT_DAYS * 86_400_000) },
+      },
+      include: {
+        submittedBy: { select: { id: true, name: true, avatarUrl: true } },
+        _count: { select: { photos: true } },
+      },
+      orderBy: { startDate: "asc" }, // least time left first
+    }),
   ]);
 
   const totalPending =
-    rubricPending.length + roomPending.length + reimbursementPending.length + printingPending.length;
+    rubricPending.length + roomPending.length + reimbursementPending.length + printingPending.length + grantsDue.length;
 
   return (
     <div className="space-y-6">
@@ -102,6 +120,54 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                 </Card>
               </Link>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Activity grants: claimable from the event date for 30 days, so it counts down. */}
+      {grantsDue.length > 0 && (
+        <section data-tour="queue-grants">
+          <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+            <Award className="h-4 w-4 text-amber-600" />
+            Activity grants to submit
+            <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full">{grantsDue.length}</span>
+          </h2>
+          <div className="space-y-2">
+            {grantsDue.map((e) => {
+              const deadline = grantDeadline(e.startDate);
+              const daysLeft = Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / 86_400_000));
+              const urgency =
+                daysLeft <= 2 ? "bg-red-100 text-red-700" : daysLeft <= 7 ? "bg-amber-100 text-amber-800" : "bg-secondary text-secondary-foreground";
+              return (
+                <Card key={e.id} className="hover:border-foreground/20 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <Link href={`/${societySlug}/requests/content/${e.id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                        <UserAvatar name={e.submittedBy.name} avatarUrl={e.submittedBy.avatarUrl} size="sm" />
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{e.eventName}</p>
+                          <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
+                            <span>Event {formatDate(e.startDate)}</span>
+                            <span>Due by {formatDate(deadline)}</span>
+                            <span className={e._count.photos ? "" : "text-amber-700"}>
+                              {e._count.photos ? `${e._count.photos} ${e._count.photos === 1 ? "photo" : "photos"}` : "No activity photos yet"}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium tabnums ${urgency}`}>
+                          {daysLeft === 0 ? "Last day" : `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`}
+                        </span>
+                        <Button asChild size="sm" variant="outline" className="text-xs">
+                          <Link href={`/${societySlug}/rubric/web?type=grants&id=${e.id}`}>Submit on Rubric</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
       )}
@@ -167,7 +233,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                         </p>
                       </div>
                     </Link>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-3 sm:flex-shrink-0">
                       <span className="font-medium text-green-700">{formatCurrency(Number(p.cost))}</span>
                       <StatusBadge status={p.status} />
                       {p.status === "PENDING_APPROVAL" && (

@@ -3,7 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
-import { formatDate, formatDateTime, EVENT_TYPE_LABELS } from "@/lib/utils";
+import { formatDate, formatDateTime, EVENT_TYPE_LABELS, ACTIVITY_GRANT_DAYS } from "@/lib/utils";
 import { ExternalLink } from "lucide-react";
 
 // Rubric's site allows framing (no X-Frame-Options / CSP frame-ancestors), so it
@@ -12,10 +12,8 @@ import { ExternalLink } from "lucide-react";
 // printing details alongside it to copy-paste in.
 const RUBRIC_URL = "https://portal.hellorubric.com/";
 
-// Arc's activity grant has to be claimed within 30 days of the event; past that the
-// claim is dead, so the event stops being offered here.
-const GRANT_CLAIM_DAYS = 30;
-const grantCutoff = () => new Date(Date.now() - GRANT_CLAIM_DAYS * 86_400_000);
+// Past the claim window the grant is dead, so the event stops being offered here.
+const grantCutoff = () => new Date(Date.now() - ACTIVITY_GRANT_DAYS * 86_400_000);
 
 const pretty = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 const SIDED: Record<string, string> = {
