@@ -44,7 +44,9 @@ services:
     # are applied out-of-band via psql, because `prisma db execute` can't run in this
     # image (no CLI shipped; npx-fetched prisma can't load the TS config). db push
     # alone reconciles fresh DBs correctly.
-    command: sh -c "npx prisma db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" --accept-data-loss && node server.js"
+    # Pinned to the lockfile's prisma: unpinned npx follows npm's `latest`, which
+    # pointed at 8.0.0-rc.27 in Oct 2026 and crash-looped the app. Bump with package.json.
+    command: sh -c "npx -y prisma@7.8.0 db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" --accept-data-loss && node server.js"
     # No published port: the web service in front owns ${APP_PORT} so that something
     # still answers while this container is being rebuilt.
     expose:
