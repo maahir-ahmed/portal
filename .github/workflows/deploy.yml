@@ -34,6 +34,8 @@ jobs:
             PROJECT="${s%%:*}"; ENVFILE="${s#*:}"
             if [ ! -f "$ENVFILE" ]; then echo "skipping $PROJECT: no $ENVFILE"; continue; fi
             docker compose --env-file "$ENVFILE" -p "$PROJECT" \
+              -f deploy/docker-compose.yml build --pull
+            docker compose --env-file "$ENVFILE" -p "$PROJECT" \
               -f deploy/docker-compose.yml up -d --build --remove-orphans
           done
           docker image prune -f
