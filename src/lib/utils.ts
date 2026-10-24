@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, formatDistanceToNow, differenceInBusinessDays, isSameDay } from "date-fns";
+import { format, formatDistanceToNow, differenceInBusinessDays, isSameDay, startOfDay } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -72,14 +72,14 @@ const REACHED_ARC = ["SUBMITTED_TO_ARC", "APPROVED", "REJECTED", "COMPLETED"];
  * Whether a booking is at risk of missing Arc's seven-business-day deadline.
  *
  * The warning is about getting it lodged in time, so it only fires while that is
- * still both possible and needed. `businessDaysUntil` goes negative once the event
- * has passed, which is why the lower bound is here: without it every historical
- * booking reads as late.
+ * still both possible and needed. A past event is checked by calendar date, not
+ * `businessDaysUntil`: that only goes negative a business day later, so viewed on
+ * a weekend or Monday, Friday's event reads as 0 days away and would warn.
  */
 export function isLateArcSubmission(eventDate: Date | string, status?: string): boolean {
   if (status && REACHED_ARC.includes(status)) return false;
-  const days = businessDaysUntil(eventDate);
-  return days >= 0 && days < 7;
+  if (new Date(eventDate) < startOfDay(new Date())) return false;
+  return businessDaysUntil(eventDate) < 7;
 }
 
 export function formatCurrency(amount: number | string): string {
