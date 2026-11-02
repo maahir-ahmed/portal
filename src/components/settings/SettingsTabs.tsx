@@ -17,7 +17,9 @@ export function SettingsTabs({ prefix, tabs }: { prefix: string; tabs: SettingsT
     <nav className="flex flex-wrap gap-1.5 border-b pb-3">
       {tabs.map((t) => {
         const href = `${prefix}${t.href}`;
-        const active = pathname === href || pathname.startsWith(href + "/");
+        // In single-society mode the address bar can be slug-free (/settings/general).
+        const tail = `/settings${t.href}`;
+        const active = pathname.endsWith(tail) || pathname.includes(tail + "/");
         return (
           <Link
             key={t.href}
