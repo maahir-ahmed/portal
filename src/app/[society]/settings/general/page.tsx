@@ -12,6 +12,7 @@ import { Globe, Link2, Share2 } from "lucide-react";
 import { YearCalendarSettings } from "@/components/settings/YearCalendarSettings";
 import { ImageUploadField } from "@/components/settings/ImageUploadField";
 import { SECRETARIAL_ALLOWANCE } from "@/lib/printing";
+import { useModules } from "@/hooks/useModules";
 import type { Society } from "@prisma/client";
 
 export default function GeneralSettingsPage() {
@@ -19,6 +20,7 @@ export default function GeneralSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [society, setSociety] = useState<Society | null>(null);
   const [primaryColor, setPrimaryColor] = useState("");
+  const modules = useModules(params.society);
 
   useEffect(() => {
     fetch(`/api/societies/${params.society}`)
@@ -77,27 +79,29 @@ export default function GeneralSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card data-tour="settings-tier">
-          <CardHeader>
-            <CardTitle className="text-base">Secretarial Allowance</CardTitle>
-            <CardDescription>Your Arc club tier sets the printing budget for the year.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Label htmlFor="secretarialTier">Club Tier</Label>
-            <select
-              id="secretarialTier"
-              name="secretarialTier"
-              defaultValue={society.secretarialTier ?? "BRONZE"}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              {Object.entries(SECRETARIAL_ALLOWANCE).map(([tier, amount]) => (
-                <option key={tier} value={tier}>
-                  {tier.charAt(0) + tier.slice(1).toLowerCase()} (${amount})
-                </option>
-              ))}
-            </select>
-          </CardContent>
-        </Card>
+        {modules?.printing !== false && (
+          <Card data-tour="settings-tier">
+            <CardHeader>
+              <CardTitle className="text-base">Secretarial Allowance</CardTitle>
+              <CardDescription>Your Arc club tier sets the printing budget for the year.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Label htmlFor="secretarialTier">Club Tier</Label>
+              <select
+                id="secretarialTier"
+                name="secretarialTier"
+                defaultValue={society.secretarialTier ?? "BRONZE"}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {Object.entries(SECRETARIAL_ALLOWANCE).map(([tier, amount]) => (
+                  <option key={tier} value={tier}>
+                    {tier.charAt(0) + tier.slice(1).toLowerCase()} (${amount})
+                  </option>
+                ))}
+              </select>
+            </CardContent>
+          </Card>
+        )}
 
         <Card data-tour="settings-branding">
           <CardHeader>

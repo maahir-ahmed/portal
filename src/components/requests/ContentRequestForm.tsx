@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useModules } from "@/hooks/useModules";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
   const editing = !!initial;
   const [loading, setLoading] = useState(false);
   const [rubricRequired, setRubricRequired] = useState(initial?.rubricRequired ?? false);
+  const modules = useModules(societySlug);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -150,24 +152,30 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
               { name: "bannerRequired", label: "Banner / Graphic", desc: "Social media banner or event graphic", checked: initial?.bannerRequired },
               { name: "blurbRequired", label: "Event Blurb", desc: "Written description for the event", checked: initial?.blurbRequired },
               { name: "rubricRequired", label: "Rubric Event", desc: "Requires executive to create a Rubric event + QR code", checked: initial?.rubricRequired },
-            ] as const).map(({ name, label, desc, checked }) => (
-              <label key={name} className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="checkbox"
-                  name={name}
-                  value="true"
-                  defaultChecked={checked ?? false}
-                  onChange={name === "rubricRequired" ? (e) => setRubricRequired(e.target.checked) : undefined}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300"
-                />
-                <div>
-                  <p className="font-medium text-sm">{label}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-              </label>
-            ))}
+            ] as const).map(({ name, label, desc, checked }) =>
+              // With the Rubric portal off there is nobody to make the event, so the
+              // option goes, but an edit must not quietly clear what was asked for.
+              name === "rubricRequired" && modules && !modules.ticketing ? (
+                <input key={name} type="hidden" name={name} value={checked ? "true" : ""} />
+              ) : (
+                <label key={name} className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    name={name}
+                    value="true"
+                    defaultChecked={checked ?? false}
+                    onChange={name === "rubricRequired" ? (e) => setRubricRequired(e.target.checked) : undefined}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                  />
+                  <div>
+                    <p className="font-medium text-sm">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                </label>
+              )
+            )}
 
-            {rubricRequired && (
+            {rubricRequired && modules?.ticketing !== false && (
               <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-sm text-orange-800">
                 <strong>Note:</strong> Selecting Rubric Event means an executive will need to create the Rubric event, attach the link, and generate a QR code.
               </div>

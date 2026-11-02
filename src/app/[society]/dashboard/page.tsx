@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { flagsFrom } from "@/lib/modules";
 import Link from "next/link";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -29,6 +30,7 @@ export default async function DashboardPage({ params }: Props) {
 
   const societyId = membership.societyId;
   const isExec = membership.role === "EXECUTIVE";
+  const modules = flagsFrom(membership.society);
 
   const [
     contentPending,
@@ -84,16 +86,20 @@ export default async function DashboardPage({ params }: Props) {
           </p>
         </div>
         <div data-tour="dash-actions" className="flex gap-2 flex-wrap">
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/${societySlug}/requests/content/new`}>
-              <Plus className="h-4 w-4 mr-1" /> Content Request
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/${societySlug}/requests/printing/new`}>
-              <Plus className="h-4 w-4 mr-1" /> Printing Request
-            </Link>
-          </Button>
+          {modules.events && (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/${societySlug}/requests/content/new`}>
+                <Plus className="h-4 w-4 mr-1" /> Content Request
+              </Link>
+            </Button>
+          )}
+          {modules.printing && (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/${societySlug}/requests/printing/new`}>
+                <Plus className="h-4 w-4 mr-1" /> Printing Request
+              </Link>
+            </Button>
+          )}
           <Button asChild size="sm" variant="outline">
             <Link href={`/${societySlug}/requests/treasury/new`}>
               <Plus className="h-4 w-4 mr-1" /> Reimbursement
@@ -104,8 +110,8 @@ export default async function DashboardPage({ params }: Props) {
 
       {/* Stats */}
       <div data-tour="dash-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} color="blue" />
-        <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />
+        {modules.events && <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} color="blue" />}
+        {modules.roomBookings && <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />}
         <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} color="green" />
         {isExec && (
           <StatsCard title="Awaiting Reimbursement" value={awaitingReimbursement} icon={AlertCircle} color="yellow" />
@@ -115,68 +121,74 @@ export default async function DashboardPage({ params }: Props) {
       {/* Recent Activity */}
       <div data-tour="dash-recent" className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Content Requests */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Events &amp; Content Requests
-              </CardTitle>
-              <Button asChild variant="ghost" size="sm" className="text-xs h-7">
-                <Link href={`/${societySlug}/requests/content`}>View all</Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentContent.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No requests yet.</p>
-            ) : (
-              recentContent.map((r) => (
-                <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`} className="flex items-start gap-2 group">
-                  <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate group-hover:text-foreground">{r.eventName}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <StatusBadge status={r.status} />
-                      <span className="text-xs text-muted-foreground">{formatDate(r.deadline)}</span>
+        {modules.events && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Events &amp; Content Requests
+                </CardTitle>
+                <Button asChild variant="ghost" size="sm" className="text-xs h-7">
+                  <Link href={`/${societySlug}/requests/content`}>View all</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentContent.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No requests yet.</p>
+              ) : (
+                recentContent.map((r) => (
+                  <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`} className="flex items-start gap-2 group">
+                    <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate group-hover:text-foreground">{r.eventName}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <StatusBadge status={r.status} />
+                        <span className="text-xs text-muted-foreground">{formatDate(r.deadline)}</span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                ))
             )}
           </CardContent>
         </Card>
 
+        )}
+
         {/* Room Bookings */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="h-4 w-4" /> Room Bookings
-              </CardTitle>
-              <Button asChild variant="ghost" size="sm" className="text-xs h-7">
-                <Link href={`/${societySlug}/requests/room-booking`}>View all</Link>
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentRoom.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No bookings yet.</p>
-            ) : (
-              recentRoom.map((r) => (
-                <Link key={r.id} href={`/${societySlug}/requests/room-booking/${r.id}`} className="flex items-start gap-2 group">
-                  <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate group-hover:text-foreground">{r.eventName}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <StatusBadge status={r.status} />
-                      <span className="text-xs text-muted-foreground">{formatDate(r.preferredDate)}</span>
+        {modules.roomBookings && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Building2 className="h-4 w-4" /> Room Bookings
+                </CardTitle>
+                <Button asChild variant="ghost" size="sm" className="text-xs h-7">
+                  <Link href={`/${societySlug}/requests/room-booking`}>View all</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentRoom.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No bookings yet.</p>
+              ) : (
+                recentRoom.map((r) => (
+                  <Link key={r.id} href={`/${societySlug}/requests/room-booking/${r.id}`} className="flex items-start gap-2 group">
+                    <UserAvatar name={r.submittedBy.name} avatarUrl={r.submittedBy.avatarUrl} size="sm" className="mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate group-hover:text-foreground">{r.eventName}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <StatusBadge status={r.status} />
+                        <span className="text-xs text-muted-foreground">{formatDate(r.preferredDate)}</span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                ))
             )}
           </CardContent>
         </Card>
+
+        )}
 
         {/* Treasury */}
         <Card>

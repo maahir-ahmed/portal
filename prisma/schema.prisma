@@ -93,6 +93,13 @@ enum SecretarialTier {
   GOLD
 }
 
+// "Transactions only" records claims with no budget behind them: no budget page, no
+// prompt to set a year's budget, no category on a claim.
+enum TreasuryMode {
+  BUDGET
+  TRANSACTIONS
+}
+
 // Columns of the executive board. Fixed set: it is a to-do board, not a workflow.
 enum BoardLane {
   TODO
@@ -181,6 +188,17 @@ model Society {
   // end, so the page must not roll over to a new, empty year on 1 January. Null falls
   // back to the calendar year.
   ahegsYear            Int?   // superseded by SocietyYear.term3End; unread, kept so db push drops nothing
+  // Feature modules (Settings > Features, src/lib/modules.ts). Off hides the section and
+  // refuses its API; nothing is deleted. Default on, which is how every stack ran before
+  // these existed.
+  moduleEvents         Boolean      @default(true)
+  moduleRoomBookings   Boolean      @default(true)
+  modulePrinting       Boolean      @default(true)
+  moduleGrants         Boolean      @default(true)
+  moduleTicketing      Boolean      @default(true)
+  moduleBoard          Boolean      @default(true)
+  moduleAhegs          Boolean      @default(true)
+  treasuryMode         TreasuryMode @default(BUDGET)
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

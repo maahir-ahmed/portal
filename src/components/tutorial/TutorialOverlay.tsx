@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useModules } from "@/hooks/useModules";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,7 +57,8 @@ export function TutorialOverlay() {
     session?.user as { memberships?: { society: { slug: string }; role: string }[] } | undefined
   )?.memberships?.find((m) => m.society.slug === slug)?.role;
 
-  const steps = page === null ? stepsFor(role) : stepsForPage(role, page);
+  const modules = useModules(slug ?? "");
+  const steps = page === null ? stepsFor(role, modules) : stepsForPage(role, page, modules);
   const step: TourStep | undefined = active ? steps[index] : undefined;
 
   // URLs are slug-prefixed normally, but slug-free in single-society mode.
@@ -116,10 +118,11 @@ export function TutorialOverlay() {
   // Restores tour position from localStorage, which only exists on the client.
   useEffect(() => {
     const saved = localStorage.getItem(SAVE_KEY);
-    if (!saved) return;
+    // Wait for the feature flags too: the saved step is found by its place in the list.
+    if (!saved || !modules) return;
     try {
       const { stepId, ids: savedIds } = JSON.parse(saved) as Saved;
-      const at = stepsFor(role).findIndex((s) => s.id === stepId);
+      const at = stepsFor(role, modules).findIndex((s) => s.id === stepId);
       if (at >= 0) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only storage read on mount
         setIds(savedIds ?? {});
@@ -129,8 +132,8 @@ export function TutorialOverlay() {
     } catch {
       localStorage.removeItem(SAVE_KEY);
     }
-    // role arrives with the session; resume once it does
-  }, [role]);
+    // role arrives with the session and modules with a fetch; resume once both have
+  }, [role, modules]);
 
   useEffect(() => {
     if (active && step && page === null) {

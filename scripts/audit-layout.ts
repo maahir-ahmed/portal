@@ -33,7 +33,7 @@ const PAGES = [
   "/requests/printing", "/requests/printing/new",
   "/budget", "/executive/queue", "/board", "/members", "/ahegs",
   "/rubric", "/account",
-  "/settings/general", "/settings/portfolios", "/settings/discord", "/settings/rubric",
+  "/settings/general", "/settings/portfolios", "/settings/features", "/settings/discord", "/settings/rubric",
 ];
 
 interface Finding { page: string; viewport: string; kind: string; detail: string }

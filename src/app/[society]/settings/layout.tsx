@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { debugToolsEnabled } from "@/lib/debugTools";
+import { modulesForSociety } from "@/lib/modulesServer";
 import { SettingsTabs, type SettingsTab } from "@/components/settings/SettingsTabs";
 
 // ENABLE_DEBUG_TOOLS and DEMO_MODE are read per request: one image serves every stack.
@@ -20,16 +21,18 @@ export default async function SettingsLayout({
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    select: { role: true },
+    select: { role: true, societyId: true },
   });
   if (!membership) redirect("/");
   if (membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
 
+  const modules = await modulesForSociety(membership.societyId);
   const tabs: SettingsTab[] = [
     { href: "/general", label: "General" },
     { href: "/portfolios", label: "Portfolios & titles" },
+    { href: "/features", label: "Features" },
     { href: "/discord", label: "Discord" },
-    { href: "/rubric", label: "Rubric" },
+    ...(modules.ticketing ? [{ href: "/rubric", label: "Rubric" }] : []),
     ...(debugToolsEnabled() ? [{ href: "/debugging", label: "Debugging", danger: true }] : []),
   ];
 

@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +53,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
   if (!request || request.societyId !== membership.societyId) notFound();
 
   const isExec = membership.role === "EXECUTIVE";
+  const modules = await modulesForSociety(membership.societyId);
 
   // Linked claims follow the treasury ownership rule (execs see all, everyone else only
   // their own), but the total is open to anyone who can see the event: it reveals a
@@ -167,7 +169,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
                 {request.blurbRequired && (
                   <span className={`text-sm px-3 py-1 rounded-full ${request.blurbDone ? "bg-green-100 text-green-700" : "bg-secondary text-secondary-foreground"}`}>Event Blurb{request.blurbDone ? " ✓" : ""}</span>
                 )}
-                {request.rubricRequired && (
+                {modules.ticketing && request.rubricRequired && (
                   <span className={`text-sm px-3 py-1 rounded-full ${(request.rubricEventLink || request.rubricSubmittedAt) ? "bg-green-100 text-green-700" : "bg-secondary text-secondary-foreground"}`}>Rubric Event{(request.rubricEventLink || request.rubricSubmittedAt) ? " ✓" : ""}</span>
                 )}
                 {!request.bannerRequired && !request.blurbRequired && !request.rubricRequired && (
@@ -216,7 +218,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
           ) : null}
 
           {/* Rubric section */}
-          {request.rubricRequired && (
+          {modules.ticketing && request.rubricRequired && (
             <Card data-tour="content-rubric" className={request.rubricEventLink ? "border-green-200 bg-green-50/30" : "border-orange-200 bg-orange-50/30"}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -251,7 +253,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
                         </Link>
                       )}
                     </div>
-                    {isExec && (
+                    {isExec && modules.grants && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Activity grant:</span>
                         {request.activityGrantStatus === "NOT_SUBMITTED" ? (

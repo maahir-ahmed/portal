@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { apiEnabled, pageEnabled } from "@/lib/modules";
+import { modulesForSlug } from "@/lib/modulesServer";
 
 // Single-society mode: set SOCIETY_SLUG env var for per-domain deployments.
 // Middleware rewrites clean paths (/dashboard) → /slug/dashboard internally,
@@ -13,7 +15,24 @@ function isRootPath(pathname: string) {
   return ROOT_PATHS.some((p) => pathname.startsWith(p));
 }
 
-export default auth((req) => {
+// Splits a request into the society it is for and the path inside it, so a switched
+// off feature module can be refused here, once, for its pages and its API alike.
+function societyPath(pathname: string): { slug: string; sub: string; api: boolean } | null {
+  const api = pathname.match(/^\/api\/societies\/([^/]+)(\/.*)?$/);
+  if (api) return { slug: api[1], sub: api[2] ?? "/", api: true };
+  if (isRootPath(pathname) || pathname === "/") return null;
+  if (SOCIETY_SLUG) {
+    const prefix = `/${SOCIETY_SLUG}`;
+    if (pathname === prefix || pathname.startsWith(prefix + "/")) {
+      return { slug: SOCIETY_SLUG, sub: pathname.slice(prefix.length) || "/", api: false };
+    }
+    return { slug: SOCIETY_SLUG, sub: pathname, api: false };
+  }
+  const [, slug, ...rest] = pathname.split("/");
+  return { slug, sub: "/" + rest.join("/"), api: false };
+}
+
+export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const isAuth = !!req.auth;
 
@@ -29,6 +48,19 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Feature modules. A page of a switched-off module is a 404, as if it never existed;
+  // its API answers 403 with a reason, for the client that still has the page open.
+  const target = isAuth ? societyPath(pathname) : null;
+  if (target) {
+    const flags = await modulesForSlug(target.slug);
+    if (target.api && !apiEnabled(flags, target.sub)) {
+      return NextResponse.json({ error: "This feature is switched off in Settings" }, { status: 403 });
+    }
+    if (!target.api && !pageEnabled(flags, target.sub)) {
+      return NextResponse.rewrite(new URL(`/${target.slug}/feature-off`, req.url));
+    }
   }
 
   // Single-society mode URL rewriting

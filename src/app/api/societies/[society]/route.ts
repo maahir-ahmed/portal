@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
+import { MODULE_SELECT } from "@/lib/modules";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -21,6 +22,15 @@ const updateSchema = z.object({
   secretarialTier: z.enum(["BRONZE", "SILVER", "GOLD"]).optional(),
   // Arrives as a string from the settings form; "" has already become null above.
   ahegsYear: z.coerce.number().int().min(2000).max(2100).nullable().optional(),
+  // Settings > Features. Sent as JSON booleans, never through the general form.
+  moduleEvents: z.boolean(),
+  moduleRoomBookings: z.boolean(),
+  modulePrinting: z.boolean(),
+  moduleGrants: z.boolean(),
+  moduleTicketing: z.boolean(),
+  moduleBoard: z.boolean(),
+  moduleAhegs: z.boolean(),
+  treasuryMode: z.enum(["BUDGET", "TRANSACTIONS"]),
 }).partial();
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -54,6 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       secretarialTier: true,
       ahegsYear: true,
       rubricSocietyId: true,
+      ...MODULE_SELECT,
       createdAt: true,
       updatedAt: true,
     },
@@ -93,6 +104,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       action: "UPDATE",
       entityType: "Society",
       entityId: membership!.societyId,
+      metadata: { fields: Object.keys(body).join(", ") },
     });
 
     // Same reason as GET: reply with the accepted changes, not the stored row.

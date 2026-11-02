@@ -13,6 +13,7 @@
     "check:ahegs": "npx tsx scripts/check-ahegs.ts",
     "check:bookings": "npx tsx scripts/check-bookings.ts",
     "check:years": "npx tsx scripts/check-years.ts",
+    "check:modules": "npx tsx scripts/check-modules.ts",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push && node --env-file-if-exists=.env scripts/post-push.mjs",
     "db:seed": "npx tsx prisma/seed.ts",

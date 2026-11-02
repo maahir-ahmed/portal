@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
   if (!membership) redirect("/");
 
   const isExec = membership.role === "EXECUTIVE";
+  const { budget } = await modulesForSociety(membership.societyId);
   const [request, categories] = await Promise.all([
     prisma.treasuryRequest.findUnique({
       where: { id },
@@ -233,7 +235,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
             </CardContent>
           </Card>
 
-          {(isExec || request.budgetCategory) && (
+          {budget && (isExec || request.budgetCategory) && (
             <ClaimCategoryCard
               societySlug={societySlug}
               requestId={request.id}
