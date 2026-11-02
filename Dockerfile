@@ -29,7 +29,9 @@ RUN npm run build
 
 # Production image
 FROM base AS runner
-RUN apk add --no-cache openssl
+# postgresql16-client: pg_dump and psql for Settings > Debugging's backup and restore,
+# which run deploy/backup.sh in here. 16 to match the postgres:16 the stack runs.
+RUN apk add --no-cache openssl postgresql16-client
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -41,10 +43,11 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts/post-push.mjs ./scripts/post-push.mjs
+COPY --from=builder /app/deploy/backup.sh /app/deploy/maintenance.html ./deploy/
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+RUN mkdir -p /app/uploads /app/backups && chown nextjs:nodejs /app/uploads /app/backups
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

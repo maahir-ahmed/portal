@@ -3,6 +3,7 @@ import { NextResponse, type NextFetchEvent, type NextMiddleware, type NextReques
 import type { NextAuthRequest } from "next-auth";
 import { apiEnabled, pageEnabled } from "@/lib/modules";
 import { modulesForSlug } from "@/lib/modulesServer";
+import { maintenanceActive, maintenancePage } from "@/lib/maintenance";
 
 // Single-society mode: set SOCIETY_SLUG env var for per-domain deployments.
 // Middleware rewrites clean paths (/dashboard) → /slug/dashboard internally,
@@ -46,6 +47,15 @@ export default function proxy(req: NextRequest, ev: NextFetchEvent) {
 }
 
 async function route(req: NextAuthRequest, origin: string) {
+  // A restore is replacing the database (Settings > Debugging): nobody gets a page
+  // built from half of it. 503 with Retry-After, as nginx answers while the app restarts.
+  if (maintenanceActive()) {
+    return new NextResponse(maintenancePage(), {
+      status: 503,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Retry-After": "20", "Cache-Control": "no-store" },
+    });
+  }
+
   const { pathname } = req.nextUrl;
   const isAuth = !!req.auth;
 

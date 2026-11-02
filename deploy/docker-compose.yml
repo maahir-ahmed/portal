@@ -73,8 +73,18 @@ services:
       # Encrypts the Rubric session and Discord webhook URLs at rest (src/lib/secrets.ts).
       # Optional: empty stores them in plain text, which is how older stacks still run.
       RUBRIC_SECRET_KEY: ${RUBRIC_SECRET_KEY:-}
+      # Settings > Debugging (database viewer, backup, restore, raw SQL). Off unless set
+      # to true, and always off with DEMO_MODE. See deploy/README.md.
+      ENABLE_DEBUG_TOOLS: ${ENABLE_DEBUG_TOOLS:-false}
+      STACK: ${STACK}
+      UPLOADS_DIR: /app/uploads
+      BACKUP_OUT: /app/backups
     volumes:
       - uploads_data:/app/uploads
+      # The Debugging tab's own archives. A volume rather than ${BACKUP_DIR}: the app
+      # runs as an unprivileged user that cannot write to a host folder it doesn't own.
+      # Same format as the daily backups, so either restores with either.
+      - debug_backups:/app/backups
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
@@ -105,7 +115,8 @@ services:
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
       TZ: ${TZ:-Australia/Sydney}   # so BACKUP_HOUR means the local 3am
     volumes:
-      - uploads_data:/uploads:ro
+      # Writable so `backup restore` can put the uploads back (deploy/README.md).
+      - uploads_data:/uploads
       - ${BACKUP_DIR:-../../rubric-backups}:/backups
     depends_on:
       db: { condition: service_healthy }
@@ -114,6 +125,7 @@ services:
 volumes:
   db_data:
   uploads_data:
+  debug_backups:
 
 networks:
   internal:
