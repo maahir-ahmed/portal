@@ -814,6 +814,17 @@ model BoardCard {
   @@index([societyId, lane])
 }
 
+// ─── Post-push data fixes ─────────────────────────────────────────────────────
+
+// Which prisma/post-push/*.sql files have run (scripts/post-push.mjs). Modelled only
+// so db push keeps it: a table missing from this schema is dropped on the next push.
+model AppliedFix {
+  name      String   @id
+  appliedAt DateTime @default(now())
+
+  @@map("_applied_fixes")
+}
+
 // ─── Audit Log ────────────────────────────────────────────────────────────────
 
 model AuditLog {
