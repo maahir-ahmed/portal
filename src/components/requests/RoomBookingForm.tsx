@@ -1,5 +1,6 @@
 "use client";
 
+import { usePolicy } from "@/hooks/usePolicy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -44,6 +45,7 @@ export interface RoomBookingInitial {
 }
 
 export function RoomBookingForm({ societySlug, initial }: { societySlug: string; initial?: RoomBookingInitial }) {
+  const rules = usePolicy(societySlug, "ROOM_BOOKING");
   const router = useRouter();
   const editing = !!initial;
   const [loading, setLoading] = useState(false);
@@ -115,9 +117,8 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
         </div>
       </div>
 
-      <div data-tour="room-notice" className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
-        <strong>Note:</strong> Arc requires every room booking to be submitted at least 7 business days before
-        the event, external guests or not.
+      <div data-tour="room-notice" className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 space-y-1.5">
+        {rules.map((rule, i) => <p key={i}>{i === 0 && <strong>Note: </strong>}{rule}</p>)}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

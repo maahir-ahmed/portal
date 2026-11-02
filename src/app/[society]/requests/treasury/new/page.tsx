@@ -12,14 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, AlertCircle, CheckCircle, Upload, Building } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
-
-const RULES = [
-  "Get the spend approved in the committee Discord BEFORE you buy. This form is only for claiming the money back.",
-  "Alcohol and alcoholic beverages are NOT reimbursable under any circumstances.",
-  "Personal transport (Uber, taxi, fuel) is NOT reimbursable unless explicitly pre-approved in writing.",
-  "Claims submitted more than 3 weeks after the purchase date may not be reimbursed.",
-  "Bonding money (held deposits) must be pre-approved and will only be reimbursed once returned.",
-];
+import { usePolicy } from "@/hooks/usePolicy";
 
 interface BankAccount {
   id: string;
@@ -49,6 +42,7 @@ const NO_EVENT = "__none__";
 export default function NewTreasuryPage() {
   const router = useRouter();
   const params = useParams<{ society: string }>();
+  const rules = usePolicy(params.society, "TREASURY");
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -183,7 +177,7 @@ export default function NewTreasuryPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-2">
-            {RULES.map((rule, i) => (
+            {rules.map((rule, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 <span className="text-amber-600 mt-0.5 flex-shrink-0">•</span>
                 <span>{rule}</span>

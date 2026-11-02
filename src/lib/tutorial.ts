@@ -869,6 +869,15 @@ export const TOUR_STEPS: TourStep[] = [
       "Below that, choose whether treasury plans spending with a yearly budget or just records claims as they come in.",
   },
   {
+    id: "settings-policies",
+    path: "/settings/policies",
+    target: "settings-policies",
+    minRole: "EXECUTIVE",
+    title: "Policies",
+    body:
+      "The rules each request form shows before someone submits. The standard ones can't be changed. Add your society's own underneath, one per line, such as who has to approve spending. Members see both together, above the standard rules, and agree to them as one.",
+  },
+  {
     id: "settings-rubric",
     path: "/settings/rubric",
     target: "settings-rubric",

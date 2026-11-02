@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useModules } from "@/hooks/useModules";
+import { usePolicy } from "@/hooks/usePolicy";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
   const [loading, setLoading] = useState(false);
   const [rubricRequired, setRubricRequired] = useState(initial?.rubricRequired ?? false);
   const modules = useModules(societySlug);
+  const policy = usePolicy(societySlug, "CONTENT");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -98,6 +100,13 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
           <p className="text-sm text-muted-foreground">{editing ? "Update the details of this request" : "Submit a marketing or content request"}</p>
         </div>
       </div>
+
+      {/* No base policy for content: this shows only once the society adds its own. */}
+      {policy.length > 0 && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 space-y-1.5">
+          {policy.map((rule, i) => <p key={i}>{rule}</p>)}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card data-tour="content-form">

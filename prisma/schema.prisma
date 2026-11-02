@@ -217,6 +217,22 @@ model Society {
   ahegsEvidence    AhegsEvidence[]
   ahegsMeetings    AhegsMeeting[]
   years            SocietyYear[]
+  policyAdditions  PolicyAddition[]
+}
+
+// A society's own lines on top of a request type's base policy (src/lib/policies.ts),
+// such as "Get approval in the exec Discord before buying". kind is a PolicyKind,
+// checked in code so a new request type needs no enum change.
+model PolicyAddition {
+  id        String   @id @default(cuid())
+  societyId String
+  kind      String
+  text      String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@unique([societyId, kind])
 }
 
 // The two dates each year that decide which year a record belongs to. Records keep

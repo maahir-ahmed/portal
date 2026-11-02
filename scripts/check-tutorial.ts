@@ -128,7 +128,7 @@ const PAGES = [
   "/requests/printing", "/requests/printing/new", "/requests/printing/[id]",
   "/budget", "/executive/queue", "/board", "/members", "/ahegs",
   "/rubric", "/rubric/events", "/rubric/members", "/rubric/grants", "/rubric/web",
-  "/settings/general", "/settings/portfolios", "/settings/features", "/settings/rubric", "/settings/discord", "/account",
+  "/settings/general", "/settings/portfolios", "/settings/features", "/settings/policies", "/settings/rubric", "/settings/discord", "/account",
 ];
 const emptyPages = PAGES.filter((page) => stepsForPage("EXECUTIVE", page).length === 0);
 assert.deepEqual(emptyPages, [], `pages with no help steps:\n  ${emptyPages.join("\n  ")}`);
