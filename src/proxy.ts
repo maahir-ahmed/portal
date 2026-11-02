@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextMiddleware, type NextRequest } from "next/server";
+import type { NextAuthRequest } from "next-auth";
 import { apiEnabled, pageEnabled } from "@/lib/modules";
 import { modulesForSlug } from "@/lib/modulesServer";
 
@@ -32,7 +33,19 @@ function societyPath(pathname: string): { slug: string; sub: string; api: boolea
   return { slug, sub: "/" + rest.join("/"), api: false };
 }
 
-export default auth(async (req) => {
+// Rewrites must target this server's own origin, as Next sees it (in the container,
+// http://0.0.0.0:3000), or Next treats them as a different site and fetches them over
+// the network. NextAuth's auth() hands the callback a request rebuilt on NEXTAUTH_URL,
+// the public address, so the real origin is taken here, before it does. Built on
+// req.url, every slug-free page went out to the public URL and back in through the
+// tunnel, and failed outright where the box cannot reach its own public address.
+export default function proxy(req: NextRequest, ev: NextFetchEvent) {
+  const origin = req.nextUrl.origin;
+  // auth()'s overloads return a union; with a callback it is this middleware.
+  return (auth((r) => route(r, origin)) as unknown as NextMiddleware)(req, ev);
+}
+
+async function route(req: NextAuthRequest, origin: string) {
   const { pathname } = req.nextUrl;
   const isAuth = !!req.auth;
 
@@ -59,7 +72,7 @@ export default auth(async (req) => {
       return NextResponse.json({ error: "This feature is switched off in Settings" }, { status: 403 });
     }
     if (!target.api && !pageEnabled(flags, target.sub)) {
-      return NextResponse.rewrite(new URL(`/${target.slug}/feature-off`, req.url));
+      return NextResponse.rewrite(new URL(`/${target.slug}/feature-off`, origin));
     }
   }
 
@@ -67,17 +80,18 @@ export default auth(async (req) => {
   if (SOCIETY_SLUG && !isPublic) {
     const slugPrefix = `/${SOCIETY_SLUG}`;
 
-    // Already slug-prefixed: either a real /slug/... request OR the internal rewrite
-    // re-entering middleware (which happens in the standalone production server). Render
-    // as-is. Do NOT redirect to a clean URL here: combined with the rewrite below it
-    // creates an infinite /dashboard ⇄ /slug/dashboard loop.
+    // Already slug-prefixed: a real /slug/... request (the app's own links use them),
+    // or a rewrite coming back through here, which is what happened while rewrites
+    // went out over the network (see proxy() above). Render as-is. Do NOT redirect to
+    // a clean URL here: combined with the rewrite below it creates an infinite
+    // /dashboard ⇄ /slug/dashboard loop.
     if (pathname === slugPrefix || pathname.startsWith(slugPrefix + "/")) {
       return NextResponse.next();
     }
 
     if (!isRootPath(pathname) && pathname !== "/") {
       // Rewrite clean path → /slug/path (internal, transparent to browser)
-      const rewritten = new URL(`${slugPrefix}${pathname}`, req.url);
+      const rewritten = new URL(`${slugPrefix}${pathname}`, origin);
       rewritten.search = req.nextUrl.search;
       return NextResponse.rewrite(rewritten);
     }
@@ -85,7 +99,7 @@ export default auth(async (req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   // Skip Next internals and static files in /public (so the auth guard doesn't
