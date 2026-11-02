@@ -31,6 +31,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
 
@@ -85,7 +86,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
             <StatusBadge status={request.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt)}
+            Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt, membership.society.timezone)}
           </p>
         </div>
         {canEdit && (

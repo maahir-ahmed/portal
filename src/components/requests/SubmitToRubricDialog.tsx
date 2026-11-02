@@ -146,6 +146,7 @@ export function SubmitToRubricDialog({
         eventAddress: address,
         eventStartDate: toRubricDate(startDate),
         eventEndDate: toRubricDate(endDate),
+        // Rubric is UNSW's platform, so its events are in Sydney whatever the society's setting.
         timezone: "Australia/Sydney",
         isPrivate,
         draft: isDraft,

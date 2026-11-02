@@ -30,6 +30,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
 
@@ -106,7 +107,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
             <StatusBadge status={request.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt)}
+            Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt, membership.society.timezone)}
           </p>
         </div>
         {canEdit && (
@@ -231,7 +232,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
                   <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                     <Send className="h-4 w-4 flex-shrink-0" />
                     <span>
-                      Submitted to Rubric on {formatTimestamp(request.rubricSubmittedAt)}.
+                      Submitted to Rubric on {formatTimestamp(request.rubricSubmittedAt, membership.society.timezone)}.
                       Check your Rubric portal for the live event link.
                     </span>
                   </div>

@@ -39,6 +39,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
 
@@ -80,7 +81,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
             <StatusBadge status={booking.status} />
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Submitted by {booking.submittedBy.name} · {formatTimestamp(booking.createdAt)}
+            Submitted by {booking.submittedBy.name} · {formatTimestamp(booking.createdAt, membership.society.timezone)}
           </p>
         </div>
         {canEdit && (

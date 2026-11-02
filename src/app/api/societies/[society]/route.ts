@@ -31,7 +31,17 @@ const updateSchema = z.object({
   moduleBoard: z.boolean(),
   moduleAhegs: z.boolean(),
   treasuryMode: z.enum(["BUDGET", "TRANSACTIONS"]),
+  timezone: z.string().refine(validTimeZone, "Unknown timezone"),
 }).partial();
+
+function validTimeZone(tz: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
@@ -65,6 +75,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       ahegsYear: true,
       rubricSocietyId: true,
       ...MODULE_SELECT,
+      timezone: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -84,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
     // The settings form posts every field. Empty strings on the always-present
     // required fields (name, colours, tier) are dropped; on optional/nullable
     // fields an empty string means "clear it" → null (so e.g. removing the logo works).
-    const ALWAYS_PRESENT = new Set(["name", "primaryColor", "secondaryColor", "secretarialTier"]);
+    const ALWAYS_PRESENT = new Set(["name", "primaryColor", "secondaryColor", "secretarialTier", "timezone"]);
     const raw = (await req.json()) as Record<string, unknown>;
     for (const k of Object.keys(raw)) {
       if (raw[k] === "") {

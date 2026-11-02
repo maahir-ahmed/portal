@@ -199,6 +199,9 @@ model Society {
   moduleBoard          Boolean      @default(true)
   moduleAhegs          Boolean      @default(true)
   treasuryMode         TreasuryMode @default(BUDGET)
+  // IANA zone that real moments (createdAt and the like) are shown in. Typed-in dates
+  // are naive wall-clock and ignore it (see formatTimestamp in src/lib/utils.ts).
+  timezone             String       @default("Australia/Sydney")
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
