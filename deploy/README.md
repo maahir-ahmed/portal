@@ -52,28 +52,56 @@ point a tunnel hostname at the port.
 
 ## Backups
 
-The `backup` service in each stack dumps the database and archives the uploads volume
-once a day, and once on start. No crontab: an earlier cron line lived here for months
-without ever being installed, and nothing was backed up.
+The `backup` service in each stack backs up the database and the uploads volume
+together once a day, and once on start. No crontab: an earlier cron line lived here for
+months without ever being installed, and nothing was backed up.
 
-Files land in `${BACKUP_DIR}` (default `~/containers/rubric-backups`) as
-`<stack>_<date>.sql.gz` and `<stack>_uploads_<date>.tar.gz`, keeping
-`${BACKUP_KEEP_DAYS}` days (14). Change the hour with `BACKUP_HOUR` in the env file.
+Each backup is one archive in `${BACKUP_DIR}` (default `~/containers/rubric-backups`),
+`<stack>_<date>.tar.gz`, holding `database.sql`, `uploads/` and a `manifest.json` that
+ties the two together. `${BACKUP_KEEP_DAYS}` days (14) are kept. Change the hour with
+`BACKUP_HOUR` in the env file. The same archive restores from the command line below or
+from Settings > Debugging, and either can restore the other's.
 
 ```bash
+C="docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml"
+
 # back up right now
-docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml run --rm backup once
+$C run --rm backup once
 # what it has been doing
 docker logs rubric_prod_backup
 
-# restore a database dump (stops the app first — it will not restore under load)
+# check an archive is whole before relying on it
+$C run --rm backup validate /backups/rubric_prod_2026-11-03_030000.tar.gz
+
+# restore: stop the app (the web container shows the maintenance page meanwhile),
+# replace the database and uploads, start it again (which brings the schema up to date)
+$C stop app
+$C run --rm backup restore /backups/rubric_prod_2026-11-03_030000.tar.gz
+$C start app
+```
+
+The restore replaces the whole database in one transaction, so a dump that fails
+partway changes nothing. Backups from before November 2026 are two files,
+`<stack>_<date>.sql.gz` and `<stack>_uploads_<date>.tar.gz`; restore those by hand:
+
+```bash
 gunzip -c ~/containers/rubric-backups/rubric_prod_2026-08-28_0300.sql.gz \
   | docker exec -i rubric_prod-db-1 psql -U society_user -d society_platform
-
-# restore the uploads volume
 docker run --rm -v rubric_prod_uploads_data:/uploads -v ~/containers/rubric-backups:/b alpine \
   tar xzf /b/rubric_prod_uploads_2026-08-28_0300.tar.gz -C /uploads
 ```
+
+## Debugging tab
+
+`ENABLE_DEBUG_TOOLS=true` in a stack's env file adds Settings > Debugging for its
+executives: a read-only database viewer (passwords, tokens, sessions, webhooks and bank
+details masked), backups to download, restore from an uploaded archive, and running a
+`.sql` file in one transaction. Restore and SQL need the society's name typed in and take
+a backup first; all three are in the audit log. It is off by default, and forced off with
+`DEMO_MODE=1`, where every visitor is an executive.
+
+Archives made in the tab go to the `debug_backups` volume (the app runs as a user that
+cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere.
 
 ## Demo stack (no login)
 
@@ -110,4 +138,8 @@ there is no login step. Consequences, all deliberate:
 
 ## Notes
 - Schema is applied with `prisma db push` (no migrations dir). Fine for now; add a migrations history later for safe prod schema changes.
+- Data changes a schema change needs (a backfill, keeping an existing society's behaviour)
+  go in `prisma/post-push/*.sql`. The app applies each once, after `db push`, on start;
+  `_applied_fixes` records which have run. A failing fix stops the app starting, with
+  nothing from it kept.
 - App ports are NOT published to the host; only cloudflared (via the `edge` network) can reach them.

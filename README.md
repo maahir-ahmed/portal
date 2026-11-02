@@ -24,8 +24,11 @@ Rubric credentials never leave the server. The browser calls `POST /api/societie
 - No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login is the only unauthenticated page.
 - The member is then blocked on a change-password dialog until they pick their own — no dismissing it, and the new password has to differ from the passphrase. Same flow after an exec resets a password.
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
-- Nine portfolios (Careers, Conferences, Creatives, CTF, Education, Marketing, Projects, Socials, Media), each with a director title and a subcom title. A member's portfolio follows their title, so "Creative Subcom" groups them under Creatives; it is never set by hand. Executives are grouped by role and hold no portfolio.
-- Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Portfolios and titles are both managed in Settings.
+- Portfolios: the areas a society splits its committee into (Events, Marketing, Sponsorship…), defined per society in Settings, and optional. A member is in the portfolio of the title they hold ("Events Director"), and can be added to more from the Members page. Executives are grouped by role.
+- Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Someone in two portfolios appears under both.
+- **Feature modules**: each society switches off the sections it doesn't use (events, room bookings, printing, Rubric, activity grants, AHEGS, the exec board) in Settings > Features. A switched-off section leaves the menu and refuses its pages and API; nothing is deleted. Treasury can run with a yearly budget or as transactions only.
+- **Policies**: each request form shows the app's standard rules plus the society's own lines (Settings > Policies), and one "I agree" covers both.
+- **Debugging** (opt-in, `ENABLE_DEBUG_TOOLS=true`): a read-only database viewer with credentials masked, one-archive backups of the database and uploads, restore from an uploaded archive, and running a `.sql` file in one transaction. See [`deploy/README.md`](deploy/README.md).
 - Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
 - **Guided tour**: the mortarboard button in the header (or "Take the tour" in the sidebar) walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
 - **Per-page help**: the question mark next to it runs only the steps for the page you're on, creating nothing and deleting nothing. Same copy as the tour, so there is one place to keep it correct, and the button hides itself on pages the tour doesn't cover.
@@ -65,6 +68,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `SMTP_*`, `EMAIL_FROM` | Email notifications (optional) |
 | `MAX_FILE_SIZE_MB` | Upload size cap (default 10) |
 | `RUBRIC_SECRET_KEY` | Encrypts the stored Rubric session at rest (optional; `openssl rand -base64 32`) |
+| `ENABLE_DEBUG_TOOLS` | `true` adds Settings > Debugging (database viewer, backup, restore, SQL). Off by default, always off with `DEMO_MODE` |
 
 ## Scripts
 
@@ -79,6 +83,8 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
 | `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
 | `npm run check:passphrase` | Verifies the temporary-passphrase wordlist stays unique and large enough for the entropy it claims |
+| `npm run check:modules` | Verifies a switched-off feature module refuses exactly its own pages and API routes |
+| `npm run check:debug` | Verifies the database viewer masks credentials and the SQL runner refuses files that end its transaction |
 | `npm run rubric:snapshot` | Refreshes the demo's Rubric fixture from a connected deployment (anonymises people first) |
 
 ## Deployment
