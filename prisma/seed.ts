@@ -24,6 +24,7 @@ async function main() {
       primaryColor: "#00ffd1",
       secondaryColor: "#007869",
       contactEmail: "contact@example.com",
+      setupCompletedAt: new Date(),
     },
   });
 

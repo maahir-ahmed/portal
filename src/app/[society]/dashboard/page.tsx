@@ -30,6 +30,8 @@ export default async function DashboardPage({ params }: Props) {
 
   const societyId = membership.societyId;
   const isExec = membership.role === "EXECUTIVE";
+  // Executives finish first-run setup before anything else (src/app/setup).
+  if (isExec && !membership.society.setupCompletedAt) redirect("/setup");
   const modules = flagsFrom(membership.society);
 
   const [

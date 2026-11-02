@@ -59,12 +59,16 @@ async function route(req: NextAuthRequest, origin: string) {
   const { pathname } = req.nextUrl;
   const isAuth = !!req.auth;
 
-  // Login is the only unauthenticated page. There is no self-registration: an
-  // account only exists because an executive created it from the Members tab.
+  // Login is the only unauthenticated page, besides first-run setup. There is no
+  // self-registration: an account only exists because an executive created it from
+  // the Members tab, or is the first one, made with the installer's setup token.
   const isAuthPage = pathname.startsWith("/login");
   const isApiAuth = pathname.startsWith("/api/auth");
+  // /setup checks for itself: on a fresh stack it is open to whoever holds the setup
+  // token (src/lib/setup.ts), and from then on it sends anyone signed out to log in.
+  const isSetup = pathname === "/setup" || pathname === "/api/setup";
   const isPublic =
-    isAuthPage || isApiAuth || pathname.startsWith("/_next") || pathname.startsWith("/uploads");
+    isAuthPage || isApiAuth || isSetup || pathname.startsWith("/_next") || pathname.startsWith("/uploads");
 
   // Auth guard (runs regardless of society mode)
   if (!isPublic && !isAuth) {

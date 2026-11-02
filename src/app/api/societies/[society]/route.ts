@@ -32,6 +32,9 @@ const updateSchema = z.object({
   moduleAhegs: z.boolean(),
   treasuryMode: z.enum(["BUDGET", "TRANSACTIONS"]),
   timezone: z.string().refine(validTimeZone, "Unknown timezone"),
+  // First-run setup: the step to resume at, and finishing it.
+  setupStep: z.number().int().min(0).max(20),
+  setupDone: z.literal(true),
 }).partial();
 
 function validTimeZone(tz: string) {
@@ -76,6 +79,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       rubricSocietyId: true,
       ...MODULE_SELECT,
       timezone: true,
+      setupStep: true,
+      setupCompletedAt: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -103,10 +108,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
         else raw[k] = null;
       }
     }
-    const body = updateSchema.parse(raw);
+    const { setupDone, ...body } = updateSchema.parse(raw);
     await prisma.society.update({
       where: { id: membership!.societyId },
-      data: body,
+      data: { ...body, ...(setupDone ? { setupCompletedAt: new Date() } : {}) },
     });
 
     await createAuditLog({
@@ -115,7 +120,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       action: "UPDATE",
       entityType: "Society",
       entityId: membership!.societyId,
-      metadata: { fields: Object.keys(body).join(", ") },
+      metadata: { fields: [...Object.keys(body), ...(setupDone ? ["setupCompletedAt"] : [])].join(", ") },
     });
 
     // Same reason as GET: reply with the accepted changes, not the stored row.

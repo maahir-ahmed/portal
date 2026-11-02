@@ -76,6 +76,10 @@ services:
       # Settings > Debugging (database viewer, backup, restore, raw SQL). Off unless set
       # to true, and always off with DEMO_MODE. See deploy/README.md.
       ENABLE_DEBUG_TOOLS: ${ENABLE_DEBUG_TOOLS:-false}
+      # First-run setup: /setup?token=<SETUP_TOKEN> makes the first account on an empty
+      # database, and does nothing once any account exists. ADMIN_EMAIL prefills it.
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       STACK: ${STACK}
       UPLOADS_DIR: /app/uploads
       BACKUP_OUT: /app/backups
