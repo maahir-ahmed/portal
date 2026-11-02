@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const BASE = process.env.AUDIT_URL ?? "http://localhost:3000";
-const EMAIL = process.env.AUDIT_EMAIL ?? "alice@secsoc.unsw.edu.au";
+const EMAIL = process.env.AUDIT_EMAIL ?? "alice@example.com";
 const PASSWORD = process.env.AUDIT_PASSWORD ?? "password123";
 const OUT = process.env.AUDIT_OUT ?? join(tmpdir(), "society-layout-audit");
 
@@ -32,7 +32,8 @@ const PAGES = [
   "/requests/treasury", "/requests/treasury/new",
   "/requests/printing", "/requests/printing/new",
   "/budget", "/executive/queue", "/board", "/members", "/ahegs",
-  "/rubric", "/settings", "/account",
+  "/rubric", "/account",
+  "/settings/general", "/settings/portfolios", "/settings/discord", "/settings/rubric",
 ];
 
 interface Finding { page: string; viewport: string; kind: string; detail: string }

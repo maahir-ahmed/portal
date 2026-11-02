@@ -781,12 +781,12 @@ export const TOUR_STEPS: TourStep[] = [
   // ── Settings ───────────────────────────────────────────────────────────────
   {
     id: "nav-settings",
-    path: "/settings",
+    path: "/settings/general",
     target: "nav-settings",
     minRole: "EXECUTIVE",
     title: "Society settings",
     body:
-      "Settings for the whole society. Only executives can change them.",
+      "Settings for the whole society, split into tabs. Only executives can change them.",
   },
   {
     id: "settings-general",
@@ -829,6 +829,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "settings-portfolios",
+    path: "/settings/portfolios",
     target: "settings-portfolios",
     minRole: "EXECUTIVE",
     title: "Portfolios",
@@ -846,6 +847,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "settings-rubric",
+    path: "/settings/rubric",
     target: "settings-rubric",
     minRole: "EXECUTIVE",
     title: "Rubric integration",
@@ -854,6 +856,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "settings-discord",
+    path: "/settings/discord",
     target: "settings-discord",
     minRole: "EXECUTIVE",
     title: "Discord",
