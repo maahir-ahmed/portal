@@ -50,7 +50,7 @@ export function AhegsClient({
   const [addingMeeting, setAddingMeeting] = useState(false);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [minutesFile, setMinutesFile] = useState<File | null>(null);
-  const [meetingScope, setMeetingScope] = useState<string>(scope.portfolioId ?? "exec");
+  const [meetingScope, setMeetingScope] = useState<string>(scope.isExec ? "exec" : (scope.portfolioIds[0] ?? ""));
 
   // A director only ever holds their own portfolio's rows, so any category with
   // nobody in it is noise on their screen.
@@ -145,7 +145,7 @@ export function AhegsClient({
         title: String(form.get("title") ?? "").trim(),
         date: String(form.get("date") ?? ""),
         hours: Number(form.get("hours")),
-        portfolioId: scope.isExec && meetingScope !== "exec" ? meetingScope || null : null,
+        portfolioId: meetingScope !== "exec" ? meetingScope || null : null,
         execTeam: scope.isExec && meetingScope === "exec",
         fileUrl,
         fileName,
@@ -254,14 +254,14 @@ export function AhegsClient({
     evidence.find((e) => e.category === c && e.kind === k);
   const tabRows = rows.filter((r) => r.category === tab);
   // Whoever the chosen group actually contains: the executives (who hold no
-  // portfolio), one portfolio, or the whole committee. A director's rows are already
-  // only their own portfolio, so there is nothing left to filter.
+  // portfolio), one portfolio, or the whole committee. A director with one portfolio
+  // only ever has its rows, so there is nothing left to filter.
   const choicesFor = (group: string) =>
     rows.filter((r) => {
-      if (!scope.isExec) return true;
+      if (!scope.isExec) return scope.portfolioIds.length <= 1 || r.portfolioIds.includes(group);
       if (group === "exec") return r.portfolioId === null;
       if (group === "") return true;
-      return r.portfolioId === group;
+      return r.portfolioIds.includes(group);
     });
   const attendeeChoices = choicesFor(meetingScope);
 
@@ -276,7 +276,7 @@ export function AhegsClient({
     { label: "Executives", rows: attendeeChoices.filter((r) => r.portfolioId === null) },
     ...portfolios.map((p) => ({
       label: p.name,
-      rows: attendeeChoices.filter((r) => r.portfolioId === p.id),
+      rows: attendeeChoices.filter((r) => r.portfolioIds.includes(p.id)),
     })),
   ].filter((g) => g.rows.length > 0);
 
@@ -304,7 +304,8 @@ export function AhegsClient({
         </select>
         {!scope.isExec && (
           <span className="text-sm text-muted-foreground">
-            · {portfolios.find((p) => p.id === scope.portfolioId)?.name ?? "no"} portfolio
+            · {portfolios.filter((p) => scope.portfolioIds.includes(p.id)).map((p) => p.name).join(", ") || "no"}{" "}
+            {scope.portfolioIds.length > 1 ? "portfolios" : "portfolio"}
           </span>
         )}
       </div>
@@ -406,16 +407,18 @@ export function AhegsClient({
                          defaultValue="1" required className={cn(cell, "tabnums")} />
                 </div>
               </div>
-              {scope.isExec && (
+              {(scope.isExec || scope.portfolioIds.length > 1) && (
                 <select
                   value={meetingScope}
                   onChange={(e) => { setMeetingScope(e.target.value); setAttendees(defaultAttendees(e.target.value)); }}
                   aria-label="Who met"
                   className={cell}
                 >
-                  <option value="exec">Executive team</option>
-                  {portfolios.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  <option value="">Whole committee</option>
+                  {scope.isExec && <option value="exec">Executive team</option>}
+                  {portfolios
+                    .filter((p) => scope.isExec || scope.portfolioIds.includes(p.id))
+                    .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {scope.isExec && <option value="">Whole committee</option>}
                 </select>
               )}
               <div>

@@ -290,15 +290,17 @@ model SocietyMembership {
   portfolio   Portfolio?   @relation(fields: [portfolioId], references: [id])
   ahegsEntries AhegsEntry[]
   ahegsAttendance AhegsAttendance[]
+  extraPortfolios MemberPortfolio[]
 
   @@unique([userId, societyId])
   @@index([societyId])
   @@index([userId])
 }
 
-// An area of the committee (Careers, Creatives, CTF, ...). Each one has a director
-// title and a subcom title; a member's portfolio follows from the title they hold,
-// so it is never set directly. Executives are grouped by role and hold none.
+// An area of the committee (Events, Marketing, Sponsorship, ...). A member's main
+// portfolio follows from the title they hold, so SocietyMembership.portfolioId is
+// never set directly; MemberPortfolio adds any others. Executives are grouped by
+// role and hold none through their title.
 model Portfolio {
   id        String   @id @default(cuid())
   societyId String
@@ -310,8 +312,24 @@ model Portfolio {
   memberships SocietyMembership[]
   titles      SocietyTitle[]
   ahegsMeetings AhegsMeeting[]
+  extraMembers MemberPortfolio[]
 
   @@unique([societyId, name])
+}
+
+// The portfolios a member is in beyond the one their title gives them: a CTF director
+// who also helps run Socials, or an executive who looks after Sponsorship. Read
+// together with portfolioId through memberPortfolioIds (src/lib/titles.ts).
+model MemberPortfolio {
+  id           String @id @default(cuid())
+  membershipId String
+  portfolioId  String
+
+  membership SocietyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  portfolio  Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, portfolioId])
+  @@index([portfolioId])
 }
 
 // ─── Auth (NextAuth) ──────────────────────────────────────────────────────────

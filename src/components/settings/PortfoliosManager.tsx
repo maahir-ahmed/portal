@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
-import { BASE_PORTFOLIOS } from "@/lib/portfolios";
 
 interface Portfolio {
   id: string;
@@ -59,15 +58,6 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
     }
   }
 
-  async function addDefaults() {
-    const ok = await send(base, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ defaults: true }),
-    }, "Could not add the default portfolios");
-    if (ok) toast.success("Default portfolios added");
-  }
-
   async function rename(id: string) {
     if (!editValue.trim()) return;
     const ok = await send(`${base}/${id}`, {
@@ -96,9 +86,9 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
       <CardHeader>
         <CardTitle className="text-base">Portfolios</CardTitle>
         <CardDescription>
-          The areas the committee is split into. A member is grouped by the title they hold, so each
-          portfolio needs a director title and a subcom title in Roles &amp; Titles below. Executives
-          are grouped by role and hold no portfolio.
+          The areas your committee is split into, like Events, Marketing or Sponsorship. A member
+          is in the portfolio of the title they hold, and you can add them to more from the Members
+          page. Optional: with none, the Members page is one list.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -107,14 +97,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
         ) : portfolios.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              No portfolios yet, so everyone outside the executive team shows under &quot;No
-              portfolio&quot;.
-            </p>
-            <Button size="sm" onClick={addDefaults} disabled={busy} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Add the {BASE_PORTFOLIOS.length} committee portfolios
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              {BASE_PORTFOLIOS.map((p) => p.name).join(", ")}
+              No portfolios yet. Add your first one below.
             </p>
           </div>
         ) : (
@@ -170,7 +153,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
           </div>
         )}
 
-        {portfolios !== null && portfolios.length > 0 && (
+        {portfolios !== null && (
           adding ? (
             <div className="flex gap-2 pt-1">
               <Input

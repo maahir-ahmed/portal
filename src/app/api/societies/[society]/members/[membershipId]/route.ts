@@ -11,6 +11,8 @@ const patchSchema = z.object({
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]).optional(),
   title: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
+  // Portfolios beyond the title's own. Replaces the whole set when sent.
+  extraPortfolioIds: z.array(z.string()).max(50).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
@@ -40,6 +42,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         ? await portfolioForTitle(membership!.societyId, title, role)
         : undefined;
 
+    if (body.extraPortfolioIds) {
+      // The title's own portfolio is implied, so it is never stored twice.
+      const fromTitle = portfolioId !== undefined ? portfolioId : target.portfolioId;
+      const ids = [...new Set(body.extraPortfolioIds)].filter((id) => id !== fromTitle);
+      const known = await prisma.portfolio.count({ where: { id: { in: ids }, societyId: membership!.societyId } });
+      if (known !== ids.length) return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+      await prisma.$transaction([
+        prisma.memberPortfolio.deleteMany({ where: { membershipId } }),
+        prisma.memberPortfolio.createMany({ data: ids.map((portfolioId) => ({ membershipId, portfolioId })) }),
+      ]);
+    }
+
     const [updated] = await Promise.all([
       prisma.societyMembership.update({
         where: { id: membershipId },
@@ -60,7 +74,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       action: "UPDATE",
       entityType: "SocietyMembership",
       entityId: membershipId,
-      metadata: { role: body.role ?? null },
+      metadata: { role: body.role ?? null, extraPortfolios: body.extraPortfolioIds?.length ?? null },
     });
 
     return NextResponse.json(updated);

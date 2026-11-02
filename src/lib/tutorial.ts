@@ -847,8 +847,8 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Portfolios",
     body:
-      "The areas the committee is split into. A new society starts with none, and one button adds the nine standard ones. You can add, rename and remove portfolios here.\n\n" +
-      "Removing a portfolio takes its titles and members out of it rather than deleting them, and its AHEGS meetings become whole-committee meetings. Nobody is put in a portfolio directly, so each portfolio needs titles set up below.",
+      "The areas the committee is split into. A new society starts with none. You can add, rename and remove portfolios here.\n\n" +
+      "Removing a portfolio takes its titles and members out of it rather than deleting them, and its AHEGS meetings become whole-committee meetings. A member is in the portfolio of their title, set up below, and can be added to more from the Members page.",
   },
   {
     id: "settings-titles",

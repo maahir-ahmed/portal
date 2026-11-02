@@ -191,12 +191,13 @@ assert.equal(docked.totalHours, 2, "a negative adjustment corrects an over-credi
 
 // 5. Scoping. A director must not reach another portfolio, and subcommittee members
 //    have no access at all (the routes require DIRECTOR, so they never get this far).
-const exec = ahegsScope("EXECUTIVE", null);
-const director = ahegsScope("DIRECTOR", "p-creatives");
-const strayDirector = ahegsScope("DIRECTOR", null);
+const exec = ahegsScope("EXECUTIVE", ["p-socials"]);
+const director = ahegsScope("DIRECTOR", ["p-creatives"]);
+const strayDirector = ahegsScope("DIRECTOR", []);
+const twoHats = ahegsScope("DIRECTOR", ["p-creatives", "p-socials"]);
 
 assert.equal(exec.isExec, true);
-assert.equal(exec.portfolioId, null, "an executive is not pinned to one portfolio");
+assert.deepEqual(exec.portfolioIds, [], "an executive is not pinned to any portfolio");
 assert.equal(canTouchPortfolio(exec, "p-creatives"), true);
 assert.equal(canTouchPortfolio(exec, null), true, "executives cover the unassigned too");
 
@@ -208,6 +209,14 @@ assert.equal(canTouchPortfolio(director, null), false, "executives' rows carry n
 // nobody rather than everybody with a null portfolio.
 assert.equal(canTouchPortfolio(strayDirector, null), false, "a portfolio-less director sees nobody");
 assert.equal(canTouchPortfolio(strayDirector, "p-creatives"), false);
+
+// Members can sit in several portfolios, and so can directors. A member is reachable
+// from any portfolio they are in, and a director reaches every portfolio they hold.
+assert.equal(canTouchPortfolio(director, ["p-ctf", "p-creatives"]), true, "a member who is also in the director's portfolio");
+assert.equal(canTouchPortfolio(director, ["p-ctf", "p-socials"]), false);
+assert.equal(canTouchPortfolio(director, []), false, "a member in no portfolio");
+assert.equal(canTouchPortfolio(twoHats, "p-socials"), true, "a director's second portfolio");
+assert.equal(canTouchPortfolio(twoHats, "p-ctf"), false);
 
 // 6. Group labels. A meeting's group is what an executive reads the pile by, and a
 //    portfolio deleted out from under one must not render as a blank heading.
