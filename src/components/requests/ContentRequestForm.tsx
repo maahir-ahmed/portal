@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useModules } from "@/hooks/useModules";
 import { usePolicy } from "@/hooks/usePolicy";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,7 @@ export interface ContentRequestInitial {
   blurbRequired: boolean;
   rubricRequired: boolean;
   otherNotes: string | null;
+  portfolioId: string | null;
 }
 
 // Stored instant -> value for <input type="datetime-local">. Dates are treated as
@@ -41,6 +42,14 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
   const [rubricRequired, setRubricRequired] = useState(initial?.rubricRequired ?? false);
   const modules = useModules(societySlug);
   const policy = usePolicy(societySlug, "CONTENT");
+  const [portfolios, setPortfolios] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/societies/${societySlug}/portfolios`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setPortfolios)
+      .catch(() => {});
+  }, [societySlug]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,6 +69,8 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
       blurbRequired: form.get("blurbRequired") === "true",
       rubricRequired: form.get("rubricRequired") === "true",
       otherNotes: form.get("otherNotes") || null,
+      // Left out when the society has no portfolios, so an edit doesn't clear one.
+      ...(form.has("portfolioId") ? { portfolioId: form.get("portfolioId") || null } : {}),
       ...(editing ? {} : { status: form.get("action") === "submit" ? "SUBMITTED" : "DRAFT" }),
     };
 
@@ -148,6 +159,23 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
               <DateTimeField id="deadline" name="deadline" defaultValue={dtLocal(initial?.deadline)} required />
               <p className="text-xs text-muted-foreground">When do you need the content ready by?</p>
             </div>
+            {portfolios.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="portfolioId">Which portfolio is running this?</Label>
+                <select
+                  id="portfolioId"
+                  name="portfolioId"
+                  defaultValue={initial?.portfolioId ?? ""}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Not sure, or none</option>
+                  {portfolios.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">They get the reminders on Discord as the deadline gets close.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

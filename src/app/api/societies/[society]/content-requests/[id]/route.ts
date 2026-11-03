@@ -45,6 +45,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Invalid grant status" }, { status: 400 });
   }
 
+  if (
+    canEditCore &&
+    body.portfolioId &&
+    !(await prisma.portfolio.count({ where: { id: String(body.portfolioId), societyId: membership!.societyId } }))
+  ) {
+    return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+  }
+
   const updated = await prisma.contentRequest.update({
     where: { id },
     data: {
@@ -56,6 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEditCore && typeof body.location === "string" ? { location: body.location } : {}),
       ...(canEditCore && typeof body.keyPoints === "string" ? { keyPoints: body.keyPoints } : {}),
       ...(canEditCore && body.deadline ? { deadline: new Date(body.deadline) } : {}),
+      ...(canEditCore && body.portfolioId !== undefined ? { portfolioId: body.portfolioId ? String(body.portfolioId) : null } : {}),
       ...(canEditCore && typeof body.bannerRequired === "boolean" ? { bannerRequired: body.bannerRequired } : {}),
       ...(canEditCore && typeof body.blurbRequired === "boolean" ? { blurbRequired: body.blurbRequired } : {}),
       ...(canEditCore && typeof body.rubricRequired === "boolean" ? { rubricRequired: body.rubricRequired } : {}),

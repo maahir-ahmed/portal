@@ -346,10 +346,13 @@ model Portfolio {
   societyId String
   name      String
   sortOrder Int      @default(0)
+  // The Discord role pinged by deadline reminders for events this portfolio runs.
+  discordRoleId String?
   createdAt DateTime @default(now())
 
   society     Society             @relation(fields: [societyId], references: [id], onDelete: Cascade)
   memberships SocietyMembership[]
+  contentRequests ContentRequest[]
   titles      SocietyTitle[]
   ahegsMeetings AhegsMeeting[]
   extraMembers MemberPortfolio[]
@@ -437,6 +440,9 @@ model ContentRequest {
   // The events-webhook message this request was posted as, so an edit here edits it
   // there instead of posting again. Null until the request is first submitted.
   discordMessageId String?
+  // The portfolio running the event, if the submitter picked one. Its Discord role is
+  // who the deadline reminders ping (src/lib/reminders.ts).
+  portfolioId     String?
   bannerDone      Boolean              @default(false)
   blurbDone       Boolean              @default(false)
   createdAt       DateTime             @default(now())
@@ -445,13 +451,29 @@ model ContentRequest {
   society      Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
   submittedBy  User    @relation("ContentRequestSubmitter", fields: [submittedById], references: [id])
   assignedTo   User?   @relation("ContentRequestAssignee", fields: [assignedToId], references: [id])
+  portfolio    Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
   thread       Thread?
   deliverables ContentDeliverable[]
   photos       EventPhoto[]
   expenses     TreasuryRequest[]
+  reminders    EventReminder[]
 
   @@index([societyId])
   @@index([status])
+}
+
+// The deadline stages (src/lib/urgency.ts) a request has reached, one row each, so a
+// reminder goes out once per stage however often the job runs or the app restarts.
+// The row is written before the Discord post, and removed if the post fails.
+model EventReminder {
+  id               String   @id @default(cuid())
+  contentRequestId String
+  stage            String
+  sentAt           DateTime @default(now())
+
+  contentRequest ContentRequest @relation(fields: [contentRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([contentRequestId, stage])
 }
 
 // Photos taken at the event. Arc's activity grant asks for evidence the event ran,
