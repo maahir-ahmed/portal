@@ -109,10 +109,27 @@ unpack_and_check() {
   file="$1" into="$2"
   [ -f "$file" ] || die "no such archive: $file"
   mkdir -p "$into"
+  # Only plain files and folders: archive() follows links (-h), so a real backup never
+  # holds a link or a device. (Paths leaving the archive need no check: GNU and busybox
+  # tar both strip a leading / and ../ when listing and extracting.) A link in
+  # uploads/ would be copied in by restore and served to any signed-in user, reading
+  # whatever it points at (the app's environment, its secrets). Checked before
+  # extracting, since tar may write through a link it has just made.
+  listing=$(tar tzvf "$file" 2>/dev/null) || die "not a readable .tar.gz archive"
+  echo "$listing" | grep -q '^[^-d]' && die "archive holds links or special files; backups made by this script never do"
   tar xzf "$file" -C "$into" || die "not a readable .tar.gz archive"
   [ -f "$into/manifest.json" ] || die "archive has no manifest.json; it was not made by this script"
   [ -f "$into/database.sql" ] || die "archive has no database.sql"
   [ -d "$into/uploads" ] || die "archive has no uploads directory"
+
+  # psql runs the dump, and a line starting with a backslash is a psql command: \! runs a
+  # shell, \o and \copy write files. pg_dump's own output only has them as COPY data and
+  # \restrict / \unrestrict, so anything else means the dump was not made by pg_dump.
+  awk '/^COPY .* FROM stdin;$/ { copy = 1; next }
+       copy && /^\\\.$/ { copy = 0; next }
+       !copy && /^\\/ && !/^\\(restrict|unrestrict) / { bad = 1 }
+       END { exit bad }' "$into/database.sql" ||
+    die "database.sql holds psql commands; a dump from pg_dump never does"
 
   manifest=$(cat "$into/manifest.json")
   field() { echo "$manifest" | sed -n "s/.*\"$1\":\"\{0,1\}\([^\",}]*\).*/\1/p"; }

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { readFile } from "fs/promises";
+import { lstat, readFile } from "fs/promises";
 import { join, normalize } from "path";
 import { requireAuth } from "@/lib/api";
 import { prisma } from "@/lib/db";
@@ -36,7 +36,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   }
 
   try {
-    const data = await readFile(join(process.cwd(), "uploads", safe));
+    const file = join(process.cwd(), "uploads", safe);
+    // Uploads are only ever regular files the app wrote. A link (say, smuggled in by a
+    // crafted restore archive) would otherwise be followed to whatever it points at.
+    if (!(await lstat(file)).isFile()) return new Response("Not found", { status: 404 });
+    const data = await readFile(file);
     const ext = safe.split(".").pop()?.toLowerCase() ?? "";
     return new Response(new Uint8Array(data), {
       headers: {
