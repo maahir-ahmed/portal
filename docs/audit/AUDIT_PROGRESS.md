@@ -87,7 +87,7 @@ for approval; **info** = noted only.
 | F57 | Low | debug | runner merges duplicate column names; results kept forever; no lock_timeout | proposal | - |
 | F58 | Low | ahegs | xlsx export corrupts on $& in names / control chars | proposal | - |
 | F59 | Low | backup | concurrent archives make one fail; leftover files never cleaned | proposal | - |
-| F60 | Low | uploads | malformed multipart 500; MAX_FILE_SIZE_MB NaN disables the cap | fix | todo |
+| F60 | Low | uploads | malformed multipart 500; MAX_FILE_SIZE_MB NaN disables the cap | fix | done (this commit) |
 | F61 | High | ci | self-hosted runner on a public repo (fork PR workflows) | proposal (repo settings) + fix (deploy.yml permissions) | fix done (this commit); repo setting is yours |
 | F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | done (this commit) |
 | F63 | Medium | updates | portal update pulls main, not the release tag | fix | done e0ab7b4 (bash) + this commit (ps1) |
