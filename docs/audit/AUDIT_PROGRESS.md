@@ -113,11 +113,10 @@ for approval; **info** = noted only.
    newest `v<channel>.*` tag (see `channel`, `newest_release`, `update_scripts` and the
    re-exec at the top of `cmd_install` in `portal`), with `latest` still pulling main.
    Parse-check with powershell.exe, then commit.
-2. Then work down the remaining `todo` rows, highest severity first: F62 (.dockerignore),
-   F61 (deploy.yml permissions), F64 (pin action SHAs), F51, F52, F53, F40, F42, F43,
-   F44, F48, F49, F55, F56, F60, F65, F67, F71, F73, and F04, F06-F09, F12-F16, F18-F21,
-   F25, F27, F28, F30, F37 (timing part only). One commit each, rerun the relevant
-   check, update this file.
+2. Remaining `todo` rows, in order: F13, F15, F04, F06, F09, F12, F14, F16, F18,
+   F19, F20, F21, F25, F27, F28, F30, F37 (timing part only). Every other fix row is
+   done. Helper for marking rows: a tiny script that rewrites the Status cell of
+   `| Fnn |` (or edit by hand). Test scripts go in scripts/_x.ts and are deleted after.
 3. After each area: rerun the full baseline (lint, tsc, 13 checks incl. check:security,
    build, audit:layout). Dev server for testing: scratch DB
    `postgresql://society_user:sptest@127.0.0.1:55432/sp_p4l` (tunnel:
