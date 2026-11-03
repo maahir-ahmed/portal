@@ -44,13 +44,16 @@ services:
     restart: unless-stopped
     # Sync schema (idempotent) then start the server, no separate migrate container to clean up.
     # $$ escapes compose interpolation so sh expands the runtime DATABASE_URL.
-    # Note: db push + --accept-data-loss; ceiling = destructive schema change applies silently.
+    # db push gets --accept-data-loss unless DB_PUSH_FLAGS is set. The hosted stacks leave
+    # it unset (ceiling: a destructive schema change applies silently). The installer sets
+    # it empty, so on a self-hosted stack, which updates itself overnight, a change that
+    # would drop data stops the app starting instead, and `./portal update` rolls back.
     # One-time data fixes that must run BEFORE the push (e.g. the PrintingStatus enum
     # remap) are applied out-of-band via psql. Fixes that must run AFTER it live in
     # prisma/post-push/ and apply themselves once each (scripts/post-push.mjs).
     # The prisma CLI is baked into the image at the lockfile's version (see Dockerfile);
     # the image has no prisma.config.ts, hence --schema and --url.
-    command: sh -c "prisma db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" --accept-data-loss && node scripts/post-push.mjs && node server.js"
+    command: sh -c "prisma db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" ${DB_PUSH_FLAGS---accept-data-loss} && node scripts/post-push.mjs && node server.js"
     # No published port: the web service in front owns ${APP_PORT} so that something
     # still answers while this container is being rebuilt.
     expose:
@@ -92,6 +95,11 @@ services:
       DISCORD_APP_ID: ${DISCORD_APP_ID:-}
       DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      # Self-hosted updates (src/lib/updates.ts): the image this runs, to find newer
+      # releases on its channel, and the token `./portal tick` checks in with. Unset on
+      # the hosted stacks, which hides the update card and banner.
+      APP_IMAGE: ${APP_IMAGE:-}
+      UPDATE_TOKEN: ${UPDATE_TOKEN:-}
       STACK: ${STACK}
       UPLOADS_DIR: /app/uploads
       BACKUP_OUT: /app/backups
