@@ -24,7 +24,8 @@ const PROXY = "src/app/api/societies/[society]/rubric/call/route.ts";
 const RUBRIC_CLIENT = "src/lib/rubric.ts";
 
 // 1. Only postRubric may talk to Rubric.
-const rubricHosts = files.filter(([, s]) => s.includes("https://api.hellorubric.com"));
+// The bare host, not the URL: any spelling of it (http://, a template string) counts.
+const rubricHosts = files.filter(([, s]) => s.includes("api.hellorubric.com"));
 assert.deepEqual(
   rubricHosts.map(([f]) => f.replace(/\\/g, "/")),
   [RUBRIC_CLIENT],

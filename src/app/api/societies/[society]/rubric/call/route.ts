@@ -8,7 +8,7 @@ import { z } from "zod";
 
 // Every Rubric API call goes through here. The session ID stays on the server: it is
 // read from the database per request, used once, and never included in the response.
-// Previously the browser was handed the session ID and called api.hellorubric.com
+// Previously the browser was handed the session ID and called Rubric
 // itself, which meant any authenticated member could lift it out of network traffic
 // and act as the executive who created it, across every society that executive
 // belongs to.
