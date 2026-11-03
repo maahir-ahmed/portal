@@ -174,6 +174,12 @@ function Write-Settings {
   Ensure "UPDATE_TOKEN" (RandomHex 24)
   Ensure "UPDATE_HOUR" "4"
   Ensure "BUILD_FROM_SOURCE" "false"
+  # Only this Windows account may read it: it holds every password the portal uses, and a
+  # folder like C:\portal lets every signed-in user read new files by default. (./portal
+  # does the same with chmod 600.)
+  if ((Quiet { icacls $EnvFile /inheritance:r /grant:r "${env:USERNAME}:F" }) -ne 0) {
+    Say "Warning: couldn't limit who can read portal.env. Keep the portal folder somewhere only you can open."
+  }
   New-Item -ItemType Directory -Force -Path (Get-Setting "BACKUP_DIR") | Out-Null
 }
 

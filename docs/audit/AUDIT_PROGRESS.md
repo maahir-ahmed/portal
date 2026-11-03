@@ -100,7 +100,7 @@ for approval; **info** = noted only.
 | F70 | Low | backup | backups world-readable (no umask) | proposal | - |
 | F71 | Low | next | wildcard images.remotePatterns, next/image unused | fix | done (this commit) |
 | F72 | Low | ui | stuck spinners on network errors; Rubric members race | proposal | - |
-| F73 | Low | windows | portal.ps1 doesn't restrict portal.env ACL | fix | todo |
+| F73 | Low | windows | portal.ps1 doesn't restrict portal.env ACL | fix | done (this commit) |
 | F74 | Info | dead code | root docker-compose.yml, auto-deploy.sh, db:migrate/db:reset, applied data-fixes, starter SVGs (user asked for cleanup) | fix | done 642928e cb0b99e d45ff83 fc54d76; unused @auth/prisma-adapter left as proposal |
 
 ## Commits
