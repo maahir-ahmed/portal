@@ -43,7 +43,7 @@ for approval; **info** = noted only.
 | F13 | Low | threads | any member can comment on any treasury thread; requestType free string | fix | done (this commit) |
 | F14 | Low | treasury | POST loosely validated (lengths, amount cap, receipt URLs), not atomic | fix (caps, transaction); proposal (URL pattern if any doubt) | caps and upload-only file links done (this commit); the transaction is a proposal |
 | F15 | Low | treasury | draft submitted with amount 0 in the same PATCH | fix | done (this commit) |
-| F16 | Low | printing | refreshArcTier has no backoff, any member page load retries Rubric | fix | todo |
+| F16 | Low | printing | refreshArcTier has no backoff, any member page load retries Rubric | fix | done (this commit) |
 | F17 | Low | tutorial | demo records appear in the real exec queue and allowance | proposal | - |
 | F18 | Low | years/budget | SocietyYear accepts 2026-02-30; category errors all reported as duplicate name | fix | todo |
 | F19 | Medium | discord | /print accepts any guild; username linking | fix (optional DISCORD_GUILD_ID); proposal (require it, /link) | todo |

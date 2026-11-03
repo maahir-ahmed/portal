@@ -95,7 +95,16 @@ const TIER_MAX_AGE_MS = 86_400_000;
  * member count on Rubric, at most once a day unless forced. Does nothing without
  * Rubric, and keeps the last tier if Rubric doesn't answer.
  */
+// When each society was last tried. A failure doesn't move arcMemberCountAt, so without
+// this every Printing page load (any member's) would wait on Rubric again while it is
+// down, and several loads at once would each call it with the same rotating session.
+// ponytail: per process, like the Rubric rate limiter; fine for one app container.
+const lastAttempt = new Map<string, number>();
+const RETRY_AFTER_MS = 15 * 60_000;
+
 export async function refreshArcTier(societyId: string, force = false): Promise<void> {
+  if (!force && Date.now() - (lastAttempt.get(societyId) ?? 0) < RETRY_AFTER_MS) return;
+  lastAttempt.set(societyId, Date.now());
   try {
     const soc = await prisma.society.findUnique({ where: { id: societyId }, select: { arcMemberCountAt: true } });
     if (!force && soc?.arcMemberCountAt && Date.now() - soc.arcMemberCountAt.getTime() < TIER_MAX_AGE_MS) return;
