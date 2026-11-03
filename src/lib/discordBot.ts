@@ -22,6 +22,17 @@ export function verifyDiscordRequest(body: string, signature: string | null, tim
   return verify(null, Buffer.from(timestamp + body), key, Buffer.from(signature, "hex"));
 }
 
+// Discord sends each interaction once, at the moment it happens. A signed request older
+// than this is a replay (from a log, a proxy), and each replay would file the print job
+// and download its file again.
+const MAX_AGE_S = 5 * 60;
+
+/** Whether an interaction's signed timestamp is recent enough to be the real thing. */
+export function freshInteraction(timestamp: string | null, now = Date.now()): boolean {
+  const t = Number(timestamp);
+  return Number.isFinite(t) && Math.abs(now / 1000 - t) <= MAX_AGE_S;
+}
+
 const choices = (o: Record<string, string>) => Object.entries(o).map(([value, name]) => ({ name, value }));
 
 /** The command as Discord registers it (scripts/discord-register.ts). */
@@ -158,12 +169,19 @@ export async function handlePrint(i: Interaction): Promise<string> {
 
 /** Replaces the "thinking…" placeholder Discord shows while handlePrint runs. */
 export async function replyToInteraction(i: Interaction, content: string) {
-  const res = await fetch(`https://discord.com/api/v10/webhooks/${i.application_id}/${i.token}/messages/@original`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
-  });
-  if (!res.ok) console.warn(`Discord reply returned ${res.status}`);
+  // Runs after the response (after()), where nothing else would catch a failure: a
+  // network error or a hang would otherwise leave the member looking at "thinking…".
+  try {
+    const res = await fetch(`https://discord.com/api/v10/webhooks/${i.application_id}/${i.token}/messages/@original`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, allowed_mentions: { parse: [] } }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) console.warn(`Discord reply returned ${res.status}`);
+  } catch (err) {
+    console.warn("Discord reply failed:", err instanceof Error ? err.message : err);
+  }
 }
 
 export type { Interaction };

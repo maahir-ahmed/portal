@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
 import { isPlausibleDate, safeCallback } from "../src/lib/utils";
+import { freshInteraction } from "../src/lib/discordBot";
 
 // Member-typed text in an executive's notification email stays text.
 const evil = `<a href="https://evil/login">Sign in</a><img src=x onerror=alert(1)>"'&`;
@@ -36,5 +37,12 @@ assert.equal(safeCallback("/requests/treasury?x=1"), "/requests/treasury?x=1", "
 // Typed-in dates: real ones between 2000 and 2100, nothing a year picker can't lay out.
 for (const ok of ["2026-11-04", "2026-11-04T18:00", "2026-11-04T07:00:00.000Z", "2100-12-31"]) assert.ok(isPlausibleDate(ok), ok);
 for (const bad of ["20255-01-01", "+275760-09-13", "1999-12-31", "not a date", ""]) assert.ok(!isPlausibleDate(bad), bad);
+
+// /print: a signed request is only good for a few minutes, so a captured one can't be replayed.
+const now = Date.UTC(2026, 10, 4, 12, 0, 0);
+assert.ok(freshInteraction(String(now / 1000 - 10), now), "a request from 10 seconds ago is fine");
+assert.ok(!freshInteraction(String(now / 1000 - 3600), now), "an hour-old request is a replay");
+assert.ok(!freshInteraction("not a number", now));
+assert.ok(!freshInteraction(null, now));
 
 console.log("✅ security: audit fixes still in place");

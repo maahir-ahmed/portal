@@ -54,7 +54,7 @@ for approval; **info** = noted only.
 | F24 | Low | demo | demo visitors can set Discord webhooks | proposal | - |
 | F25 | Low | rubric | link route accepts form bodies (CSRF shape), no zod | fix | todo |
 | F26 | Low | email | SMTP opportunistic TLS, no timeouts, awaited in requests | proposal | - |
-| F27 | Low | discord | /print no replay window; reply outside try, no timeout | fix | todo |
+| F27 | Low | discord | /print no replay window; reply outside try, no timeout | fix | done (this commit) |
 | F28 | Low | rubric | audit only after success, no target id; credentials 500 on bad input | fix (400); proposal (audit) | todo |
 | F29 | Low | discord | concurrent first posts duplicate the event post | proposal | - |
 | F30 | Info | misc | RUBRIC_CALLS prototype lookup, exec-queue allowed_mentions, GHCR Link origin | fix | todo |
