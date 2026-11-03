@@ -7,7 +7,8 @@ import { z } from "zod";
 const schema = z.object({
   content: z.string().min(1).max(10000),
   isInternal: z.boolean().default(false),
-  requestType: z.string(),
+  // Recorded as the audit entry's type, so one of the three the thread views send.
+  requestType: z.enum(["content-request", "room-booking", "treasury"]),
 });
 
 type Params = { society: string; id: string };
@@ -39,9 +40,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
           { treasuryRequest: { id: requestId, societyId } },
         ],
       },
+      include: { treasuryRequest: { select: { submittedById: true } } },
     });
 
-    if (!thread) {
+    // A claim is its owner's and the executives' only (the same rule as the claim page),
+    // so its thread is too: another member could otherwise comment on a claim they can't see.
+    const foreignClaim =
+      thread?.treasuryRequest &&
+      membership!.role !== "EXECUTIVE" &&
+      thread.treasuryRequest.submittedById !== session!.user.id;
+    if (!thread || foreignClaim) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 });
     }
 
