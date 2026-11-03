@@ -7,7 +7,10 @@ export async function GET(req: NextRequest) {
   if (authErr) return authErr;
 
   const { searchParams } = new URL(req.url);
-  const limit = Math.min(Number(searchParams.get("limit") ?? 20), 50);
+  // A limit that isn't a positive whole number falls back to 20: NaN made Prisma throw,
+  // and a negative take would page backwards.
+  const asked = Number(searchParams.get("limit") ?? 20);
+  const limit = Number.isInteger(asked) && asked > 0 ? Math.min(asked, 50) : 20;
 
   const [notifications, unreadCount] = await Promise.all([
     prisma.notification.findMany({

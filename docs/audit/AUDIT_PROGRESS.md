@@ -76,7 +76,7 @@ for approval; **info** = noted only.
 | F46 | Low | requests | detail views open to all members while lists are scoped | proposal | - |
 | F47 | Low | csrf | CSRF rests on SameSite=Lax only (no Origin check) | proposal | - |
 | F48 | Low | uploads | upload/read need only a session, not a membership | fix | done (this commit) |
-| F49 | Low | api | assorted 500s on invalid input (notifications limit, submit-event, duplicates) | fix | todo |
+| F49 | Low | api | assorted 500s on invalid input (notifications limit, submit-event, duplicates) | fix | done (this commit) |
 | F50 | Low | audit | state changes without audit logs (me, bank, titles, ahegs...) | proposal | - |
 | F51 | Medium | backup | restore archive may carry symlinks or psql meta-commands | fix | done (this commit) |
 | F52 | Medium | import | xlsx zip bomb / huge column index can OOM the server | fix | done (this commit) |
