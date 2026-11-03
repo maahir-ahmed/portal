@@ -38,6 +38,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
 
   try {
     const body = createSchema.parse(await req.json());
+    // The portfolio must be this society's: a title's portfolio flows into every member
+    // holding it, so another society's id would put them in that society's portfolio.
+    if (body.portfolioId && !(await prisma.portfolio.count({ where: { id: body.portfolioId, societyId: membership!.societyId } }))) {
+      return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+    }
 
     const maxOrder = await prisma.societyTitle.aggregate({
       where: { societyId: membership!.societyId, roleLevel: body.roleLevel },

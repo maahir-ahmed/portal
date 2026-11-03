@@ -25,6 +25,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
   try {
     const body = patchSchema.parse(await req.json());
+    // The portfolio must be this society's: a title's portfolio flows into every member
+    // holding it, so another society's id would put them in that society's portfolio.
+    if (body.portfolioId && !(await prisma.portfolio.count({ where: { id: body.portfolioId, societyId: membership!.societyId } }))) {
+      return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+    }
     const updated = await prisma.societyTitle.update({
       where: { id: titleId },
       data: {
