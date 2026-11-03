@@ -2,7 +2,8 @@ import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
-import { getRubricCredentials } from "../src/lib/rubric";
+import { getRubricCredentials, postRubric } from "../src/lib/rubric";
+import { scrubResponse } from "../src/lib/rubricCalls";
 import { anonymisePeople } from "../src/lib/rubricDemo";
 
 // Refresh src/lib/rubricDemoSnapshot.json from a connected deployment, so the
@@ -36,25 +37,14 @@ async function main() {
 
   const responses: Record<string, unknown> = {};
   for (const [type, params] of CALLS) {
-    const res = await fetch(`https://api.hellorubric.com/${type}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...params,
-        type,
-        sessionid: creds.sessionId,
-        societyID: creds.societyId,
-        currentUrl: "https://portal.hellorubric.com/",
-        device: "web_portal",
-        version: 4,
-        timestamp: Date.now(),
-      }),
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!res.ok) throw new Error(`${type}: HTTP ${res.status}`);
-    const data = await res.json();
+    // Through postRubric, the one place that calls Rubric: it also saves the replacement
+    // session Rubric sometimes hands back, which a copy of the call here used to drop.
+    const res = await postRubric(society.id, creds, type, params, { timeoutMs: 30_000 });
+    if (!res.ok || !res.data) throw new Error(`${type}: HTTP ${res.status}`);
+    const data = res.data;
     if (data?.success === false) throw new Error(`${type}: ${data.usererror ?? data.error ?? "rejected"}`);
-    responses[type] = anonymisePeople(data);
+    // Credentials out first (the file is committed and served with no login), then people.
+    responses[type] = anonymisePeople(scrubResponse(data));
     console.error(`captured ${type}`);
   }
 

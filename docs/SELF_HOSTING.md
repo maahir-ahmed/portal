@@ -143,13 +143,42 @@ Run these in the portal folder. On Windows, use
 |---|---|
 | `./portal status` | Shows what's running |
 | `./portal stop` / `./portal start` | Stops or starts the portal |
-| `./portal update` | Takes a backup, then moves to the newest version |
+| `./portal update` | Takes a backup, then moves to the newest version now |
+| `./portal autoupdate on` / `off` | Turns automatic updates on or off (on after install) |
 | `./portal backup` | Takes a backup now |
 | `./portal restore <file>` | Puts a backup back (asks you to confirm first) |
 | `./portal logs` | Shows what the portal is doing, live (Ctrl+C to stop watching) |
 
 The portal starts again by itself when the computer restarts, as long as Docker starts
 too and you hadn't stopped it with `./portal stop`. (On Windows and Mac, set Docker Desktop to start when you sign in.)
+
+### Updates
+
+The portal keeps itself up to date. The installer turns this on, and every night at
+4am the server checks for a new release. If there is one, it takes a backup, installs
+it, and checks the portal starts. If the new version doesn't start, it goes back to the
+one before by itself, and doesn't try that version again until a newer one comes out.
+
+When a new release is out, executives see a banner at the top of every page until it's
+installed. **Settings › General › Version and updates** shows the version you're on and
+when the server checks next. To install a release straight away, run `./portal update`
+on the server. **Install at the next check** asks the server to install it that night
+even if it's a version that failed to start before.
+
+A few things worth knowing:
+
+- Updates follow the **1.x** releases. A 2.0 release, which might need something from
+  you, never installs by itself: its notes will say what to do.
+- An update that would delete data from the database stops instead of going ahead,
+  then rolls back. Nothing you've stored is lost to an automatic update.
+- The check runs once a day. What it did is in `update.log`, in the portal folder.
+- On Windows, it runs as a scheduled task while you're signed in, since that's when
+  Docker Desktop runs, and catches up when you next sign in if the PC was off. On a Mac
+  or Linux it's a line in your crontab, which skips a night the computer is off.
+- Change the hour with `UPDATE_HOUR` in `portal.env` (after the 3am backup is best),
+  then run `./portal autoupdate on` again so the schedule follows.
+- To update by hand instead, run `./portal autoupdate off`, then `./portal update`
+  whenever you like. Settings will say the updater isn't running.
 
 ### Backups
 
@@ -229,6 +258,20 @@ needs with one set of steps.
   plus 80 and 443 with Caddy. The database
   is never reachable from outside.
 - Schema changes apply themselves on start (`prisma db push`, then the one-time fixes in
-  `prisma/post-push/`). Take a backup before updating: `./portal update` does.
+  `prisma/post-push/`). `DB_PUSH_FLAGS` is empty here, so unlike the hosted stacks a
+  change that would drop data fails the start instead of applying.
+- Updates: `./portal tick` runs once a day at `UPDATE_HOUR` (crontab, or a scheduled
+  task on Windows). It checks in with the app at `/api/system/update` using
+  `UPDATE_TOKEN`, from inside the `web` container, then runs `./portal update`, with a
+  retry of a skipped version if an executive asked for one. `update` notes the current image IDs, pulls, and
+  only backs up and restarts if something changed. If the app doesn't answer within 3
+  minutes, it retags the old images, resets the scripts to the commit before
+  (`git reset --keep`) and starts them again. The failed image IDs go in `.update-skip`
+  so the nightly run doesn't retry them. The app never touches Docker itself: that
+  would need the Docker socket, which is root on the host.
+- The images follow the `1` tag (`APP_IMAGE=ghcr.io/maahir-ahmed/portal-app:1`), which
+  moves with each 1.x release. Pin `1.4` or `1.4.2` to stay put, or use `latest` to
+  follow every change to `main`. Only the release channels show "update available",
+  since a `main` build has no version number to compare.
 - Uploads are capped at 25 MB per request. Cloudflare's own limit is 100 MB, which is why
   a restore from the browser uploads the archive in pieces.

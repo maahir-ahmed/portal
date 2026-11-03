@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { botEnabled, handlePrint, replyToInteraction, verifyDiscordRequest, type Interaction } from "@/lib/discordBot";
+import { botEnabled, freshInteraction, handlePrint, replyToInteraction, verifyDiscordRequest, type Interaction } from "@/lib/discordBot";
 
 // Discord's interactions endpoint for the /print spike (src/lib/discordBot.ts). Public,
 // like /api/auth: Discord's signature is the authentication. Set this URL as the app's
@@ -15,7 +15,10 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const ok = verifyDiscordRequest(body, req.headers.get("x-signature-ed25519"), req.headers.get("x-signature-timestamp"), publicKey);
   // Discord checks the endpoint refuses bad signatures before it will save the URL.
-  if (!ok) return NextResponse.json({ error: "Bad signature" }, { status: 401 });
+  // A good signature on an old timestamp is a replay.
+  if (!ok || !freshInteraction(req.headers.get("x-signature-timestamp"))) {
+    return NextResponse.json({ error: "Bad signature" }, { status: 401 });
+  }
 
   const i = JSON.parse(body) as Interaction & { type: number };
   if (i.type === PING) return NextResponse.json({ type: 1 });

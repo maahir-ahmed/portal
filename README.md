@@ -1,122 +1,245 @@
-# Society Platform
+# Society Portal
 
-Web app for running a university society committee: content requests, room bookings, treasury reimbursements, printing, member management, and a Rubric ([hellorubric.com](https://hellorubric.com)) portal. Built for UNSW Security Society but works for any society.
+A self-hosted portal for running a university society's committee. Event and content
+requests, room bookings, reimbursements, printing, the member list and your Rubric
+ticketing all live in one place, on a server you control.
+
+It started as the internal tool for UNSW Security Society, and UNSW PC Society runs it
+too. Anything Arc-specific (room bookings, printing, activity grants, AHEGS) can
+be switched off, so it works for other clubs too.
+
+- **Self-hosted:** one install script for a cloud server, a Raspberry Pi, or a Windows or Mac computer
+- **Updates itself:** new releases install overnight after a backup, and roll back if they don't start
+- **Private by default:** no sign-up page, and executives create every account
+- **Your data:** one Postgres database and an uploads folder, backed up nightly into a single file
+
+## Contents
+
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Requirements](#requirements)
+- [Updating](#updating)
+- [Backups](#backups)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Security](#security)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
-**Requests**
-- **Content requests**: marketing workflow. The list is ordered by event date, colour-coded by how close the event is, and each status tab shows a count. Marketing directors upload finished graphics, paste the event blurb, and tick items done. Rubric event links generate a transparent QR code automatically.
-- **Room bookings**: Arc booking requests, with a warning when external guests need 7 business days' notice.
-- **Treasury**: reimbursement claims. Spending approval happens in the committee Discord before the purchase, so the site only records the claim and tracks the payout: submit, then an exec marks it reimbursed (or rejects it). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts until the claim is paid out. Bank details saved per user.
-- **Printing**: club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold, set from the active member count on Rubric when it is connected, otherwise picked in Settings), approved by execs; approved requests draw down the budget. Arc's per-page rate table (size, sides, colour) is shown on the list and on the form, where the row matching your options is highlighted next to the live estimate.
+### Requests
 
-**Spending budget** (exec-only tab) is the yearly budget tracker that replaced the committee's spreadsheet:
-- **Current Year**: each category's 2026 budget vs live spend (summed from classified claims that are awaiting reimbursement or already reimbursed), with % used/left bars and an unclassified bucket.
-- **History**: archival 2024/2025 budgets, 2025 usage, worst case, and the reasoning/notes behind each figure. Everything is editable in-app.
-- Submitters pick the category on the treasury form; execs can reclassify any claim from the budget tab.
+- **Events and content.** Directors request graphics and posts for their events. The
+  list is sorted by date and coloured by how close each deadline is. Marketing uploads
+  the finished graphics, pastes the blurb and ticks items off. Rubric links get a QR
+  code automatically.
+- **Room bookings.** Arc booking requests, with a warning when external guests need
+  seven business days' notice.
+- **Reimbursements.** Members submit claims with receipts and an exec marks them paid.
+  A claim is visible only to the person who submitted it and to executives. Bank
+  details are saved per person.
+- **Printing.** Print jobs are costed with Arc's per-page rates and approved by an exec.
+  Each approved job comes off the secretarial allowance. With Rubric connected, the
+  allowance follows your Arc tier, which the portal works out from your member count.
 
-**Rubric portal**: reads events, ticket sales, members, grants, and settlements from Rubric, and submits events (including the Arc affiliation form). Executives see everything; directors see the Events tab only.
+### Running the committee
 
-Rubric credentials never leave the server. The browser calls `POST /api/societies/[society]/rubric/call`, which checks the request against an allowlist (`src/lib/rubricCalls.ts`) covering the call type, the minimum role, and the shape of its parameters, then makes the call with the stored session ID and the society ID from the database. Writes (publishing or archiving an event, lodging the affiliation form) are executive-only and audit logged, as are the reads that return member or ticket-holder personal data. Calls are rate limited per user so a single account cannot quietly drain the member list. The stored session is encrypted at rest when `RUBRIC_SECRET_KEY` is set, shows its age in Settings (Rubric expires sessions after about a month), and can be revoked there with **Disconnect**.
+- **Exec queue.** Everything waiting on an executive, in one list.
+- **Spending budget.** A yearly budget per category, compared against what's actually
+  been claimed, with past years kept for reference.
+- **Members.** The committee grouped by portfolio (Events, Marketing, Sponsorship, or
+  whatever your society uses). You can import everyone from a spreadsheet.
+- **Rubric.** Events, ticket sales, members, grants and settlements from
+  [Rubric](https://hellorubric.com). You can also publish events and lodge the Arc
+  affiliation form without leaving the portal.
+- **Discord.** New requests and exec-queue items post to your channels. An events forum
+  gets one post per request, kept up to date, and the portfolio running an event is
+  pinged as its content deadline gets close.
+- **Policies.** Each request form shows the standard rules plus your society's own.
+- **Audit log** of who did what, and **notifications** for anything that needs you.
 
-**Platform**
-- Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
-- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login and first-run setup are the only unauthenticated pages.
-- **First-run setup**: on an empty database, `/setup?token=<SETUP_TOKEN>` creates the first executive account and the society, then walks through six steps (details and timezone, portfolios, features, policies, member import, Discord). Each is the same form as its Settings tab, every optional step can be skipped, and it resumes where it was left. The token stops working once any account exists.
-- **Member import** (Settings > Import members): a CSV or Excel file, checked row by row in a preview before anything is written, then imported all or nothing. Nobody is emailed. Imported people show as "not invited" on the Members page until an executive issues them a passphrase.
-- The member is then blocked on a change-password dialog until they pick their own — no dismissing it, and the new password has to differ from the passphrase. Same flow after an exec resets a password.
-- Per-society branding (logo/banner upload, colours), notifications, and an audit log.
-- Portfolios: the areas a society splits its committee into (Events, Marketing, Sponsorship…), defined per society in Settings, and optional. A member is in the portfolio of the title they hold ("Events Director"), and can be added to more from the Members page. Executives are grouped by role.
-- **Discord** (Settings > Discord): the exec queue and new event requests post to webhooks. The events channel can be a text channel or a forum, where each request becomes its own post; edits on the portal update it in place, and status changes are noted in its thread. As an event's content deadline gets closer (two weeks, a week, two days, overdue: the same stages that colour the events list), the portfolio running it is pinged under its post, once per stage (with `DISCORD_REMINDERS=on`, which the self-host installer sets). A `/print` slash command that files a printing request from Discord is a spike behind `ENABLE_DISCORD_BOT` ([write-up](docs/DISCORD_BOT_SPIKE.md)).
-- Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Someone in two portfolios appears under both.
-- **Feature modules**: each society switches off the sections it doesn't use (events, room bookings, printing, Rubric, activity grants, AHEGS, the exec board) in Settings > Features. A switched-off section leaves the menu and refuses its pages and API; nothing is deleted. Treasury can run with a yearly budget or as transactions only.
-- **Policies**: each request form shows the app's standard rules plus the society's own lines (Settings > Policies), and one "I agree" covers both.
-- **Debugging** (opt-in, `ENABLE_DEBUG_TOOLS=true`): a read-only database viewer with credentials masked, one-archive backups of the database and uploads, restore from an uploaded archive, and running a `.sql` file in one transaction. See [`deploy/README.md`](deploy/README.md).
-- Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
-- **Guided tour**: the mortarboard button in the header (or "Take the tour" in the sidebar) walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
-- **Per-page help**: the question mark next to it runs only the steps for the page you're on, creating nothing and deleting nothing. Same copy as the tour, so there is one place to keep it correct, and the button hides itself on pages the tour doesn't cover.
+### Getting people started
 
-## Stack
+- **Setup wizard.** On first run it walks you through your society's details,
+  portfolios, features, policies, member import and Discord. You can skip any step and
+  come back to it in Settings.
+- **Guided tour.** It shows new committee members around every page, using sample
+  records it creates and then cleans up. There's also a help button for just the page
+  you're on.
+- **Feature switches.** Turn off the sections your society doesn't use, and they
+  disappear from the menu.
 
-Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL · NextAuth v5 · Tailwind CSS v4 · shadcn/ui
+## Quick start
 
-## Getting started
+On a Linux server, a Raspberry Pi or a Mac:
 
-Needs Node 22+ and Docker (for the local database).
+```bash
+git clone https://github.com/maahir-ahmed/portal.git
+cd portal
+./portal install
+```
+
+On Windows, in PowerShell:
+
+```powershell
+git clone https://github.com/maahir-ahmed/portal.git
+cd portal
+powershell -ExecutionPolicy Bypass -File portal.ps1 install
+```
+
+The installer asks for your society's name, your email, and how people will reach the
+portal: through a Cloudflare Tunnel (recommended, no ports to open), through Caddy on a
+server with a public IP, or only on this computer to try it out. Then it downloads
+everything, starts it, and prints a setup link. Open that link to create your account
+and run the setup wizard.
+
+The full walkthrough, written for people who don't do this for a living, is in
+**[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
+
+## Requirements
+
+| | Minimum |
+|---|---|
+| Machine | 2 GB of memory and 3 GB of disk. A $5 VPS, a Raspberry Pi 4 or 5, or a spare PC |
+| System | Linux (amd64 or arm64), Windows 10 or 11, or macOS, with Docker |
+| Raspberry Pi | The 64-bit Raspberry Pi OS |
+| Domain | Optional, but you'll want one for anyone else to use it |
+
+If Docker isn't installed, the installer offers to install it.
+
+## Updating
+
+You usually don't need to do anything. Each night after 4am the server checks for a new
+release. If there is one, it backs everything up, installs it and checks that the
+portal starts. If the new version doesn't start, it switches back to the previous
+version.
+
+While an update is waiting, executives see a banner at the top of the portal, and
+**Settings › General › Version and updates** says when the server checks next. To
+install a release straight away, run `./portal update` on the server.
+
+To update by hand instead:
+
+```bash
+./portal autoupdate off
+./portal update
+```
+
+Updates follow the 1.x releases. A 2.0 release won't install on its own, because it may
+need you to change something first.
+
+## Backups
+
+The portal backs up its database and every uploaded file at 3am each night. Each backup
+is one `.tar.gz` file in the `backups` folder, and the last 14 days are kept.
+
+```bash
+./portal backup                   # back up now
+./portal restore backups/<file>   # put one back
+```
+
+Copy a backup somewhere else now and then. A backup on the same machine won't help if
+that machine dies. Keep a copy of `portal.env` too, because it holds the portal's
+passwords.
+
+## Configuration
+
+The installer writes `portal.env`, and you can edit it afterwards. Run
+`./portal start` to apply a change. The settings you're most likely to touch:
+
+| Setting | What it does |
+|---|---|
+| `NEXTAUTH_URL` | The portal's address, exactly as people visit it, including `https://` |
+| `METHOD` | `cloudflare`, `caddy` or `local` |
+| `UPDATE_HOUR` | Hour for the nightly update check (default `4`) |
+| `BACKUP_HOUR`, `BACKUP_KEEP_DAYS` | When the nightly backup runs, and how many days to keep (`3`, `14`) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Email notifications (optional) |
+| `MAX_FILE_SIZE_MB` | Largest upload allowed (default `10`) |
+| `DISCORD_REMINDERS` | `on` pings a portfolio's role as its deadlines get close |
+| `ENABLE_DEBUG_TOOLS` | `true` adds a Debugging tab with a database viewer, backups and restore in the browser. It gives every executive full control of the database, so it's off by default |
+| `ENABLE_DISCORD_BOT` | `true` turns on the experimental `/print` Discord command ([notes](docs/DISCORD_BOT_SPIKE.md)) |
+
+Everything else (passwords, the encryption key, the update token) is generated for you
+and best left alone.
+
+## Development
+
+You'll need Node 22 or newer and Docker for the local database.
 
 ```bash
 npm install
-
-# local Postgres
-docker compose -f docker-compose.dev.yml up -d
-
-cp .env.example .env
-# set AUTH_SECRET (openssl rand -base64 32) and DATABASE_URL
-
-npm run db:push      # apply schema
-npm run db:seed      # demo society + accounts
+docker compose -f docker-compose.dev.yml up -d   # local Postgres
+cp .env.example .env                             # set AUTH_SECRET and DATABASE_URL
+npm run db:push
+npm run db:seed                                  # a sample society and accounts
 npm run dev
 ```
 
-App runs at `http://localhost:3000`. The seed prints demo logins (password `password123`). To try first-run setup instead, skip the seed, set `SETUP_TOKEN` in `.env` and open `/setup?token=<that value>`.
+It runs at http://localhost:3000. The seed prints the sample logins, which all use the
+password `password123`. To try the setup wizard instead, skip the seed, set
+`SETUP_TOKEN` in `.env` and open `/setup?token=<that value>`.
 
-## Environment
-
-| Var | Purpose |
-|-----|---------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `AUTH_SECRET` | NextAuth session secret |
-| `NEXTAUTH_URL` | Public app URL |
-| `SOCIETY_SLUG` | Single-society mode (blank = multi-society) |
-| `SMTP_*`, `EMAIL_FROM` | Email notifications (optional) |
-| `MAX_FILE_SIZE_MB` | Upload size cap (default 10) |
-| `RUBRIC_SECRET_KEY` | Encrypts the stored Rubric session at rest (optional; `openssl rand -base64 32`) |
-| `SETUP_TOKEN` | Opens first-run setup on an empty database: `/setup?token=<value>`. Does nothing once an account exists |
-| `ADMIN_EMAIL` | Prefills the first account's email in setup (optional) |
-| `ENABLE_DEBUG_TOOLS` | `true` adds Settings > Debugging (database viewer, backup, restore, SQL). Off by default, always off with `DEMO_MODE` |
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Dev server |
-| `npm run build` / `start` | Production build / serve |
-| `npm run db:push` | Sync schema to the database |
-| `npm run db:seed` | Seed data |
-| `npm run db:studio` | Prisma Studio |
-| `npm run lint` | ESLint |
-| `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
-| `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
-| `npm run check:passphrase` | Verifies the temporary-passphrase wordlist stays unique and large enough for the entropy it claims |
-| `npm run check:modules` | Verifies a switched-off feature module refuses exactly its own pages and API routes |
-| `npm run check:import` | Verifies the member import's CSV and XLSX readers and its row checks |
-| `npm run check:debug` | Verifies the database viewer masks credentials and the SQL runner refuses files that end its transaction |
-| `npm run rubric:snapshot` | Refreshes the demo's Rubric fixture from a connected deployment (anonymises people first) |
-
-## Deployment
-
-**Running it for your own society:** see [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md). One command (`./portal install`, or `portal.ps1` on Windows) sets up a cloud server, a Raspberry Pi or a Windows or Mac computer, behind a Cloudflare Tunnel or Caddy, from images published for amd64 and arm64. The same script updates, backs up and restores.
-
-The hosted stacks run in Docker behind Cloudflare Tunnel, with a GitHub Actions self-hosted runner for push-to-deploy. See [`deploy/README.md`](deploy/README.md).
-
-## Structure
+Built with Next.js 16, React 19, TypeScript, Prisma 7 with PostgreSQL, NextAuth v5,
+Tailwind CSS 4 and shadcn/ui.
 
 ```
-src/
-  app/            routes (App Router); [society]/ holds the per-society UI
-  components/     UI + feature components (shadcn/ui in components/ui)
-  lib/            auth, db, permissions, rubric, utils
-  hooks/          client hooks (e.g. useRubricClient)
-  proxy.ts        middleware (auth + single-society URL rewriting)
-prisma/           schema + seed
-deploy/           Docker compose, env templates, deploy scripts
+src/app/          pages and API routes; [society]/ is the portal itself
+src/components/   UI components (shadcn/ui in components/ui)
+src/lib/          server logic: auth, database, Rubric, Discord, updates
+src/proxy.ts      sign-in checks, feature switches and clean URLs
+prisma/           database schema, seed and one-time data fixes
+deploy/           Docker images, compose file and backup script
+portal, portal.ps1  the self-hosting scripts
 ```
 
-## Notes
+`npm run lint` checks the code, and each `npm run check:*` script guards one thing that
+must not break:
 
-Rubric integration talks to [hellorubric.com](https://hellorubric.com) with per-society credentials entered in Settings and stored in your own database. Nothing is committed to this repo, and the Rubric API is undocumented, so those endpoints may break without warning. Not affiliated with or endorsed by Rubric, Arc UNSW, or UNSW.
+| Script | What it checks |
+|---|---|
+| `check:rubric` | The Rubric session never reaches a browser, every call is allowlisted and role-checked, and the Arc tiers are right |
+| `check:tutorial` | Every tour step still points at something on the page |
+| `check:modules` | A switched-off feature blocks exactly its own pages and API |
+| `check:import` | The CSV and Excel readers and the import's row checks |
+| `check:debug` | The database viewer masks credentials, and the SQL runner can't end its own transaction |
+| `check:urgency` | Deadline stages and labels, on the society's own clock |
+| `check:discord` | Discord's request signatures and the `/print` options |
+| `check:updates` | Image names, version order and release channels |
+| `check:passphrase`, `check:years`, `check:ahegs`, `check:bookings` | Passphrases, financial years, AHEGS reporting and room booking rules |
 
-Built for one society's committee rather than as a general product: expect UNSW/Arc-specific assumptions (room booking rules, Arc grant flow, printing tiers). Issues and PRs are welcome, but there's no support commitment. Found a security bug? Open an issue with no exploit detail and I'll follow up.
+`npm run audit:layout` loads every page at widths from 320 to 1440px and reports
+anything that scrolls sideways.
+
+Hosting it the way UNSW societies do (several stacks on one box, deployed from GitHub
+Actions) is covered in [deploy/README.md](deploy/README.md), along with how releases
+reach self-hosted portals.
+
+## Security
+
+- There's no self-registration. An account only exists because an executive made it
+  or imported it. New members get a temporary four-word passphrase and must pick their
+  own password before they can do anything.
+- Rubric credentials never leave the server. Every Rubric call goes through an
+  allowlist that checks the caller's role and parameters. Reads of member data and all
+  writes are audit logged and rate limited. The stored session and Discord webhook URLs
+  are encrypted at rest (with `RUBRIC_SECRET_KEY`, which the installer sets).
+- Reimbursement claims and bank details are visible only to their owner and to
+  executives.
+- The portal can't reach the server's Docker. It can only ask the server's updater to
+  run, so a compromised portal can't take over the machine.
+
+If you find a vulnerability, please open an issue without exploit details and I'll get
+in touch.
+
+## Contributing
+
+Issues and pull requests are welcome. This is maintained by one person for a couple of
+societies, so there's no support commitment, but bug reports with steps to reproduce
+are always appreciated.
+
+The Rubric integration uses Rubric's undocumented API, so it can break without warning.
+This project isn't affiliated with or endorsed by Rubric, Arc UNSW or UNSW.
 
 ## License
 

@@ -169,3 +169,23 @@ export const EVENT_TYPES = [
 export const EVENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   EVENT_TYPES.map((t) => [t.value, t.label])
 );
+
+// Only a path on this site: sign-in uses redirect:false and router.push, which skips
+// NextAuth's own same-origin check, so /login?callbackUrl=https://evil would otherwise
+// send someone straight off to a lookalike page after they sign in. The proxy and the
+// setup page only ever set paths. "//x" and "/\\x" are other hosts to a browser.
+export function safeCallback(value: string | null): string {
+  return value && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\") ? value : "/";
+}
+
+/**
+ * A typed-in date the app can store and lay out: it parses, and falls between 2000 and
+ * 2100. Chrome's date input takes 5 and 6 digit years, and a claim dated 20255 made the
+ * year pickers list every year up to it.
+ */
+export function isPlausibleDate(s: string): boolean {
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return false;
+  const year = new Date(t).getUTCFullYear();
+  return year >= 2000 && year <= 2100;
+}

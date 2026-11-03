@@ -24,7 +24,8 @@ const PROXY = "src/app/api/societies/[society]/rubric/call/route.ts";
 const RUBRIC_CLIENT = "src/lib/rubric.ts";
 
 // 1. Only postRubric may talk to Rubric.
-const rubricHosts = files.filter(([, s]) => s.includes("https://api.hellorubric.com"));
+// The bare host, not the URL: any spelling of it (http://, a template string) counts.
+const rubricHosts = files.filter(([, s]) => s.includes("api.hellorubric.com"));
 assert.deepEqual(
   rubricHosts.map(([f]) => f.replace(/\\/g, "/")),
   [RUBRIC_CLIENT],
@@ -137,6 +138,27 @@ assert.notEqual(person.members[0].name, "Real Exec", "team member names must be 
 assert.equal(person.members[0].role.name, "President", "a role is not a person; anonymising it corrupts the demo");
 assert.equal(person.listings[0].name, "Society Hoodie", "merch names must survive");
 assert.equal(person.fundingsummary[0].totalgrant, "3000.00", "grant figures must survive");
+
+// Rubric's other spellings of the same personal fields (ticket lists, form answers).
+const tickets = anonymisePeople({
+  allTickets: [{ firstname: "Real", lastname: "Person", phonenumber: "0400111222", studentnumber: "z9999999", "Phone Number": "0400", "Student ID": "z8888888" }],
+}) as { allTickets: Record<string, string>[] };
+const t = tickets.allTickets[0];
+assert.notEqual(t.firstname, "Real", "first names must be replaced");
+assert.notEqual(t.lastname, "Person", "last names must be replaced");
+assert.equal(t.phonenumber, "", "phone numbers must be blanked");
+assert.equal(t["Phone Number"], "", "phone answers must be blanked");
+assert.notEqual(t.studentnumber, "z9999999", "student numbers must be replaced");
+assert.notEqual(t["Student ID"], "z8888888", "student ID answers must be replaced");
+
+// The committed snapshot holds no credential under any spelling.
+const credentialKeys: string[] = [];
+const walkKeys = (v: unknown): void => {
+  if (Array.isArray(v)) return v.forEach(walkKeys);
+  if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) { if (/session[_-]?id|rotating_session/i.test(k)) credentialKeys.push(k); walkKeys(x); }
+};
+walkKeys(snapshot);
+assert.deepEqual(credentialKeys, [], "the demo snapshot must not contain a Rubric session");
 
 // The committed fixture itself must already be clean.
 const fixture = JSON.stringify(snapshot);

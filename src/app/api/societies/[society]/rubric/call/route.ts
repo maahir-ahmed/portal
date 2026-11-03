@@ -8,7 +8,7 @@ import { z } from "zod";
 
 // Every Rubric API call goes through here. The session ID stays on the server: it is
 // read from the database per request, used once, and never included in the response.
-// Previously the browser was handed the session ID and called api.hellorubric.com
+// Previously the browser was handed the session ID and called Rubric
 // itself, which meant any authenticated member could lift it out of network traffic
 // and act as the executive who created it, across every society that executive
 // belongs to.
@@ -59,7 +59,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   // Unknown call types are refused outright: the allowlist is the whole point.
-  const spec = RUBRIC_CALLS[parsed.data.type];
+  // Own keys only: a plain lookup also finds "__proto__" and "constructor" on the object.
+  const spec = Object.hasOwn(RUBRIC_CALLS, parsed.data.type) ? RUBRIC_CALLS[parsed.data.type] : undefined;
   if (!spec) return NextResponse.json({ error: "Unsupported Rubric call" }, { status: 400 });
 
   if (!canCall(membership!.role, spec)) {
@@ -84,7 +85,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       : NextResponse.json({ error: "Not available in the demo" }, { status: 400 });
   }
 
-  const creds = await getRubricCredentials(membership!.societyId);
+  // decryptSecret throws if RUBRIC_SECRET_KEY changed or went missing after the session
+  // was saved; say so rather than failing with a bare 500.
+  let creds: Awaited<ReturnType<typeof getRubricCredentials>>;
+  try {
+    creds = await getRubricCredentials(membership!.societyId);
+  } catch {
+    return NextResponse.json(
+      { error: "The saved Rubric session can't be read (has RUBRIC_SECRET_KEY changed?). Reconnect Rubric in Settings." },
+      { status: 500 }
+    );
+  }
   if (!creds) return NextResponse.json({ error: "not_configured" }, { status: 400 });
 
   let r: Awaited<ReturnType<typeof postRubric>>;

@@ -1,10 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { isPlausibleDate } from "@/lib/utils";
+import { EventType, PreferredLocation, RoomBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 
 type Params = { society: string; id: string };
+
+// What the edit form, the status picker and the booked-room card send. Types only, and
+// as forgiving as the code below (which already skips empty strings and nulls): a wrong
+// type, an unknown status or type, an impossible date or a fractional count is a 400
+// here instead of a Prisma error and a 500.
+const text = (max: number) => z.string().max(max).nullable();
+const patchSchema = z
+  .object({
+    status: z.enum(RoomBookingStatus),
+    eventName: text(1000),
+    eventType: z.union([z.enum(EventType), z.literal("")]).nullable(),
+    preferredDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable(),
+    startTime: text(50),
+    endTime: text(50),
+    description: text(20000),
+    maxAttendees: z.number().nullable(),
+    hasExternalGuests: z.boolean(),
+    externalGuestsDesc: text(5000),
+    numExternalGuests: z.number().int().min(0).nullable(),
+    preferredLocation: z.union([z.enum(PreferredLocation), z.literal("")]).nullable(),
+    safetyOfficerName: text(200),
+    safetyOfficerZid: text(50),
+    safetyOfficerPhone: text(50),
+    roomRequirements: text(5000),
+    assignedRoom: z.string().max(200),
+  })
+  .partial();
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -14,7 +44,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
-  const body = await req.json();
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
+  }
+  // Validated above; typed loosely as before, so the code below treats every value
+  // exactly as it did when the body was unchecked JSON.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: any = parsed.data;
   const booking = await prisma.roomBooking.findUnique({ where: { id } });
   if (!booking || booking.societyId !== membership!.societyId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -64,7 +101,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(str(body.startTime) ? { startTime: body.startTime } : {}),
       ...(str(body.endTime) ? { endTime: body.endTime } : {}),
       ...(str(body.description) ? { description: body.description } : {}),
-      ...(Number.isFinite(body.maxAttendees) && body.maxAttendees > 0 ? { maxAttendees: body.maxAttendees } : {}),
+      ...(Number.isInteger(body.maxAttendees) && body.maxAttendees > 0 ? { maxAttendees: body.maxAttendees } : {}),
       ...(typeof body.hasExternalGuests === "boolean"
         ? {
             hasExternalGuests: body.hasExternalGuests,

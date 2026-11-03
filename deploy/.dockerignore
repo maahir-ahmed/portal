@@ -1,0 +1,5 @@
+# The web and backup images build from this folder, which also holds the hosted stacks'
+# env files with their secrets. Nothing here COPYs them, but they shouldn't be sent to
+# the Docker daemon either.
+.env*
+*.env

@@ -4,6 +4,11 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 
+// A hash at the same cost as real ones, made once on first use, for unknown accounts to
+// be checked against.
+let dummy: Promise<string> | null = null;
+const dummyHash = () => (dummy ??= bcrypt.hash(crypto.randomUUID(), 12));
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   // Behind a reverse proxy (cloudflared) the Host header is external; trust it.
@@ -45,7 +50,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
-        if (!user || !user.passwordHash) return null;
+        // Same work either way: answering at once for an unknown email (or an imported
+        // account with no password yet) would tell anyone who can time it which emails
+        // have accounts here.
+        if (!user || !user.passwordHash) {
+          await bcrypt.compare(credentials.password as string, await dummyHash());
+          return null;
+        }
 
         const valid = await bcrypt.compare(
           credentials.password as string,
@@ -73,15 +84,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.memberships = user.memberships;
       }
       // Reflect profile edits (name/email) made via the account page without re-login.
-      if (trigger === "update" && session) {
-        if (session.name) token.name = session.name;
-        if (session.email) token.email = session.email;
+      // Read from the database, not the update payload: anyone can call update() with
+      // any name, and that name goes into notifications and Discord posts as theirs.
+      if (trigger === "update" && token.id) {
+        const fresh = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, email: true },
+        });
+        if (fresh) {
+          token.name = fresh.name;
+          token.email = fresh.email;
+        }
       }
       return token;
     },

@@ -5,6 +5,8 @@ import { createAuditLog } from "@/lib/audit";
 import { MODULE_SELECT } from "@/lib/modules";
 import { z } from "zod";
 
+const UPLOADED_IMAGE = /^\/uploads\/[A-Za-z0-9-]+\.(png|jpe?g|gif|webp)$/;
+
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().nullable().optional(),
@@ -111,6 +113,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       }
     }
     const { setupDone, ...body } = updateSchema.parse(raw);
+
+    // A logo is served to signed-out visitors (the login page shows it), so pointing it at
+    // any other upload, a receipt say, would make that file public. A new value has to be
+    // an uploaded image; the current value is always accepted, since the settings form
+    // posts it back on every save.
+    for (const key of ["logoUrl", "bannerUrl"] as const) {
+      const value = body[key];
+      if (!value) continue;
+      const current = await prisma.society.findUnique({ where: { id: membership!.societyId }, select: { [key]: true } });
+      if (value !== (current as Record<string, unknown> | null)?.[key] && !UPLOADED_IMAGE.test(value)) {
+        return NextResponse.json({ error: "The logo has to be an image uploaded here" }, { status: 400 });
+      }
+    }
     await prisma.society.update({
       where: { id: membership!.societyId },
       data: { ...body, ...(setupDone ? { setupCompletedAt: new Date() } : {}) },

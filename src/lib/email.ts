@@ -29,6 +29,13 @@ export async function sendEmail({ to, subject, html, text }: EmailOptions) {
   });
 }
 
+// Notification titles and bodies carry member-typed text (event names, dates), so they
+// are escaped: unescaped, any member could put a working link or tracking pixel into an
+// email that every executive receives from the society's own address.
+export function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
 export function notificationEmail(title: string, body: string, link?: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const cta = link
@@ -41,8 +48,8 @@ export function notificationEmail(title: string, body: string, link?: string) {
         <h1 style="color:white;margin:0;font-size:20px;">${process.env.NEXT_PUBLIC_APP_NAME ?? "Society Platform"}</h1>
       </div>
       <div style="background:#f9fafb;padding:24px;border-radius:0 0 8px 8px;border:1px solid #e5e7eb;">
-        <h2 style="margin:0 0 12px;color:#111827;">${title}</h2>
-        <p style="color:#374151;line-height:1.6;">${body}</p>
+        <h2 style="margin:0 0 12px;color:#111827;">${escapeHtml(title)}</h2>
+        <p style="color:#374151;line-height:1.6;">${escapeHtml(body)}</p>
         ${cta}
       </div>
     </div>

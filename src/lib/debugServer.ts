@@ -12,7 +12,9 @@ import { debugToolsEnabled } from "./debugTools";
 // has not opted in does not even confirm they exist.
 
 export async function requireDebug(society: string) {
-  if (!debugToolsEnabled()) {
+  // debugToolsEnabled already means a single-society stack; the slug must also be that
+  // society's, since another society's executive could otherwise reach them by URL.
+  if (!debugToolsEnabled() || society !== process.env.SOCIETY_SLUG) {
     return { error: NextResponse.json({ error: "Not found" }, { status: 404 }), session: null, membership: null };
   }
   const { session, error: authErr } = await requireAuth();

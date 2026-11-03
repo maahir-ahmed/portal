@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { readFile } from "fs/promises";
+import { lstat, readFile } from "fs/promises";
 import { join, normalize } from "path";
-import { requireAuth } from "@/lib/api";
+import { requireAuth, requireActiveMember } from "@/lib/api";
 import { prisma } from "@/lib/db";
 
 // Uploaded files live in process.cwd()/uploads (a mounted volume in prod).
@@ -29,14 +29,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   // Uploaded files (invoices, receipts, docs) require a logged-in user; same-origin
   // <img>/<a> requests carry the session cookie automatically. The one exception is a
   // society's current logo, which the login page shows before anyone has signed in.
-  const { error } = await requireAuth();
-  if (error) {
+  const { session, error } = await requireAuth();
+  const denied = error ?? (await requireActiveMember(session!.user.id));
+  if (denied) {
     const isLogo = await prisma.society.findFirst({ where: { logoUrl: `/uploads/${safe}` }, select: { id: true } });
-    if (!isLogo) return error;
+    if (!isLogo) return denied;
   }
 
   try {
-    const data = await readFile(join(process.cwd(), "uploads", safe));
+    const file = join(process.cwd(), "uploads", safe);
+    // Uploads are only ever regular files the app wrote. A link (say, smuggled in by a
+    // crafted restore archive) would otherwise be followed to whatever it points at.
+    if (!(await lstat(file)).isFile()) return new Response("Not found", { status: 404 });
+    const data = await readFile(file);
     const ext = safe.split(".").pop()?.toLowerCase() ?? "";
     return new Response(new Uint8Array(data), {
       headers: {

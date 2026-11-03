@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
@@ -25,6 +26,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
   try {
     const body = patchSchema.parse(await req.json());
+    // The portfolio must be this society's: a title's portfolio flows into every member
+    // holding it, so another society's id would put them in that society's portfolio.
+    if (body.portfolioId && !(await prisma.portfolio.count({ where: { id: body.portfolioId, societyId: membership!.societyId } }))) {
+      return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+    }
     const updated = await prisma.societyTitle.update({
       where: { id: titleId },
       data: {
@@ -45,6 +51,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "A title with that name already exists" }, { status: 409 });
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

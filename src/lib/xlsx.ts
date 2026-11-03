@@ -13,7 +13,12 @@ import { parseCsv } from "./csv";
 
 type ZipEntries = Map<string, Buffer>;
 
-export function readZip(buf: Buffer): ZipEntries {
+// Uploads are read with this too (member import), so a small hostile file must not
+// expand without limit: each entry inflates to at most this, and only the entries the
+// caller asks for are inflated at all (a zip can list one huge entry thousands of times).
+const MAX_ENTRY_BYTES = 50 * 1024 * 1024;
+
+export function readZip(buf: Buffer, only?: Set<string>): ZipEntries {
   // End-of-central-directory record, scanned from the back (it carries a variable
   // length comment, so its position isn't fixed).
   let eocd = buf.length - 22;
@@ -36,8 +41,10 @@ export function readZip(buf: Buffer): ZipEntries {
     // The local header repeats the name and extra fields at its own lengths.
     const dataStart =
       localOffset + 30 + buf.readUInt16LE(localOffset + 26) + buf.readUInt16LE(localOffset + 28);
-    const raw = buf.subarray(dataStart, dataStart + compSize);
-    entries.set(name, method === 0 ? Buffer.from(raw) : inflateRawSync(raw));
+    if (!only || only.has(name)) {
+      const raw = buf.subarray(dataStart, dataStart + compSize);
+      entries.set(name, method === 0 ? Buffer.from(raw) : inflateRawSync(raw, { maxOutputLength: MAX_ENTRY_BYTES }));
+    }
 
     ptr += 46 + nameLen + extraLen + commentLen;
   }
@@ -163,8 +170,15 @@ const decodeXml = (s: string) =>
 /** The text of every <t> in a fragment: a shared string or inline string may be split into runs. */
 const textOf = (xml: string) => [...xml.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => decodeXml(m[1])).join("");
 
-const columnIndex = (ref: string) =>
-  [...ref.replace(/\d+$/, "")].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+// Excel's last column is XFD (16384). A reference past it is a crafted file, and would
+// otherwise make each row an array of hundreds of millions of empty cells.
+const MAX_COLUMNS = 16384;
+
+const columnIndex = (ref: string) => {
+  const n = [...ref.replace(/\d+$/, "")].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+  if (n >= MAX_COLUMNS) throw new Error(`column ${ref} is past the last column a spreadsheet can have`);
+  return n;
+};
 
 /** A spreadsheet or CSV upload as rows of text. XLSX is recognised by its zip header. */
 export function readTable(buf: Buffer): string[][] {
@@ -172,7 +186,7 @@ export function readTable(buf: Buffer): string[][] {
 }
 
 function readSheet(buf: Buffer): string[][] {
-  const zip = readZip(buf);
+  const zip = readZip(buf, new Set(["xl/worksheets/sheet1.xml", "xl/sharedStrings.xml"]));
   const sheet = zip.get("xl/worksheets/sheet1.xml")?.toString("utf8");
   if (!sheet) throw new Error("no worksheet found");
   const shared = [...(zip.get("xl/sharedStrings.xml")?.toString("utf8") ?? "").matchAll(/<si>([\s\S]*?)<\/si>/g)].map(

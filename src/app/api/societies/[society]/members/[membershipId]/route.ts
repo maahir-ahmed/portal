@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, blockDemoAccountWrite } from "@/lib/api";
+import { requireAuth, requireMembership, blockDemoAccountWrite, blockForeignAccountWrite } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { portfolioForTitle } from "@/lib/titles";
 import { z } from "zod";
@@ -52,6 +52,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         prisma.memberPortfolio.deleteMany({ where: { membershipId } }),
         prisma.memberPortfolio.createMany({ data: ids.map((portfolioId) => ({ membershipId, portfolioId })) }),
       ]);
+    }
+
+    // The phone is on the account, which may also belong to another society.
+    if (body.phone !== undefined) {
+      const foreign = await blockForeignAccountWrite(target.userId, membership!.societyId);
+      if (foreign) return foreign;
     }
 
     const [updated] = await Promise.all([

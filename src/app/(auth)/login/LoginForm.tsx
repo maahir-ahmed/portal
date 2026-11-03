@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { safeCallback } from "@/lib/utils";
 
 export type DemoCredentials = { email: string; password: string };
 
 export default function LoginForm({ demo, brand }: { demo: DemoCredentials | null; brand: Brand }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = safeCallback(searchParams.get("callbackUrl"));
   const [loading, setLoading] = useState(false);
 
   // Demo deployments have no login step: sign in with the shared demo account on

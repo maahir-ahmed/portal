@@ -23,6 +23,7 @@ export function ImageUploadField({ name, label, defaultValue, shape = "wide", hi
     setUploading(true);
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("accept", "image"); // refused at upload, not later on save
     const res = await fetch("/api/upload", { method: "POST", body: fd });
     setUploading(false);
     if (res.ok) {

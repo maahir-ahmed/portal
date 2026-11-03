@@ -49,6 +49,9 @@ export default async function TreasuryDetailPage({ params }: Props) {
         thread: {
           include: {
             comments: {
+              // Internal notes never leave the server for non-executives: the thread view
+              // only hides them, and the whole array is in the page payload.
+              where: isExec ? {} : { isInternal: false },
               include: { author: { select: { id: true, name: true, avatarUrl: true } } },
               orderBy: { createdAt: "asc" },
             },

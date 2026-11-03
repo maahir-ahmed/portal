@@ -3,7 +3,10 @@ import { join } from "path";
 import { randomUUID } from "crypto";
 
 // What may be uploaded, shared by the upload route and the Discord /print command.
-export const MAX_UPLOAD = Number(process.env.MAX_FILE_SIZE_MB ?? 10) * 1024 * 1024;
+// A setting that isn't a positive number falls back to 10MB: NaN would compare false
+// against every size and switch the limit off.
+const configuredMb = Number(process.env.MAX_FILE_SIZE_MB ?? 10);
+export const MAX_UPLOAD = (Number.isFinite(configuredMb) && configuredMb > 0 ? configuredMb : 10) * 1024 * 1024;
 export const ALLOWED_TYPES = [
   "image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf",
   "application/msword",
@@ -24,3 +27,7 @@ export async function saveUpload(bytes: Buffer, ext: string): Promise<string> {
   await writeFile(join(uploadDir, filename), bytes);
   return `/uploads/${filename}`;
 }
+
+// What the upload route hands back, and so the only file link a receipt or print job
+// should carry: an off-site "receipt" can be a phishing page, or change after approval.
+export const UPLOADED_FILE = /^\/uploads\/[A-Za-z0-9-]+\.[a-z0-9]+$/;

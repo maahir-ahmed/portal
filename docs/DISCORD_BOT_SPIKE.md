@@ -61,7 +61,10 @@ expiry, one more command, and a box on the Account page.
    Information), and reset and copy its **Bot token** (Bot). Turn off **Public Bot** so
    only you can add it to servers.
 2. In the portal's env file: `ENABLE_DISCORD_BOT=true`, `DISCORD_APP_ID`,
-   `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`. Restart (`./portal start`, or `up -d`).
+   `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` (your server's ID:
+   enable Developer Mode in Discord, right-click the server, Copy Server ID), so `/print`
+   only works there even if someone adds the app to another server. Restart
+   (`./portal start`, or `up -d`).
 3. Back in the developer portal, set **Interactions Endpoint URL** to
    `https://<your portal>/api/discord/interactions` and save. Discord tests it straight
    away, and refuses to save it if the portal isn't answering correctly.

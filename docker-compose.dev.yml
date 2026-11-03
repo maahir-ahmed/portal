@@ -3,7 +3,10 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      # This machine only: the password is in this file, and a dev database can hold a
+      # copy of real member data. Published on every interface, anyone on the same Wi-Fi
+      # could sign in (Docker's port publishing also skips the host firewall).
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: society_user
       POSTGRES_PASSWORD: society_password

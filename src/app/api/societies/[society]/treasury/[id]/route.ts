@@ -1,9 +1,12 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification, notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { UPLOADED_FILE } from "@/lib/uploads";
+import { isPlausibleDate } from "@/lib/utils";
 import type { TreasuryStatus } from "@prisma/client";
 
 type Params = { society: string; id: string };
@@ -21,12 +24,14 @@ const patchSchema = z.object({
   contactEmail: z.string().email().optional(),
   // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
   // new Date() would turn into an Invalid Date.
-  expenseDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date").optional(),
-  locationSupplier: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
+  expenseDate: z.string().refine(isPlausibleDate, "Enter a real date").optional(),
+  locationSupplier: z.string().min(1).max(500).optional(),
+  description: z.string().min(1).max(10000).optional(),
   // .finite() matters: JSON.parse turns 1e999 into Infinity, which reaches Decimal as junk.
-  amount: z.number().nonnegative().finite().optional(),
-  addReceipts: z.array(z.object({ fileName: z.string().optional(), fileUrl: z.string().min(1) })).optional(),
+  amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
+  addReceipts: z
+    .array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here") }))
+    .optional(),
   removeReceiptIds: z.array(z.string()).optional(),
   // Sent with a draft submit when the policy wasn't ticked at draft time.
   acknowledgedRules: z.literal(true).optional(),
@@ -65,10 +70,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Only executives can change status" }, { status: 403 });
   }
 
-  // A draft can only be submitted once it's a complete claim. Checks the stored
-  // values (submit requests carry only { status }, not field edits).
+  // A draft can only be submitted once it's a complete claim. Checks the claim as it
+  // will be after this request: the stored values, overridden by any edits sent along
+  // with the submit (an amount of 0 in the same request must not slip through).
   if (body.status === "REIMBURSEMENT_PENDING" && request.status === "DRAFT") {
-    if (Number(request.amount) <= 0 || !request.description.trim() || !request.locationSupplier.trim() || !request.contactEmail.trim()) {
+    const amount = body.amount ?? Number(request.amount);
+    const description = body.description ?? request.description;
+    const supplier = body.locationSupplier ?? request.locationSupplier;
+    const email = body.contactEmail ?? request.contactEmail;
+    if (amount <= 0 || !description.trim() || !supplier.trim() || !email.trim()) {
       return NextResponse.json(
         { error: "Complete the claim (amount, description, supplier, contact email) before submitting." },
         { status: 400 }
@@ -110,20 +120,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "This claim can no longer be edited" }, { status: 403 });
   }
 
-  const updated = await prisma.treasuryRequest.update({
-    where: { id },
-    data: {
-      ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
-      ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
-      ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
-      ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
-      ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
-      ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
-      ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
-      ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
-      ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
-    },
-  });
+  // canEdit was decided on the status read above. For an owner the write re-checks it,
+  // so an edit can't land on a claim an executive has just started paying, or has paid:
+  // the amount they confirmed is the amount recorded.
+  const ownerGuard = isExec ? {} : { status: isOwnerSubmit ? ("DRAFT" as const) : { in: EDITABLE_STATUSES } };
+  const updated = await prisma.treasuryRequest
+    .update({
+      where: { id, ...ownerGuard },
+      data: {
+        ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
+        ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
+        ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
+        ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
+        ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
+        ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
+        ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
+        ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
+        ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
+      },
+    })
+    .catch((err) => {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
+      throw err;
+    });
+  if (!updated) {
+    return NextResponse.json({ error: "This claim was just updated by someone else. Reload and try again." }, { status: 409 });
+  }
 
   if (canEdit && Array.isArray(body.addReceipts) && body.addReceipts.length > 0) {
     await prisma.treasuryAttachment.createMany({

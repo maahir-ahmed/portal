@@ -43,6 +43,9 @@ export default async function ContentRequestDetailPage({ params }: Props) {
       thread: {
         include: {
           comments: {
+            // Internal notes never leave the server for non-executives: the thread view
+            // only hides them, and the whole array is in the page payload.
+            where: membership.role === "EXECUTIVE" ? {} : { isInternal: false },
             include: { author: { select: { id: true, name: true, avatarUrl: true } } },
             orderBy: { createdAt: "asc" },
           },

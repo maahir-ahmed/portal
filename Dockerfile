@@ -37,6 +37,11 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Typed-in dates and times arrive without an offset and are stored as if UTC (naive
+# wall-clock, CLAUDE.md "Database"), which is only right while the server's own zone
+# is UTC. It always has been here; pinned so a base image or compose setting can't
+# quietly shift every typed time by hours.
+ENV TZ=UTC
 # No update check or telemetry call from the prisma CLI on every start.
 ENV CHECKPOINT_DISABLE=1
 
@@ -63,6 +68,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
+
+# The release this image is (1.4.0, or main-<sha> between releases), shown in Settings
+# and compared with the newest release there (src/lib/updates.ts). Last, so a new
+# version doesn't throw away the layers above.
+ARG APP_VERSION=source
+ENV APP_VERSION=$APP_VERSION
 
 EXPOSE 3000
 ENV PORT=3000

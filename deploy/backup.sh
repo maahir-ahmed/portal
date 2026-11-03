@@ -73,26 +73,35 @@ archive() {
     rm -rf "$work"
     die "database dump failed for $STACK"
   fi
-  count=0
-  [ -d "$UPLOADS" ] && count=$(find "$UPLOADS" -type f | wc -l | tr -d ' ')
-  printf '{"format":%s,"stack":"%s","created":"%s","database_sha256":"%s","upload_count":%s}\n' \
-    "$FORMAT" "$STACK" "$(date -Is)" "$(sha "$work/database.sql")" "$count" > "$work/manifest.json"
-
-  # The uploads go straight from where they live into the archive, through a link
-  # tar follows (-h), rather than being copied first, so a large uploads directory
-  # does not need twice its size free. A link and not a second -C: busybox tar keeps
-  # only the last -C it is given.
+  # The uploads are counted and then archived from where they live, so a file uploaded
+  # in between would leave the manifest one short, and validate refuses the archive for
+  # good. The finished archive's count is checked against the manifest, and the archive
+  # made again if someone uploaded mid-backup.
   if [ -d "$UPLOADS" ]; then
     ln -s "$(cd "$UPLOADS" && pwd)" "$work/uploads"
   else
     mkdir "$work/uploads"
   fi
-  # Written under .part and renamed once complete, so a backup cut off halfway
-  # never looks like a good one to whoever comes to restore it.
-  if ! tar czhf "$dest.part" -C "$work" manifest.json database.sql uploads; then
-    rm -rf "$work" "$dest.part"
-    die "archive failed for $STACK"
-  fi
+  for attempt in 1 2 3; do
+    count=0
+    [ -d "$UPLOADS" ] && count=$(find "$UPLOADS" -type f | wc -l | tr -d ' ')
+    printf '{"format":%s,"stack":"%s","created":"%s","database_sha256":"%s","upload_count":%s}\n' \
+      "$FORMAT" "$STACK" "$(date -Is)" "$(sha "$work/database.sql")" "$count" > "$work/manifest.json"
+
+    # The uploads go straight from where they live into the archive, through a link
+    # tar follows (-h), rather than being copied first, so a large uploads directory
+    # does not need twice its size free. A link and not a second -C: busybox tar keeps
+    # only the last -C it is given.
+    # Written under .part and renamed once complete, so a backup cut off halfway
+    # never looks like a good one to whoever comes to restore it.
+    if ! tar czhf "$dest.part" -C "$work" manifest.json database.sql uploads; then
+      rm -rf "$work" "$dest.part"
+      die "archive failed for $STACK"
+    fi
+    [ "$(tar tzf "$dest.part" | grep -c '^uploads/.*[^/]$')" = "$count" ] && break
+    [ "$attempt" = 3 ] && { rm -rf "$work" "$dest.part"; die "uploads kept changing during the backup of $STACK; try again"; }
+    log "an upload arrived during the backup; making it again"
+  done
   rm -rf "$work"
   mv "$dest.part" "$dest"
   log "wrote $dest ($(wc -c < "$dest" | tr -d ' ') bytes, $count uploads)"
@@ -109,10 +118,27 @@ unpack_and_check() {
   file="$1" into="$2"
   [ -f "$file" ] || die "no such archive: $file"
   mkdir -p "$into"
+  # Only plain files and folders: archive() follows links (-h), so a real backup never
+  # holds a link or a device. (Paths leaving the archive need no check: GNU and busybox
+  # tar both strip a leading / and ../ when listing and extracting.) A link in
+  # uploads/ would be copied in by restore and served to any signed-in user, reading
+  # whatever it points at (the app's environment, its secrets). Checked before
+  # extracting, since tar may write through a link it has just made.
+  listing=$(tar tzvf "$file" 2>/dev/null) || die "not a readable .tar.gz archive"
+  echo "$listing" | grep -q '^[^-d]' && die "archive holds links or special files; backups made by this script never do"
   tar xzf "$file" -C "$into" || die "not a readable .tar.gz archive"
   [ -f "$into/manifest.json" ] || die "archive has no manifest.json; it was not made by this script"
   [ -f "$into/database.sql" ] || die "archive has no database.sql"
   [ -d "$into/uploads" ] || die "archive has no uploads directory"
+
+  # psql runs the dump, and a line starting with a backslash is a psql command: \! runs a
+  # shell, \o and \copy write files. pg_dump's own output only has them as COPY data and
+  # \restrict / \unrestrict, so anything else means the dump was not made by pg_dump.
+  awk '/^COPY .* FROM stdin;$/ { copy = 1; next }
+       copy && /^\\\.$/ { copy = 0; next }
+       !copy && /^\\/ && !/^\\(restrict|unrestrict) / { bad = 1 }
+       END { exit bad }' "$into/database.sql" ||
+    die "database.sql holds psql commands; a dump from pg_dump never does"
 
   manifest=$(cat "$into/manifest.json")
   field() { echo "$manifest" | sed -n "s/.*\"$1\":\"\{0,1\}\([^\",}]*\).*/\1/p"; }

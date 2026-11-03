@@ -26,11 +26,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     return NextResponse.json({ error: "Exec only" }, { status: 403 });
   }
 
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
 
   if (parsed.data.contentRequestId) {
-    await prisma.contentRequest.update({
+    // updateMany, so another society's or a missing id is a 404 rather than a thrown P2025.
+    const { count } = await prisma.contentRequest.updateMany({
       where: { id: parsed.data.contentRequestId, societyId: membership!.societyId },
       data: {
         ...(parsed.data.markSubmitted ? { rubricSubmittedAt: new Date() } : {}),
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         rubricEventLink: parsed.data.rubricEventLink,
       },
     });
+    if (!count) return NextResponse.json({ error: "Not found" }, { status: 404 });
     await syncEventToDiscord(
       parsed.data.contentRequestId,
       `${session!.user.name} ${parsed.data.markSubmitted ? "submitted the event to Rubric" : "linked the Rubric event"}.`
