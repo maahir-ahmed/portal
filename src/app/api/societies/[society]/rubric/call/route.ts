@@ -84,7 +84,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       : NextResponse.json({ error: "Not available in the demo" }, { status: 400 });
   }
 
-  const creds = await getRubricCredentials(membership!.societyId);
+  // decryptSecret throws if RUBRIC_SECRET_KEY changed or went missing after the session
+  // was saved; say so rather than failing with a bare 500.
+  let creds: Awaited<ReturnType<typeof getRubricCredentials>>;
+  try {
+    creds = await getRubricCredentials(membership!.societyId);
+  } catch {
+    return NextResponse.json(
+      { error: "The saved Rubric session can't be read (has RUBRIC_SECRET_KEY changed?). Reconnect Rubric in Settings." },
+      { status: 500 }
+    );
+  }
   if (!creds) return NextResponse.json({ error: "not_configured" }, { status: 400 });
 
   let r: Awaited<ReturnType<typeof postRubric>>;

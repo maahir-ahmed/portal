@@ -48,7 +48,7 @@ for approval; **info** = noted only.
 | F18 | Low | years/budget | SocietyYear accepts 2026-02-30; category errors all reported as duplicate name | fix | done (this commit) |
 | F19 | Medium | discord | /print accepts any guild; username linking | fix (optional DISCORD_GUILD_ID); proposal (require it, /link) | optional DISCORD_GUILD_ID done (this commit); requiring it and /link codes are proposals |
 | F20 | Medium | rubric | snapshot anonymiser misses phone/student keys, never scrubs credentials, re-implements postRubric | fix | done (this commit) |
-| F21 | Low | secrets | no key: plain text; wrong key: unhandled 500 in proxy; example envs omit key | fix (docs, try/catch); proposal (refuse plain text) | todo |
+| F21 | Low | secrets | no key: plain text; wrong key: unhandled 500 in proxy; example envs omit key | fix (docs, try/catch); proposal (refuse plain text) | examples and error handling done (this commit); refusing plain text is a proposal; check the hosted .env files set the key |
 | F22 | Low | discord | exec-queue embeds not truncated, Discord 400s silently | proposal | - |
 | F23 | Low | discord | webhook URL built by string join; ?thread_id= URLs break | proposal | - |
 | F24 | Low | demo | demo visitors can set Discord webhooks | proposal | - |
