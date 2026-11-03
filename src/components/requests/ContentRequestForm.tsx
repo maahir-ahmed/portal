@@ -130,7 +130,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location *</Label>
-              <Input id="location" name="location" placeholder="e.g. CATS Room, UNSW" defaultValue={initial?.location} required />
+              <Input id="location" name="location" placeholder="e.g. Main Hall, Level 2" defaultValue={initial?.location} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="keyPoints">Key Points *</Label>
