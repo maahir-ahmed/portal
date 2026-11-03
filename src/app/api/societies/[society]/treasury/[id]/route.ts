@@ -65,10 +65,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Only executives can change status" }, { status: 403 });
   }
 
-  // A draft can only be submitted once it's a complete claim. Checks the stored
-  // values (submit requests carry only { status }, not field edits).
+  // A draft can only be submitted once it's a complete claim. Checks the claim as it
+  // will be after this request: the stored values, overridden by any edits sent along
+  // with the submit (an amount of 0 in the same request must not slip through).
   if (body.status === "REIMBURSEMENT_PENDING" && request.status === "DRAFT") {
-    if (Number(request.amount) <= 0 || !request.description.trim() || !request.locationSupplier.trim() || !request.contactEmail.trim()) {
+    const amount = body.amount ?? Number(request.amount);
+    const description = body.description ?? request.description;
+    const supplier = body.locationSupplier ?? request.locationSupplier;
+    const email = body.contactEmail ?? request.contactEmail;
+    if (amount <= 0 || !description.trim() || !supplier.trim() || !email.trim()) {
       return NextResponse.json(
         { error: "Complete the claim (amount, description, supplier, contact email) before submitting." },
         { status: 400 }
