@@ -39,7 +39,7 @@ for approval; **info** = noted only.
 | F09 | Low | dates | far-future/invalid dates accepted (yearOptions blowup) | fix | done (this commit) |
 | F10 | Low | dates | seven-business-day rule uses UTC today | proposal | - |
 | F11 | Low | dates | other naive-vs-real now comparisons (queue grants, board, AHEGS default) | proposal | - |
-| F12 | Low | dates | typed datetimes parsed in server-local TZ; prod correct only because TZ unset | fix (pin TZ=UTC) | todo |
+| F12 | Low | dates | typed datetimes parsed in server-local TZ; prod correct only because TZ unset | fix (pin TZ=UTC) | done (this commit, image); dev-server TZ is a proposal |
 | F13 | Low | threads | any member can comment on any treasury thread; requestType free string | fix | done (this commit) |
 | F14 | Low | treasury | POST loosely validated (lengths, amount cap, receipt URLs), not atomic | fix (caps, transaction); proposal (URL pattern if any doubt) | todo |
 | F15 | Low | treasury | draft submitted with amount 0 in the same PATCH | fix | done (this commit) |
