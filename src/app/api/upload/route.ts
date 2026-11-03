@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/api";
+import { requireAuth, requireActiveMember } from "@/lib/api";
 import { ALLOWED_EXTS, ALLOWED_TYPES, MAX_UPLOAD, extOf, saveUpload } from "@/lib/uploads";
 
 // A caller can narrow the allowlist for its own field by posting an `accept` value.
@@ -20,8 +20,10 @@ const NARROWED: Record<string, { types: string[]; exts: string[]; hint: string }
 };
 
 export async function POST(req: NextRequest) {
-  const { error: authErr } = await requireAuth();
+  const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
+  const notMember = await requireActiveMember(session!.user.id);
+  if (notMember) return notMember;
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
