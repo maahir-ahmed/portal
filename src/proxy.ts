@@ -69,8 +69,11 @@ async function route(req: NextAuthRequest, origin: string) {
   const isSetup = pathname === "/setup" || pathname === "/api/setup";
   // Discord's calls for the /print command: signed by Discord, checked in the route.
   const isDiscord = pathname === "/api/discord/interactions";
+  // The server's updater checking in, with UPDATE_TOKEN (src/lib/updates.ts).
+  const isUpdater = pathname === "/api/system/update";
   const isPublic =
-    isAuthPage || isApiAuth || isSetup || isDiscord || pathname.startsWith("/_next") || pathname.startsWith("/uploads");
+    isAuthPage || isApiAuth || isSetup || isDiscord || isUpdater ||
+    pathname.startsWith("/_next") || pathname.startsWith("/uploads");
 
   // Auth guard (runs regardless of society mode)
   if (!isPublic && !isAuth) {

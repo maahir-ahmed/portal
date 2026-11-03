@@ -950,3 +950,17 @@ model AuditLog {
   @@index([societyId, entityType])
   @@index([userId])
 }
+
+// The self-hosted updater's state: one row, id "app" (src/lib/updates.ts). The server's
+// `./portal tick` checks in every few minutes, picks up an "Update now" from Settings,
+// and reports how each update went.
+model AppUpdate {
+  id            String    @id @default("app")
+  requestedAt   DateTime?
+  requestedById String?
+  lastSeenAt    DateTime?
+  result        String?   // "ok" | "failed" | "rolled_back"
+  resultDetail  String?
+  resultVersion String?   // the version that update tried to install
+  resultAt      DateTime?
+}
