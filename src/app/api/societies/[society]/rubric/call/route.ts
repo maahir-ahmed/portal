@@ -59,7 +59,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
   // Unknown call types are refused outright: the allowlist is the whole point.
-  const spec = RUBRIC_CALLS[parsed.data.type];
+  // Own keys only: a plain lookup also finds "__proto__" and "constructor" on the object.
+  const spec = Object.hasOwn(RUBRIC_CALLS, parsed.data.type) ? RUBRIC_CALLS[parsed.data.type] : undefined;
   if (!spec) return NextResponse.json({ error: "Unsupported Rubric call" }, { status: 400 });
 
   if (!canCall(membership!.role, spec)) {

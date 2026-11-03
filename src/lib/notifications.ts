@@ -70,6 +70,8 @@ async function postToDiscord(societyId: string, title: string, body: string, lin
       body: JSON.stringify({
         username: "Society Portal",
         embeds: [{ title, description, color: 0x00ffd1, timestamp: new Date().toISOString() }],
+        // Embeds never ping, but say so: member-typed text is in them.
+        allowed_mentions: { parse: [] },
       }),
     });
     if (!res.ok) console.warn(`Discord webhook returned ${res.status} for society ${societyId}`);

@@ -57,7 +57,7 @@ for approval; **info** = noted only.
 | F27 | Low | discord | /print no replay window; reply outside try, no timeout | fix | done (this commit) |
 | F28 | Low | rubric | audit only after success, no target id; credentials 500 on bad input | fix (400); proposal (audit) | 400 done (this commit); audit-before-write and target ids are proposals |
 | F29 | Low | discord | concurrent first posts duplicate the event post | proposal | - |
-| F30 | Info | misc | RUBRIC_CALLS prototype lookup, exec-queue allowed_mentions, GHCR Link origin | fix | todo |
+| F30 | Info | misc | RUBRIC_CALLS prototype lookup, exec-queue allowed_mentions, GHCR Link origin | fix | done (this commit) |
 | F31 | Info | discord | reminder retry loop for a dead webhook; role changes not audited | proposal | - |
 | F32 | Info | money | "$50" vs "$50.00" in notification; exec can self-reimburse | info | - |
 | F33 | Critical | auth | any signed-in member could found a society, become its exec (debug tools, takeover chain) | fix | done 10fb595 |

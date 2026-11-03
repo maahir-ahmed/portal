@@ -80,7 +80,11 @@ async function latestRelease(): Promise<string | null> {
     const tags: string[] = [];
     let next: string | null = `/v2/${image.repo}/tags/list?n=1000`;
     for (let page = 0; next && page < 20; page++) {
-      const res: Response = await fetch(new URL(next, "https://ghcr.io"), {
+      // Pinned to GHCR: the anonymous pull token goes with this request, and a Link
+      // header naming another host must not carry it there.
+      const url = new URL(next, "https://ghcr.io");
+      if (url.origin !== "https://ghcr.io") throw new Error("GHCR pointed the tag list somewhere else");
+      const res: Response = await fetch(url, {
         headers: { Authorization: `Bearer ${tok.token ?? ""}` },
         signal: AbortSignal.timeout(5_000),
       });
