@@ -77,4 +77,24 @@ assert.equal(by.get(8)!.status, "skip");
 assert.equal(bad.rows.length, 7); // the blank line is not a row
 assert.deepEqual(bad.newPortfolios, []); // only the skipped row used "New One"
 
+
+// Hostile workbooks: they must fail fast (or be skipped), not take the server down.
+const sheetXml = (cells: string) =>
+  Buffer.from(`<worksheet><sheetData><row r="1">${cells}</row></sheetData></worksheet>`);
+const bigBlank = Buffer.alloc(60 * 1024 * 1024, 32); // deflates to a few KB
+assert.throws(() => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml", bigBlank]]))), "a sheet past the inflate cap must be refused");
+assert.deepEqual(
+  readTable(writeZip(new Map([
+    ["xl/worksheets/sheet1.xml", sheetXml('<c r="A1" t="inlineStr"><is><t>ok</t></is></c>')],
+    ["xl/media/huge.bin", bigBlank],
+  ]))),
+  [["ok"]],
+  "entries the import doesn't read are not inflated"
+);
+assert.throws(
+  () => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml", sheetXml('<c r="ZZZZZZ1" t="inlineStr"><is><t>x</t></is></c>')]]))),
+  /past the last column/,
+  "a cell past column XFD must be refused, not padded out"
+);
+
 console.log("check-import: ok");

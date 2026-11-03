@@ -79,7 +79,7 @@ for approval; **info** = noted only.
 | F49 | Low | api | assorted 500s on invalid input (notifications limit, submit-event, duplicates) | fix | todo |
 | F50 | Low | audit | state changes without audit logs (me, bank, titles, ahegs...) | proposal | - |
 | F51 | Medium | backup | restore archive may carry symlinks or psql meta-commands | fix | done (this commit) |
-| F52 | Medium | import | xlsx zip bomb / huge column index can OOM the server | fix | todo |
+| F52 | Medium | import | xlsx zip bomb / huge column index can OOM the server | fix | done (this commit) |
 | F53 | Medium | backup | upload count and tar taken separately: archive may never validate | fix (backup side) | todo |
 | F54 | Low | ahegs | PDF merge throws on emoji/CJK in titles | proposal | - |
 | F55 | Low | uploads | logoUrl accepts any upload, making it public | fix (validate new values); proposal (serving rule) | todo |
