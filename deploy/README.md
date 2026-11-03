@@ -115,11 +115,12 @@ cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere
 
 ## Discord reminders and the /print bot
 
-Deadline reminders start with the app in production (a timer in `src/instrumentation.ts`,
-every 10 minutes) and do nothing until a society has an events webhook. The first pass
-after an upgrade only records where each open request stands, so nothing pings until a
-request's deadline actually moves into a more urgent stage. `DISCORD_REMINDERS=off` in
-the env file stops them.
+Deadline reminders are off on a stack until `DISCORD_REMINDERS=on` is in its env file
+(the self-host installer sets it), so upgrading SecSoc or PCSoc changes nothing until
+you add it. Then a timer in `src/instrumentation.ts` checks every 10 minutes, and does
+nothing for a society without an events webhook. The first pass only records where each
+open request stands, so nothing pings until a request's deadline actually moves into a
+more urgent stage.
 
 The `/print` bot is a spike, off unless `ENABLE_DISCORD_BOT=true` with `DISCORD_APP_ID`,
 `DISCORD_PUBLIC_KEY` and `DISCORD_BOT_TOKEN` set. Setup and findings are in

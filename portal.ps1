@@ -156,6 +156,7 @@ function Write-Settings {
   Ensure "RUBRIC_SECRET_KEY" ([Convert]::ToBase64String($key)) # base64, as src/lib/secrets.ts reads it
   Ensure "SETUP_TOKEN" (RandomHex 24)
   Ensure "ENABLE_DEBUG_TOOLS" "false"
+  Ensure "DISCORD_REMINDERS" "on"
   if (-not (Has-Setting "TZ")) { Ensure "TZ" (Host-Timezone) }
   # Forward slashes: Docker Desktop takes them, and nothing has to be escaped.
   Ensure "BACKUP_DIR" ((Join-Path $Root "backups") -replace "\\", "/")

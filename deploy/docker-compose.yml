@@ -83,8 +83,9 @@ services:
       # database, and does nothing once any account exists. ADMIN_EMAIL prefills it.
       SETUP_TOKEN: ${SETUP_TOKEN:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      # Discord deadline reminders (src/lib/reminders.ts) run whenever the events webhook
-      # is set in Settings; "off" stops them. The /print bot is a spike, off unless
+      # Discord deadline reminders (src/lib/reminders.ts): "on" pings under each event's
+      # post as its deadline nears. Off unless set, so existing stacks don't start
+      # pinging on upgrade; the installer sets it. The /print bot is a spike, off unless
       # ENABLE_DISCORD_BOT=true: see docs/DISCORD_BOT_SPIKE.md.
       DISCORD_REMINDERS: ${DISCORD_REMINDERS:-}
       ENABLE_DISCORD_BOT: ${ENABLE_DISCORD_BOT:-false}

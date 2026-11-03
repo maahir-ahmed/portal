@@ -140,6 +140,7 @@ write_settings() {
   ensure RUBRIC_SECRET_KEY "$(head -c 32 /dev/urandom | base64 | tr -d '\n')" # base64, as src/lib/secrets.ts reads it
   ensure SETUP_TOKEN "$(random_hex 24)"
   ensure ENABLE_DEBUG_TOOLS false
+  ensure DISCORD_REMINDERS on
   ensure TZ "$(host_timezone)"
   ensure BACKUP_DIR "$ROOT/backups"
   ensure APP_IMAGE "$IMAGES-app:latest"
