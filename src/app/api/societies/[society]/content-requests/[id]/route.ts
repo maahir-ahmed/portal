@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ContentRequestStatus } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
@@ -6,6 +8,33 @@ import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { statusLabel } from "@/lib/utils";
 
+
+// What the edit form, the status picker and the marketing panel send. Types only, with
+// limits far past any real form: anything the code already ignored ("" for a date, an
+// unknown key) is still ignored, but a wrong type or an impossible date is a 400 here
+// instead of a Prisma error and a 500 further down.
+const date = z.string().refine((s) => s === "" || !Number.isNaN(Date.parse(s)), "Invalid date");
+const text = (max: number) => z.string().max(max).nullable();
+const patchSchema = z
+  .object({
+    status: z.enum(ContentRequestStatus),
+    activityGrantStatus: z.string(),
+    eventName: z.string().max(1000),
+    startDate: date.nullable(),
+    endDate: date.nullable(),
+    deadline: date.nullable(),
+    location: z.string().max(1000),
+    keyPoints: z.string().max(20000),
+    portfolioId: text(100),
+    bannerRequired: z.boolean(),
+    blurbRequired: z.boolean(),
+    rubricRequired: z.boolean(),
+    otherNotes: text(20000),
+    finishedBlurb: text(20000),
+    addDeliverables: z.array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().max(2000).optional() })),
+    removeDeliverableIds: z.array(z.string()),
+  })
+  .partial();
 
 type Params = { society: string; id: string };
 
@@ -17,7 +46,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
-  const body = await req.json();
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid request" }, { status: 400 });
+  }
+  // Validated above; typed loosely as before, so the code below treats every value
+  // exactly as it did when the body was unchecked JSON.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: any = parsed.data;
 
   const request = await prisma.contentRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership!.societyId) {
