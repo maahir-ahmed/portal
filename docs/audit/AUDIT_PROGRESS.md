@@ -90,7 +90,7 @@ for approval; **info** = noted only.
 | F60 | Low | uploads | malformed multipart 500; MAX_FILE_SIZE_MB NaN disables the cap | fix | todo |
 | F61 | High | ci | self-hosted runner on a public repo (fork PR workflows) | proposal (repo settings) + fix (deploy.yml permissions) | todo |
 | F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | todo |
-| F63 | Medium | updates | portal update pulls main, not the release tag | fix | bash done (this commit); portal.ps1 mirror todo |
+| F63 | Medium | updates | portal update pulls main, not the release tag | fix | done e0ab7b4 (bash) + this commit (ps1) |
 | F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | todo |
 | F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | todo |
 | F66 | Medium | db | app and SQL runner connect as Postgres superuser | proposal | - |
@@ -109,7 +109,7 @@ for approval; **info** = noted only.
 
 ## Next step
 
-1. Mirror F63 in portal.ps1: `Update` and `Install` should fetch tags and check out the
+1. (done) Mirror F63 in portal.ps1: `Update` and `Install` should fetch tags and check out the
    newest `v<channel>.*` tag (see `channel`, `newest_release`, `update_scripts` and the
    re-exec at the top of `cmd_install` in `portal`), with `latest` still pulling main.
    Parse-check with powershell.exe, then commit.

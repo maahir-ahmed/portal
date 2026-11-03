@@ -204,8 +204,51 @@ function Wait-Ready {
   return $false
 }
 
+# The channel is the APP_IMAGE tag: 1 follows v1.x.y, 1.4 follows v1.4.y.
+function Channel {
+  $image = Get-Setting "APP_IMAGE"
+  if (-not $image) { $image = "$Images-app:1" }
+  return $image.Substring($image.LastIndexOf(":") + 1)
+}
+
+# The newest release on this portal's channel, as a git tag, or "" if there isn't one yet.
+function Newest-Release {
+  $c = Channel
+  $tags = @(git -C $Root tag -l "v*" | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and ($_ -eq "v$c" -or $_.StartsWith("v$c.")) })
+  if ($tags.Count -eq 0) { return "" }
+  return ($tags | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1)
+}
+
+# Moves the scripts and compose file to the same release as the images: the newest tag
+# on the channel, not whatever is on main, so a change reaches self-hosted portals only
+# when it's released. The latest channel follows main on purpose.
+function Update-Scripts {
+  if ((Channel) -eq "latest") {
+    git -C $Root pull --ff-only
+    if ($LASTEXITCODE -ne 0) { Die "couldn't update the scripts with git pull. Undo local changes to this folder and try again" }
+    return
+  }
+  git -C $Root fetch -q --tags origin
+  if ($LASTEXITCODE -ne 0) { Die "couldn't check for new versions of the scripts (git fetch). Check the internet connection and try again" }
+  $tag = Newest-Release
+  if (-not $tag) { return } # no release on this channel yet: stay where we are
+  git -C $Root checkout -q $tag
+  if ($LASTEXITCODE -ne 0) { Die "couldn't move the scripts to $tag. Undo local changes to this folder and try again" }
+}
+
 function Install {
   Check-Docker
+  # A fresh clone is on main; run the install from the release the images belong to.
+  if (-not $env:PORTAL_REEXEC -and (Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+    $was = (git -C $Root rev-parse HEAD)
+    Update-Scripts
+    if ((git -C $Root rev-parse HEAD) -ne $was) {
+      Say "Using the latest release, $(git -C $Root describe --tags)."
+      $env:PORTAL_REEXEC = "1"
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath install
+      exit $LASTEXITCODE
+    }
+  }
   Write-Settings
   Get-Images
   Compose up -d --no-build --remove-orphans
@@ -292,8 +335,7 @@ function Update {
   $head = ""
   if ((Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
     $head = (git -C $Root rev-parse HEAD)
-    git -C $Root pull --ff-only
-    if ($LASTEXITCODE -ne 0) { Die "couldn't update the scripts with git pull. Undo local changes to this folder and try again" }
+    Update-Scripts
   }
   Write-Settings # adds any setting a newer version needs
   Get-Images
