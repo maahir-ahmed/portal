@@ -115,8 +115,9 @@ release. If there is one, it backs everything up, installs it and checks that th
 portal starts. If the new version doesn't start, it switches back to the previous
 version.
 
-While an update is waiting, executives see a banner at the top of the portal. You can
-install it straight away from **Settings › General › Version and updates**.
+While an update is waiting, executives see a banner at the top of the portal, and
+**Settings › General › Version and updates** says when the server checks next. To
+install a release straight away, run `./portal update` on the server.
 
 To update by hand instead:
 

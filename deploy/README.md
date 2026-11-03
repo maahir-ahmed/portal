@@ -195,8 +195,8 @@ git tag v1.4.0 && git push origin v1.4.0
 ```
 
 The workflow publishes `1.4.0`, `1.4` and `1` for all three images. Every self-hosted
-portal sees it within the hour (a banner for its executives), installs it that night
-after a backup, and rolls itself back if it doesn't start
+portal shows it within the hour (a banner for its executives), installs it at its next
+nightly check after a backup, and rolls itself back if it doesn't start
 ([SELF_HOSTING.md](../docs/SELF_HOSTING.md#updates)).
 
 - **Schema changes must stay additive** (new tables, nullable columns, columns with

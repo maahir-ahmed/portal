@@ -3,8 +3,9 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { requestUpdate, updateStatus } from "@/lib/updates";
 
-// The version this portal runs, whether a newer release is out, and "Update now".
-// Executives only: an update restarts the portal for everyone.
+// The version this portal runs, whether a newer release is out, and asking the server
+// to install it at its next nightly check. Executives only: an update restarts the
+// portal for everyone.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;

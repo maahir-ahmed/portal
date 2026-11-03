@@ -6,13 +6,13 @@
 #   install           set up (asks a few questions), then start
 #   start | stop      start or stop everything
 #   update            back up, then move to the newest version
-#   autoupdate on     install new releases each night, and allow "Update now" in
-#   autoupdate off    Settings (a check every 5 minutes); off stops both
+#   autoupdate on     check for a new release each night at UPDATE_HOUR, and install
+#   autoupdate off    it (and anything asked for in Settings); or stop
 #   backup            back up the database and uploads now
 #   restore <file>    put a backup back, replacing what's there
 #   logs [service]    follow the logs (app, web, db, backup, cloudflared, caddy)
 #   status            what's running
-#   tick              what autoupdate runs every 5 minutes
+#   tick              what autoupdate runs each night
 #
 # Settings live in portal.env next to this script, in the same format ./portal writes,
 # so a portal set up with either script can be run with the other. Runs on the
@@ -312,7 +312,8 @@ function Update {
     return
   }
   # A version that failed to start before isn't retried every night; a newer one is,
-  # and so is this one when you run update yourself or press "Update now" (PORTAL_RETRY).
+  # and so is this one when you run update yourself, or an executive asks for it in
+  # Settings (PORTAL_RETRY).
   $skipFile = Join-Path $Root ".update-skip"
   if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw).Trim() -eq $after)) {
     Retag $before
@@ -366,13 +367,13 @@ function Check-In([string]$result = "", [string]$detail = "", [string]$version =
   if ($code -eq 0) { return "$reply" } else { return "" }
 }
 
-# Every 5 minutes (autoupdate): update if someone pressed "Update now", or once a night
-# after UPDATE_HOUR, then tell the portal how it went.
+# Once a night at UPDATE_HOUR (autoupdate): check in with the portal, update, and say
+# how it went. "Install at the next check" in Settings only asks; this is when it happens.
 function Tick {
   $lock = Join-Path $Root ".update.lock"
   $resultFile = Join-Path $Root ".update-result"
-  # One at a time: an update can take longer than 5 minutes. A lock older than two hours
-  # is from a run that died.
+  # Not alongside a portal.ps1 update someone started by hand. A lock older than two
+  # hours is from a run that died.
   if (Test-Path $lock) {
     if ((Get-Item $lock).LastWriteTime -gt (Get-Date).AddHours(-2)) { return }
     Remove-Item $lock -Recurse -Force
@@ -388,15 +389,7 @@ function Tick {
       $reply = Check-In
     }
 
-    $today = (Get-Date).ToString("yyyy-MM-dd")
-    $lastFile = Join-Path $Root ".last-update"
     $requested = $reply -like '*"requested":true*'
-    if (-not $requested) {
-      $hour = 0; [int]::TryParse((Get-Setting "UPDATE_HOUR"), [ref]$hour) | Out-Null
-      if ((Get-Date).Hour -lt $hour) { return }
-      if ((Test-Path $lastFile) -and ((Get-Content $lastFile -Raw).Trim() -eq $today)) { return }
-    }
-    [IO.File]::WriteAllText($lastFile, $today)
 
     Say "--- $(Get-Date) update"
     # Its own process, so a question it can't ask (PORTAL_UNATTENDED) ends only that.
@@ -429,16 +422,22 @@ function Tick {
 function Autoupdate([string]$state) {
   $name = "Society portal updates ($(Get-Setting 'STACK'), $(Split-Path $Root -Leaf))"
   if ($state -eq "on") {
-    # conhost --headless: without it, a console window flashes up every 5 minutes.
+    $hour = 0
+    if (-not [int]::TryParse((Get-Setting "UPDATE_HOUR"), [ref]$hour) -or $hour -lt 0 -or $hour -gt 23) {
+      Die "UPDATE_HOUR in portal.env must be an hour, 0 to 23"
+    }
+    # conhost --headless: without it, a console window flashes up when it runs.
     $log = Join-Path $Root "update.log"
     $action = New-ScheduledTaskAction -Execute "conhost.exe" -WorkingDirectory $Root `
       -Argument "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -Command `"& '$PSCommandPath' tick *>> '$log'`""
-    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
+    # StartWhenAvailable (below) runs a missed night's check when the PC is next on.
+    $trigger = New-ScheduledTaskTrigger -Daily -At ([datetime]::Today.AddHours($hour))
     $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2)
     Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
-    Say "Automatic updates are on: new releases install each night after $(Get-Setting 'UPDATE_HOUR'):00,"
-    Say "after a backup, and `"Update now`" in Settings works within 5 minutes, while you're"
-    Say "signed in to Windows (Docker Desktop only runs then). Log: update.log"
+    Say "Automatic updates are on: each night at ${hour}:00 the server checks for a new release"
+    Say "and installs it after a backup, while you're signed in to Windows (Docker Desktop only"
+    Say "runs then). To install one straight away, run portal.ps1 update. After changing"
+    Say "UPDATE_HOUR, run portal.ps1 autoupdate on again. Log: update.log"
   } elseif ($state -eq "off") {
     Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
     Say "Automatic updates are off. Update with: portal.ps1 update"

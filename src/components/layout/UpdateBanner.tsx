@@ -40,14 +40,14 @@ export function UpdateBanner({ societySlug }: { societySlug: string }) {
       <ArrowUpCircle className="h-4 w-4 shrink-0" />
       <span className="min-w-0 flex-1">
         {status.requestedAt
-          ? `Installing version ${status.latest}. The portal will restart for a minute or two.`
+          ? `Version ${status.latest} installs at the server's next check. The portal will restart for a minute or two.`
           : failed
             ? `Version ${status.latest} didn't install. The portal is still on the version before.`
-            : `Version ${status.latest} is out. It installs tonight, or you can update now.`}
+            : `Version ${status.latest} is out. It installs at the server's next nightly check.`}
       </span>
       {!status.requestedAt && (
         <Link href={`/${societySlug}/settings/general#updates`} className="font-medium underline underline-offset-2">
-          {failed ? "See why" : "Update"}
+          {failed ? "See why" : "Details"}
         </Link>
       )}
     </div>

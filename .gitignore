@@ -64,4 +64,3 @@ portal.env
 /.update-skip
 /.update-result
 /.update.lock
-/.last-update

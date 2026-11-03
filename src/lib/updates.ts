@@ -2,10 +2,11 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { prisma } from "./db";
 import { demoEnabled } from "./rubricDemo";
 
-// Updates for a self-hosted portal. The server's `./portal tick` (every 5 minutes,
-// installed by `./portal autoupdate on`) installs new releases each night and checks in
-// at POST /api/system/update, which is how it learns that an executive pressed
-// "Update now" in Settings. The app can't update itself: that would need the Docker
+// Updates for a self-hosted portal. The server's `./portal tick` (once a night at
+// UPDATE_HOUR, installed by `./portal autoupdate on`) checks in at POST
+// /api/system/update, installs any new release, and reports how it went. "Install at the next
+// check" in Settings is a request it picks up at that check: retrying a version that failed, or
+// installing a release on a server that doesn't install them by itself. The app can't update itself: that would need the Docker
 // socket, which is root on the host. So it only asks, and the server does the work.
 //
 // Only for stacks running a published image (APP_IMAGE=ghcr.io/...:1, set by the
@@ -13,8 +14,9 @@ import { demoEnabled } from "./rubricDemo";
 // GitHub, so all of this stays hidden there.
 
 const ROW = "app";
-/** The tick runs every 5 minutes; three missed means it isn't running. */
-const SEEN_WITHIN_MS = 15 * 60_000;
+const DAY_MS = 86_400_000;
+/** The tick runs nightly; two missed nights (the server was off, or cron was) means it isn't running. */
+const SEEN_WITHIN_MS = 2 * DAY_MS + 3_600_000;
 
 export function updatesEnabled(): boolean {
   return !demoEnabled() && !!process.env.UPDATE_TOKEN && !!parseImage(process.env.APP_IMAGE);
@@ -101,6 +103,8 @@ export interface UpdateStatus {
   available: boolean;
   /** Whether the server's updater has checked in lately. Without it, nothing installs. */
   updaterRunning: boolean;
+  /** About when it checks next: a day after it last did. */
+  nextCheckAt: Date | null;
   requestedAt: Date | null;
   result: string | null;
   resultDetail: string | null;
@@ -111,7 +115,7 @@ export interface UpdateStatus {
 export async function updateStatus(): Promise<UpdateStatus> {
   const current = currentVersion();
   if (!updatesEnabled()) {
-    return { enabled: false, current, latest: null, available: false, updaterRunning: false, requestedAt: null, result: null, resultDetail: null, resultVersion: null, resultAt: null };
+    return { enabled: false, current, latest: null, available: false, updaterRunning: false, requestedAt: null, result: null, resultDetail: null, resultVersion: null, resultAt: null, nextCheckAt: null };
   }
   const [latest, row] = await Promise.all([latestRelease(), prisma.appUpdate.findUnique({ where: { id: ROW } })]);
   return {
@@ -120,6 +124,7 @@ export async function updateStatus(): Promise<UpdateStatus> {
     latest,
     available: !!latest && newer(latest, current),
     updaterRunning: !!row?.lastSeenAt && Date.now() - row.lastSeenAt.getTime() < SEEN_WITHIN_MS,
+    nextCheckAt: row?.lastSeenAt ? new Date(row.lastSeenAt.getTime() + DAY_MS) : null,
     requestedAt: row?.requestedAt ?? null,
     result: row?.result ?? null,
     resultDetail: row?.resultDetail ?? null,

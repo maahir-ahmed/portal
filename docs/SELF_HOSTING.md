@@ -154,16 +154,16 @@ too and you hadn't stopped it with `./portal stop`. (On Windows and Mac, set Doc
 
 ### Updates
 
-The portal keeps itself up to date. The installer turns this on, and every night after
+The portal keeps itself up to date. The installer turns this on, and every night at
 4am the server checks for a new release. If there is one, it takes a backup, installs
 it, and checks the portal starts. If the new version doesn't start, it goes back to the
 one before by itself, and doesn't try that version again until a newer one comes out.
 
 When a new release is out, executives see a banner at the top of every page until it's
-installed. **Settings › General › Version and updates** shows the version you're on,
-and has an **Update now** button if you'd rather not wait for the night. The server
-picks that up within 5 minutes, and the portal is unavailable for a minute or two while
-it restarts.
+installed. **Settings › General › Version and updates** shows the version you're on and
+when the server checks next. To install a release straight away, run `./portal update`
+on the server. **Install at the next check** asks the server to install it that night
+even if it's a version that failed to start before.
 
 A few things worth knowing:
 
@@ -171,11 +171,12 @@ A few things worth knowing:
   you, never installs by itself: its notes will say what to do.
 - An update that would delete data from the database stops instead of going ahead,
   then rolls back. Nothing you've stored is lost to an automatic update.
-- The check runs every 5 minutes (it's what makes **Update now** quick). What it did is
-  in `update.log`, in the portal folder.
+- The check runs once a day. What it did is in `update.log`, in the portal folder.
 - On Windows, it runs as a scheduled task while you're signed in, since that's when
-  Docker Desktop runs. On a Mac or Linux it's a line in your crontab.
-- Change the hour with `UPDATE_HOUR` in `portal.env` (after the 3am backup is best).
+  Docker Desktop runs, and catches up when you next sign in if the PC was off. On a Mac
+  or Linux it's a line in your crontab, which skips a night the computer is off.
+- Change the hour with `UPDATE_HOUR` in `portal.env` (after the 3am backup is best),
+  then run `./portal autoupdate on` again so the schedule follows.
 - To update by hand instead, run `./portal autoupdate off`, then `./portal update`
   whenever you like. Settings will say the updater isn't running.
 
@@ -259,10 +260,10 @@ needs with one set of steps.
 - Schema changes apply themselves on start (`prisma db push`, then the one-time fixes in
   `prisma/post-push/`). `DB_PUSH_FLAGS` is empty here, so unlike the hosted stacks a
   change that would drop data fails the start instead of applying.
-- Updates: `./portal tick` runs every 5 minutes (crontab, or a scheduled task on
-  Windows). It checks in with the app at `/api/system/update` using `UPDATE_TOKEN`,
-  from inside the `web` container, and runs `./portal update` when an executive asked or
-  once a night after `UPDATE_HOUR`. `update` notes the current image IDs, pulls, and
+- Updates: `./portal tick` runs once a day at `UPDATE_HOUR` (crontab, or a scheduled
+  task on Windows). It checks in with the app at `/api/system/update` using
+  `UPDATE_TOKEN`, from inside the `web` container, then runs `./portal update`, with a
+  retry of a skipped version if an executive asked for one. `update` notes the current image IDs, pulls, and
   only backs up and restarts if something changed. If the app doesn't answer within 3
   minutes, it retags the old images, resets the scripts to the commit before
   (`git reset --keep`) and starts them again. The failed image IDs go in `.update-skip`

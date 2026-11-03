@@ -4,13 +4,13 @@
 #   ./portal install          set up (asks a few questions), then start
 #   ./portal start | stop     start or stop everything
 #   ./portal update           back up, then move to the newest version
-#   ./portal autoupdate on    install new releases each night, and allow "Update now"
-#   ./portal autoupdate off   in Settings (a check every 5 minutes); off stops both
+#   ./portal autoupdate on    check for a new release each night at UPDATE_HOUR, and
+#   ./portal autoupdate off   install it (and anything asked for in Settings); or stop
 #   ./portal backup           back up the database and uploads now
 #   ./portal restore <file>   put a backup back, replacing what's there
 #   ./portal logs [service]   follow the logs (app, web, db, backup, cloudflared, caddy)
 #   ./portal status           what's running
-#   ./portal tick             what autoupdate runs every 5 minutes
+#   ./portal tick             what autoupdate runs each night
 #
 # Settings live in portal.env next to this script; it holds your passwords, so keep it
 # safe and out of git. Every command can be run again safely: install never overwrites
@@ -298,7 +298,8 @@ cmd_update() {
     return 0
   fi
   # A version that failed to start before isn't retried every night; a newer one is,
-  # and so is this one when you run update yourself or press "Update now" (PORTAL_RETRY).
+  # and so is this one when you run update yourself, or an executive asks for it in
+  # Settings (PORTAL_RETRY).
   if [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$after" = "$(cat "$ROOT/.update-skip" 2>/dev/null)" ]; then
     IDS="$before" retag
     say "Skipped: this version didn't start last time. Run ./portal update to try it again."
@@ -339,12 +340,12 @@ check_in() { # check_in [result] [detail] [version]
     --post-data "$body" http://app:3000/api/system/update </dev/null 2>/dev/null
 }
 
-# Every 5 minutes (autoupdate): update if someone pressed "Update now", or once a night
-# after UPDATE_HOUR, then tell the portal how it went.
+# Once a night at UPDATE_HOUR (autoupdate): check in with the portal, update, and say
+# how it went. "Install at the next check" in Settings only asks; this is when it happens.
 cmd_tick() {
   exec </dev/null
-  local lock="$ROOT/.update.lock" result="$ROOT/.update-result" reply today requested out status detail version
-  # One at a time: an update can take longer than 5 minutes. A lock older than two hours
+  local lock="$ROOT/.update.lock" result="$ROOT/.update-result" reply requested out status detail version
+  # Not alongside a ./portal update someone started by hand. A lock older than two hours
   # is from a run that died.
   if ! mkdir "$lock" 2>/dev/null; then
     [ -n "$(find "$lock" -maxdepth 0 -mmin +120 2>/dev/null)" ] || return 0
@@ -359,15 +360,8 @@ cmd_tick() {
     reply="$(check_in || true)"
   fi
 
-  today="$(date +%F)" requested=""
-  case "$reply" in
-    *'"requested":true'*) requested=1 ;;
-    *)
-      [ "$(date +%H)" -ge "$(printf '%02d' "$(get UPDATE_HOUR)")" ] || return 0
-      [ "$(cat "$ROOT/.last-update" 2>/dev/null)" != "$today" ] || return 0
-      ;;
-  esac
-  printf '%s\n' "$today" > "$ROOT/.last-update"
+  requested=""
+  case "$reply" in *'"requested":true'*) requested=1 ;; esac
 
   say "--- $(date) update"
   # Its own process, so a question it can't ask (PORTAL_UNATTENDED) ends only that.
@@ -390,16 +384,19 @@ CRON_MARK="# society-portal $ROOT"
 
 cmd_autoupdate() {
   command -v crontab >/dev/null 2>&1 || die "crontab isn't installed (on Debian or Ubuntu: sudo apt install cron)"
-  local others path
+  local others path hour
   others="$(crontab -l 2>/dev/null | grep -vF "$CRON_MARK" || true)"
   # cron's own PATH is tiny and misses Docker on a Mac (/usr/local/bin): add its folder.
   path="$(dirname "$(command -v docker || echo /usr/bin/docker)"):/usr/local/bin:/usr/bin:/bin"
   case "${1:-}" in
     on)
-      printf '%s\n%s\n' "$others" "*/5 * * * * cd '$ROOT' && PATH='$path' ./portal tick >> '$ROOT/update.log' 2>&1 $CRON_MARK" \
+      hour="$(get UPDATE_HOUR)"
+      case "$hour" in [0-9] | 1[0-9] | 2[0-3]) ;; *) die "UPDATE_HOUR in portal.env must be an hour, 0 to 23" ;; esac
+      printf '%s\n%s\n' "$others" "0 $hour * * * cd '$ROOT' && PATH='$path' ./portal tick >> '$ROOT/update.log' 2>&1 $CRON_MARK" \
         | sed '/^$/d' | crontab -
-      say "Automatic updates are on: new releases install each night after $(get UPDATE_HOUR):00,"
-      say "after a backup, and \"Update now\" in Settings works within 5 minutes. Log: update.log"
+      say "Automatic updates are on: each night at $hour:00 the server checks for a new release"
+      say "and installs it after a backup. To install one straight away, run ./portal update."
+      say "After changing UPDATE_HOUR, run ./portal autoupdate on again. Log: update.log"
       ;;
     off)
       if [ -n "$others" ]; then printf '%s\n' "$others" | crontab -; else crontab -r 2>/dev/null || true; fi

@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import type { UpdateStatus } from "@/lib/updates";
 
-type Status = Omit<UpdateStatus, "requestedAt" | "resultAt"> & { requestedAt: string | null; resultAt: string | null };
+type Status = Omit<UpdateStatus, "requestedAt" | "resultAt" | "nextCheckAt"> & {
+  requestedAt: string | null;
+  resultAt: string | null;
+  nextCheckAt: string | null;
+};
 
 const when = (d: string) => new Date(d).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" });
 
@@ -24,7 +28,12 @@ export const RESULT_TEXT: Record<string, string> = {
   rolled_back: "The new version didn't start, so the portal went back to the one before",
 };
 
-/** Settings > General: the version, whether a newer one is out, and "Update now". */
+/**
+ * Settings > General: the version, whether a newer one is out, and a button to have the
+ * server install it at its next nightly check. The server only checks once a day, so the
+ * button can't be instant: it's for a release the night run skipped (one that failed to
+ * start before) or a server that doesn't install releases by itself.
+ */
 export function UpdatesCard({ societySlug }: { societySlug: string }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -44,7 +53,7 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
     setSending(false);
     setConfirming(false);
     if (res.ok) {
-      toast.success("Update requested. The server picks it up within 5 minutes.");
+      toast.success("Requested. The server installs it at its next check.");
       load();
     } else {
       toast.error((await res.json().catch(() => null))?.error ?? "Couldn't request the update");
@@ -59,7 +68,7 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
       <CardHeader>
         <CardTitle className="text-base">Version and updates</CardTitle>
         <CardDescription>
-          New releases install on their own each night, after a backup. You can also update straight away.
+          Each night the server checks for a new release and installs it, after a backup.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -86,23 +95,34 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
         )}
         {status.requestedAt ? (
           <p className="text-muted-foreground">
-            Update requested {when(status.requestedAt)}. The portal will restart for a minute or two while it installs.
+            Requested {when(status.requestedAt)}. It installs at the server&apos;s next check
+            {status.nextCheckAt && `, around ${when(status.nextCheckAt)}`}, and the portal restarts for a minute or two.
           </p>
         ) : (
-          <Button onClick={() => setConfirming(true)} disabled={!status.updaterRunning || !status.available}>
-            Update now
-          </Button>
+          status.available && (
+            <>
+              <p className="text-muted-foreground">
+                The server&apos;s next check is
+                {status.nextCheckAt ? ` around ${when(status.nextCheckAt)}` : " tonight"}. To install it straight
+                away instead, run <code className="rounded bg-muted px-1">./portal update</code> on the server.
+              </p>
+              <Button onClick={() => setConfirming(true)} disabled={!status.updaterRunning}>
+                Install at the next check
+              </Button>
+            </>
+          )
         )}
       </CardContent>
 
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update to {status.latest}?</DialogTitle>
+            <DialogTitle>Install {status.latest} at the next check?</DialogTitle>
             <DialogDescription>
-              The server backs up the database and uploads first, then installs the new version. The portal is
-              unavailable for a minute or two, so pick a quiet moment. If the new version doesn&apos;t start, it goes
-              back to this one on its own.
+              At its next check{status.nextCheckAt && `, around ${when(status.nextCheckAt)}`}, the server backs up the
+              database and uploads, then installs the new version, even one that failed to start before. The portal is
+              unavailable for a minute or two. If the new version doesn&apos;t start, it goes back to this one on its
+              own.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -110,7 +130,7 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
               Cancel
             </Button>
             <Button onClick={updateNow} disabled={sending}>
-              {sending ? "Requesting…" : "Update now"}
+              {sending ? "Requesting…" : "Install at the next check"}
             </Button>
           </DialogFooter>
         </DialogContent>
