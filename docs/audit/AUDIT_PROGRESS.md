@@ -94,7 +94,7 @@ for approval; **info** = noted only.
 | F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | done (this commit) |
 | F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | done (this commit) |
 | F66 | Medium | db | app and SQL runner connect as Postgres superuser | proposal | - |
-| F67 | Low | headers | no security headers; X-Powered-By; server_tokens | fix (nosniff, referrer, tokens); proposal (frame-ancestors) | todo |
+| F67 | Low | headers | no security headers; X-Powered-By; server_tokens | fix (nosniff, referrer, tokens); proposal (frame-ancestors) | done (this commit); frame-ancestors is a proposal |
 | F68 | Low | export | CSV formula injection in Rubric exports | proposal | - |
 | F69 | Low | nginx | CF-Connecting-IP trusted on the Caddy profile | proposal | - |
 | F70 | Low | backup | backups world-readable (no umask) | proposal | - |

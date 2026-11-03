@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Don't advertise the framework (and so which advisories apply) on every response.
+  poweredByHeader: false,
+  // Headers that change nothing a user sees: no MIME sniffing of anything we serve, and
+  // only the origin (not the path, which can carry a request id) in the Referer sent
+  // to other sites. Framing is left alone: see the audit report's proposals.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
