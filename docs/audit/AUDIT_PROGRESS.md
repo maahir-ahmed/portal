@@ -91,7 +91,7 @@ for approval; **info** = noted only.
 | F61 | High | ci | self-hosted runner on a public repo (fork PR workflows) | proposal (repo settings) + fix (deploy.yml permissions) | fix done (this commit); repo setting is yours |
 | F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | done (this commit) |
 | F63 | Medium | updates | portal update pulls main, not the release tag | fix | done e0ab7b4 (bash) + this commit (ps1) |
-| F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | todo |
+| F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | done (this commit) |
 | F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | todo |
 | F66 | Medium | db | app and SQL runner connect as Postgres superuser | proposal | - |
 | F67 | Low | headers | no security headers; X-Powered-By; server_tokens | fix (nosniff, referrer, tokens); proposal (frame-ancestors) | todo |
