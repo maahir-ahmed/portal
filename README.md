@@ -21,7 +21,9 @@ Rubric credentials never leave the server. The browser calls `POST /api/societie
 
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
-- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login is the only unauthenticated page.
+- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login and first-run setup are the only unauthenticated pages.
+- **First-run setup**: on an empty database, `/setup?token=<SETUP_TOKEN>` creates the first executive account and the society, then walks through six steps (details and timezone, portfolios, features, policies, member import, Discord). Each is the same form as its Settings tab, every optional step can be skipped, and it resumes where it was left. The token stops working once any account exists.
+- **Member import** (Settings > Import members): a CSV or Excel file, checked row by row in a preview before anything is written, then imported all or nothing. Nobody is emailed. Imported people show as "not invited" on the Members page until an executive issues them a passphrase.
 - The member is then blocked on a change-password dialog until they pick their own — no dismissing it, and the new password has to differ from the passphrase. Same flow after an exec resets a password.
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
 - Portfolios: the areas a society splits its committee into (Events, Marketing, Sponsorship…), defined per society in Settings, and optional. A member is in the portfolio of the title they hold ("Events Director"), and can be added to more from the Members page. Executives are grouped by role.
@@ -55,7 +57,7 @@ npm run db:seed      # demo society + accounts
 npm run dev
 ```
 
-App runs at `http://localhost:3000`. The seed prints demo logins (password `password123`).
+App runs at `http://localhost:3000`. The seed prints demo logins (password `password123`). To try first-run setup instead, skip the seed, set `SETUP_TOKEN` in `.env` and open `/setup?token=<that value>`.
 
 ## Environment
 
@@ -68,6 +70,8 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `SMTP_*`, `EMAIL_FROM` | Email notifications (optional) |
 | `MAX_FILE_SIZE_MB` | Upload size cap (default 10) |
 | `RUBRIC_SECRET_KEY` | Encrypts the stored Rubric session at rest (optional; `openssl rand -base64 32`) |
+| `SETUP_TOKEN` | Opens first-run setup on an empty database: `/setup?token=<value>`. Does nothing once an account exists |
+| `ADMIN_EMAIL` | Prefills the first account's email in setup (optional) |
 | `ENABLE_DEBUG_TOOLS` | `true` adds Settings > Debugging (database viewer, backup, restore, SQL). Off by default, always off with `DEMO_MODE` |
 
 ## Scripts
@@ -84,6 +88,7 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
 | `npm run check:passphrase` | Verifies the temporary-passphrase wordlist stays unique and large enough for the entropy it claims |
 | `npm run check:modules` | Verifies a switched-off feature module refuses exactly its own pages and API routes |
+| `npm run check:import` | Verifies the member import's CSV and XLSX readers and its row checks |
 | `npm run check:debug` | Verifies the database viewer masks credentials and the SQL runner refuses files that end its transaction |
 | `npm run rubric:snapshot` | Refreshes the demo's Rubric fixture from a connected deployment (anonymises people first) |
 

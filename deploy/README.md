@@ -44,11 +44,21 @@ point a tunnel hostname at the port.
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build --remove-orphans
    ```
 
-7. **Seed** the first admin (once per stack). The app runs `db push` on startup, so the
-   schema already exists; this just inserts the society + admin user:
+7. **First account** (once per stack). For a new society, put a long random
+   `SETUP_TOKEN` (`openssl rand -hex 24`) and optionally `ADMIN_EMAIL` in the env file
+   before the first deploy, then open `https://<domain>/setup?token=<SETUP_TOKEN>`. It
+   creates the first executive and the society (slug `SOCIETY_SLUG`), then runs the setup
+   wizard. The token only works while the database has no accounts, so it can stay set.
+
+   The SecSoc demo data comes from the seed instead (it creates UNSW Security Society
+   and its accounts, already marked as set up). The app runs `db push` on startup, so the
+   schema already exists:
    ```bash
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml --profile seed run --rm seed
    ```
+
+   Societies that existed before the wizard are marked as set up by a post-push fix, so
+   their executives never see it.
 
 ## Backups
 
