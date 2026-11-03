@@ -27,6 +27,8 @@ interface EditMemberDialogProps {
   currentRole: string;
   currentTitle: string | null;
   extraPortfolioIds: string[];
+  /** Imported and never given a passphrase: the reset button issues their first. */
+  notInvited?: boolean;
 }
 
 interface Portfolio {
@@ -42,6 +44,7 @@ export function EditMemberDialog({
   currentRole,
   currentTitle,
   extraPortfolioIds,
+  notInvited = false,
 }: EditMemberDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -113,12 +116,13 @@ export function EditMemberDialog({
   }
 
   async function handleReset() {
-    if (!confirm(`Reset ${memberName}'s password? Their current password stops working immediately.`)) return;
+    if (!notInvited && !confirm(`Reset ${memberName}'s password? Their current password stops working immediately.`)) return;
     setResetting(true);
     const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}/reset-password`, { method: "POST" });
     setResetting(false);
     if (res.ok) {
       setTempPassword((await res.json()).tempPassword);
+      if (notInvited) router.refresh(); // drops the "not invited" badge
     } else {
       const data = await res.json().catch(() => ({}));
       toast.error(data.error ?? "Failed to reset password");
@@ -213,6 +217,13 @@ export function EditMemberDialog({
                     Copy
                   </Button>
                 </div>
+              </div>
+            ) : notInvited ? (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Not invited yet: they have no way to sign in.</p>
+                <Button type="button" size="sm" onClick={handleReset} disabled={resetting}>
+                  {resetting ? "Issuing…" : "Issue passphrase"}
+                </Button>
               </div>
             ) : (
               <Button type="button" variant="outline" size="sm" onClick={handleReset} disabled={resetting}>

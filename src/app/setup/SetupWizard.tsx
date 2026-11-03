@@ -10,6 +10,7 @@ import { TitlesManager } from "@/components/settings/TitlesManager";
 import { FeaturesForm } from "@/components/settings/FeaturesForm";
 import { PoliciesForm } from "@/components/settings/PoliciesForm";
 import { DiscordWebhookSettings } from "@/components/settings/DiscordWebhookSettings";
+import { MemberImport } from "@/components/settings/MemberImport";
 
 // First-run setup, after the first account exists. Every step is the same component
 // as its Settings tab, so anything skipped or got wrong here is fixed there later.
@@ -51,6 +52,12 @@ const STEPS: Step[] = [
     blurb: "Optional. Anything your members should agree to before they submit a request.",
     kind: "form",
     body: (slug, next) => <PoliciesForm societySlug={slug} onSaved={next} />,
+  },
+  {
+    title: "Members",
+    blurb: "Optional. Bring in the rest of your committee from a spreadsheet, or add people one at a time later.",
+    kind: "live",
+    body: (slug) => <MemberImport societySlug={slug} />,
   },
   {
     title: "Discord",

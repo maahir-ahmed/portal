@@ -878,6 +878,15 @@ export const TOUR_STEPS: TourStep[] = [
       "The rules each request form shows before someone submits. The standard ones can't be changed. Add your society's own underneath, one per line, such as who has to approve spending. Members see both together, above the standard rules, and agree to them as one.",
   },
   {
+    id: "settings-import",
+    path: "/settings/members",
+    target: "settings-import",
+    minRole: "EXECUTIVE",
+    title: "Import members",
+    body:
+      "Add your whole committee at once from a spreadsheet. Download the template, fill it in, and upload it: the preview shows who will be added and flags anything to fix before a single person is written. Nobody is emailed. Each person shows as Not invited on the Members page until you issue them a passphrase.",
+  },
+  {
     id: "settings-rubric",
     path: "/settings/rubric",
     target: "settings-rubric",

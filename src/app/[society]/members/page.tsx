@@ -92,12 +92,22 @@ export default async function MembersPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Members</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{members.length} active members</p>
         </div>
-        {isExec && <InviteMemberDialog societySlug={societySlug} />}
+        {isExec && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              href={`/${societySlug}/settings/members`}
+              className="text-sm font-medium underline-offset-4 hover:underline"
+            >
+              Import from a spreadsheet
+            </Link>
+            <InviteMemberDialog societySlug={societySlug} />
+          </div>
+        )}
       </div>
 
       {/* Role totals across the whole committee */}
@@ -143,6 +153,7 @@ export default async function MembersPage({ params }: Props) {
                             currentRole={m.role}
                             currentTitle={m.title}
                             extraPortfolioIds={m.extraPortfolios.map((e) => e.portfolioId)}
+                            notInvited={m.inviteStatus === "NOT_INVITED"}
                           />
                         )}
                       </div>
@@ -154,6 +165,14 @@ export default async function MembersPage({ params }: Props) {
                         <span className={`text-xs px-2 py-0.5 rounded-full ${ROLE_COLORS[m.role]}`}>
                           {m.role.toLowerCase()}
                         </span>
+                        {m.inviteStatus === "NOT_INVITED" && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800"
+                            title="Imported, with no way to sign in yet. Issue a passphrase from the pencil button."
+                          >
+                            not invited
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

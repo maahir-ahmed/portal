@@ -57,6 +57,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
         });
+        await prisma.societyMembership.updateMany({
+          where: { userId: user.id, inviteStatus: "INVITED" },
+          data: { inviteStatus: "ACTIVE" },
+        });
 
         return {
           id: user.id,

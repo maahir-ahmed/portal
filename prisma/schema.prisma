@@ -95,6 +95,12 @@ enum SecretarialTier {
 
 // "Transactions only" records claims with no budget behind them: no budget page, no
 // prompt to set a year's budget, no category on a claim.
+enum InviteStatus {
+  NOT_INVITED
+  INVITED
+  ACTIVE
+}
+
 enum TreasuryMode {
   BUDGET
   TRANSACTIONS
@@ -274,6 +280,8 @@ model User {
   phone            String?
   zId              String?
   emailVerified    DateTime?
+  // Discord handle, from a member import. Not verified.
+  discordUsername  String?
   twoFactorEnabled Boolean   @default(false)
   twoFactorSecret  String?
   createdAt        DateTime  @default(now())
@@ -306,6 +314,10 @@ model SocietyMembership {
   portfolioId  String?
   title        String?
   isActive     Boolean  @default(true)
+  // How far this member is from signing in. Imported members start NOT_INVITED, with
+  // no password; issuing them a passphrase makes them INVITED, and their first sign-in
+  // ACTIVE. Everyone added any other way is ACTIVE from the start.
+  inviteStatus InviteStatus @default(ACTIVE)
   joinedAt     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
