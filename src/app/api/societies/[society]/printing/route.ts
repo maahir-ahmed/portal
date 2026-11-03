@@ -53,7 +53,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
     budgetFor(membership!.societyId, soc!.secretarialTier),
   ]);
 
-  return NextResponse.json({ requests, budget, tier: soc!.secretarialTier });
+  // Contact details are the requester's own phone and email: only executives (who
+  // arrange the printing) and the requester see them, as on the Members page.
+  const isExec = membership!.role === "EXECUTIVE";
+  const visible = requests.map((r) =>
+    isExec || r.submittedById === session!.user.id ? r : { ...r, contactPhone: null, contactEmail: null }
+  );
+  return NextResponse.json({ requests: visible, budget, tier: soc!.secretarialTier });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {

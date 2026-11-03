@@ -33,7 +33,7 @@ for approval; **info** = noted only.
 | F03 | High | requests | internal (exec-only) comments sent to every viewer in the RSC payload; content-request GET API too | fix | done 8d698fe |
 | F04 | Medium | treasury | owner amount edit not status-guarded at write (race with payout) | fix (guard); proposal (expectedAmount, audit before/after) | guard done (this commit); expectedAmount and audit before/after are proposals |
 | F05 | Medium | printing | allowance sums all-time spend, not per year | proposal | - |
-| F06 | Medium | printing | requester phone/email visible to every member (page + GET API) | fix API (unused by UI); proposal page | todo |
+| F06 | Medium | printing | requester phone/email visible to every member (page + GET API) | fix API (unused by UI); proposal page | API done (this commit); detail page is a proposal |
 | F07 | Medium | content | PATCH logs/notifies/posts a status change it didn't make | fix | done (this commit) |
 | F08 | Medium | requests | room-booking and content-request PATCH have no zod, 500 on bad input | fix (validation); proposal (owner status gate) | validation done (this commit); owner status gate is a proposal |
 | F09 | Low | dates | far-future/invalid dates accepted (yearOptions blowup) | fix | todo |
