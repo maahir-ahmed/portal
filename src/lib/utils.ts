@@ -169,3 +169,11 @@ export const EVENT_TYPES = [
 export const EVENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   EVENT_TYPES.map((t) => [t.value, t.label])
 );
+
+// Only a path on this site: sign-in uses redirect:false and router.push, which skips
+// NextAuth's own same-origin check, so /login?callbackUrl=https://evil would otherwise
+// send someone straight off to a lookalike page after they sign in. The proxy and the
+// setup page only ever set paths. "//x" and "/\\x" are other hosts to a browser.
+export function safeCallback(value: string | null): string {
+  return value && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\") ? value : "/";
+}

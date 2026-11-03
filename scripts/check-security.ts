@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
+import { safeCallback } from "../src/lib/utils";
 
 // Member-typed text in an executive's notification email stays text.
 const evil = `<a href="https://evil/login">Sign in</a><img src=x onerror=alert(1)>"'&`;
@@ -25,5 +26,11 @@ assert.equal(debugToolsEnabled(), false, "debug tools must be off on a multi-soc
 env({ SOCIETY_SLUG: "secsoc", DEMO_MODE: "1" });
 assert.equal(debugToolsEnabled(), false, "debug tools must be off on the demo");
 env({ ENABLE_DEBUG_TOOLS: undefined, DEMO_MODE: undefined, SOCIETY_SLUG: undefined });
+
+// After sign-in, only ever a path on this site.
+for (const evil of ["https://evil.example/login", "//evil.example", "/\\evil.example", "javascript:alert(1)", "", null]) {
+  assert.equal(safeCallback(evil), "/", `callbackUrl ${evil} must not leave the site`);
+}
+assert.equal(safeCallback("/requests/treasury?x=1"), "/requests/treasury?x=1", "a path still works");
 
 console.log("✅ security: audit fixes still in place");

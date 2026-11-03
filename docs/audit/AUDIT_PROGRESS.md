@@ -69,7 +69,7 @@ for approval; **info** = noted only.
 | F39 | Medium | members | add-member doesn't lowercase email, account unusable | proposal | - |
 | F40 | Medium | demo | demo visitor can change the shared account's email | fix | done (this commit) |
 | F41 | Medium | ahegs | directors can edit their own AHEGS row; AHEGS writes unaudited | proposal | - |
-| F42 | Low | auth | open redirect via login callbackUrl | fix | todo |
+| F42 | Low | auth | open redirect via login callbackUrl | fix | done (this commit) |
 | F43 | Low | auth | session update copies client-supplied name/email into the JWT | fix | todo |
 | F44 | Low | titles | titles accept another society's portfolioId | fix | todo |
 | F45 | Low | titles | renaming a title orphans its members | proposal | - |
