@@ -1,0 +1,21 @@
+# Keep secrets, data and local build output out of the build context. Without this,
+# `COPY . .` in the builder stage copied .env (and anything else in the checkout) into
+# the image's build layers.
+.git
+.github
+.claude
+.next
+node_modules
+uploads
+backups
+test-results
+playwright-report
+*.tsbuildinfo
+next-env.d.ts
+.env*
+!.env.example
+portal.env
+deploy/.env*
+*.pem
+CLAUDE.md
+AGENTS.md

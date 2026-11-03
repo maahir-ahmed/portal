@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "../src/lib/rubricCalls";
 import { encryptSecret, decryptSecret } from "../src/lib/secrets";
 import { anonymisePeople } from "../src/lib/rubricDemo";
+import { tierForMembers } from "../src/lib/printing";
 import snapshot from "../src/lib/rubricDemoSnapshot.json";
 
 function walk(dir: string): string[] {
@@ -19,16 +20,15 @@ function walk(dir: string): string[] {
 
 const files = walk("src").map((f) => [f, readFileSync(f, "utf8")] as const);
 const PROXY = "src/app/api/societies/[society]/rubric/call/route.ts";
+// The one function that sends the session to Rubric (postRubric), used by the proxy.
+const RUBRIC_CLIENT = "src/lib/rubric.ts";
 
-// 1. Only the proxy may talk to Rubric, and only it may read the session ID.
-const callers = files.filter(([f, s]) => s.includes("api.hellorubric.com") && !f.endsWith("route.ts"));
-assert.deepEqual(callers.map(([f]) => f), [], "only the server proxy may call Rubric directly");
-
+// 1. Only postRubric may talk to Rubric.
 const rubricHosts = files.filter(([, s]) => s.includes("https://api.hellorubric.com"));
 assert.deepEqual(
   rubricHosts.map(([f]) => f.replace(/\\/g, "/")),
-  [PROXY],
-  "api.hellorubric.com must appear only in the proxy route"
+  [RUBRIC_CLIENT],
+  "api.hellorubric.com must appear only in postRubric (src/lib/rubric.ts)"
 );
 
 // The settings form is the one place a credential legitimately passes through the
@@ -149,3 +149,8 @@ console.log(
     `session ID confined to the server and encrypted at rest, ` +
     `demo snapshot (${snapshot.capturedAt ?? "sample data"}) anonymised`
 );
+
+// 9. The member count picks Arc's club tier, and so the secretarial allowance.
+for (const [count, tier] of [[0, "BRONZE"], [74, "BRONZE"], [75, "SILVER"], [249, "SILVER"], [250, "GOLD"], [1000, "GOLD"]] as const) {
+  assert.equal(tierForMembers(count), tier, `${count} members should be ${tier}`);
+}

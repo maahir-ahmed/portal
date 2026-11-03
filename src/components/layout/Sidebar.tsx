@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { moduleForPage, pageEnabled } from "@/lib/modules";
+import { useModules } from "@/hooks/useModules";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { SessionUser } from "@/types";
 
@@ -135,6 +137,7 @@ interface SidebarProps {
 export function Sidebar({ user, societyName, societySlug, userRole, primaryColor = "#0052CC", societyLogo }: SidebarProps) {
   const pathname = usePathname();
   const prefix = `/${societySlug}`;
+  const modules = useModules(societySlug);
 
   const initials = user.name
     .split(" ")
@@ -170,6 +173,8 @@ export function Sidebar({ user, societyName, societySlug, userRole, primaryColor
         <div className="space-y-0.5">
           {navItems
             .filter((item) => !item.minRole || (ROLE_RANK[userRole] ?? 0) >= ROLE_RANK[item.minRole])
+            // Switched-off modules drop out; until the flags load, so do all module pages.
+            .filter((item) => (modules ? pageEnabled(modules, item.href) : !moduleForPage(item.href)))
             .map((item) => {
               const href = `${prefix}${item.href}`;
               const active = pathname === href || pathname.startsWith(href + "/");

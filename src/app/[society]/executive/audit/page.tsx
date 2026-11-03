@@ -51,6 +51,7 @@ export default async function AuditLogPage({ params, searchParams }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
   if (membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
@@ -147,7 +148,7 @@ export default async function AuditLogPage({ params, searchParams }: Props) {
                     )}
                   </div>
                   <span className="flex-shrink-0 whitespace-nowrap text-xs text-muted-foreground">
-                    {formatTimestamp(e.createdAt)}
+                    {formatTimestamp(e.createdAt, membership.society.timezone)}
                   </span>
                 </div>
               );

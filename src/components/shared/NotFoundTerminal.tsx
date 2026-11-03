@@ -34,12 +34,12 @@ export function NotFoundTerminal() {
         <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
       </div>
       <pre className="overflow-x-auto whitespace-pre-wrap break-all text-zinc-300">
-        <span className="text-[#00ffd1]">secsoc@portal</span>
+        <span className="text-[#00ffd1]">you@portal</span>
         <span className="text-zinc-500">:~$</span> find . -path <span className="text-zinc-100">{target}</span>
         {"\n"}
         <span className="text-zinc-500">find: no matches</span>
         {"\n\n"}
-        <span className="text-[#00ffd1]">secsoc@portal</span>
+        <span className="text-[#00ffd1]">you@portal</span>
         <span className="text-zinc-500">:~$</span> hint
         {"\n"}
         <span className="text-zinc-400">{quip}</span>

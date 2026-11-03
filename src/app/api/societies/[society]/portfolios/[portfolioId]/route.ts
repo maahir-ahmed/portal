@@ -5,7 +5,13 @@ import { z } from "zod";
 
 type Params = { society: string; portfolioId: string };
 
-const patchSchema = z.object({ name: z.string().min(1).max(60) });
+const patchSchema = z.object({
+  name: z.string().min(1).max(60).optional(),
+  // The role deadline reminders ping (Settings > Discord). "" or null clears it.
+  discordRoleId: z
+    .union([z.string().regex(/^\d{17,20}$/, "A role ID is the 17 to 20 digit number from Copy Role ID"), z.literal(""), z.null()])
+    .optional(),
+});
 
 async function load(userId: string, society: string, portfolioId: string) {
   const { membership, error } = await requireMembership(userId, society, "EXECUTIVE");
@@ -27,8 +33,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (error) return error;
 
   try {
-    const { name } = patchSchema.parse(await req.json());
-    const updated = await prisma.portfolio.update({ where: { id: portfolioId }, data: { name } });
+    const { name, discordRoleId } = patchSchema.parse(await req.json());
+    const updated = await prisma.portfolio.update({
+      where: { id: portfolioId },
+      data: { name, ...(discordRoleId !== undefined ? { discordRoleId: discordRoleId || null } : {}) },
+    });
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {

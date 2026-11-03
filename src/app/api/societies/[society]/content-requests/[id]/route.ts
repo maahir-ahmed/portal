@@ -4,6 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
+import { statusLabel } from "@/lib/utils";
 
 
 type Params = { society: string; id: string };
@@ -44,6 +45,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Invalid grant status" }, { status: 400 });
   }
 
+  if (
+    canEditCore &&
+    body.portfolioId &&
+    !(await prisma.portfolio.count({ where: { id: String(body.portfolioId), societyId: membership!.societyId } }))
+  ) {
+    return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+  }
+
   const updated = await prisma.contentRequest.update({
     where: { id },
     data: {
@@ -55,6 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       ...(canEditCore && typeof body.location === "string" ? { location: body.location } : {}),
       ...(canEditCore && typeof body.keyPoints === "string" ? { keyPoints: body.keyPoints } : {}),
       ...(canEditCore && body.deadline ? { deadline: new Date(body.deadline) } : {}),
+      ...(canEditCore && body.portfolioId !== undefined ? { portfolioId: body.portfolioId ? String(body.portfolioId) : null } : {}),
       ...(canEditCore && typeof body.bannerRequired === "boolean" ? { bannerRequired: body.bannerRequired } : {}),
       ...(canEditCore && typeof body.blurbRequired === "boolean" ? { blurbRequired: body.blurbRequired } : {}),
       ...(canEditCore && typeof body.rubricRequired === "boolean" ? { rubricRequired: body.rubricRequired } : {}),
@@ -114,8 +124,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   }
 
   // Edits the marketing channel's message in place, or posts it if this edit is the
-  // one that submits a draft.
-  await syncEventToDiscord(id);
+  // one that submits a draft, and says what changed in its thread.
+  await syncEventToDiscord(
+    id,
+    body.status && body.status !== request.status
+      ? `Status changed to **${statusLabel(body.status)}** by ${session!.user.name}.`
+      : `${session!.user.name} updated the request.`
+  );
 
   return NextResponse.json(updated);
 }

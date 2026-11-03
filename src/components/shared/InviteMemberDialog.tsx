@@ -104,7 +104,7 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email Address *</Label>
-            <Input id="email" name="email" type="email" placeholder="z1234567@ad.unsw.edu.au" required />
+            <Input id="email" name="email" type="email" placeholder="name@example.com" required />
           </div>
           <div className="space-y-2">
             <Label>Role *</Label>

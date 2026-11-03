@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
-import { BASE_PORTFOLIOS } from "@/lib/portfolios";
 import { z } from "zod";
 
 const createSchema = z.object({ name: z.string().min(1).max(60) });
@@ -18,14 +17,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
   const portfolios = await prisma.portfolio.findMany({
     where: { societyId: membership!.societyId },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    include: { _count: { select: { memberships: true, titles: true } } },
+    include: { _count: { select: { memberships: true, extraMembers: true, titles: true } } },
   });
 
   return NextResponse.json(
     portfolios.map((p) => ({
       id: p.id,
       name: p.name,
-      memberCount: p._count.memberships,
+      discordRoleId: p.discordRoleId,
+      // Extra links never repeat the title's portfolio, so the two never double count.
+      memberCount: p._count.memberships + p._count.extraMembers,
       titleCount: p._count.titles,
     }))
   );
@@ -41,19 +42,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
 
   try {
     const body = await req.json();
-
-    // { defaults: true } creates the nine committee portfolios in one go.
-    if (body?.defaults === true) {
-      await prisma.portfolio.createMany({
-        data: BASE_PORTFOLIOS.map((p, i) => ({
-          societyId: membership!.societyId,
-          name: p.name,
-          sortOrder: i + 1,
-        })),
-        skipDuplicates: true,
-      });
-      return NextResponse.json({ ok: true }, { status: 201 });
-    }
 
     const { name } = createSchema.parse(body);
     const existing = await prisma.portfolio.findFirst({

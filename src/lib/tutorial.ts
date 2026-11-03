@@ -1,3 +1,5 @@
+import { pageEnabled, type ModuleFlags, type ModuleKey } from "./modules";
+
 // Guided tour definition: every step is an element to point at, plus the copy for
 // the hovering box. Steps whose `minRole` outranks the viewer are dropped, so the
 // tour only ever shows features the viewer can actually use.
@@ -32,6 +34,9 @@ export interface TourStep {
   click?: string;
   /** Viewers below this role skip the step. */
   minRole?: TourRole;
+  // A module the step's content belongs to when its page doesn't (a queue section, a
+  // card on an always-on page). Steps on a module's own page are dropped without this.
+  module?: ModuleKey;
   /** welcome = creates the demo records; cleanup = deletes them. */
   kind?: "welcome" | "cleanup";
 }
@@ -205,6 +210,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "content-rubric",
     target: "content-rubric",
+    module: "ticketing",
     title: "The Rubric event",
     body:
       "Where the event's ticketing page comes from. An executive creates the event on the Rubric portal and assigns it here, or pastes in a link. A QR code with a transparent background is then made automatically, ready to drop into a poster. Once it's linked you also see attendance numbers and the status of the Arc activity grant.",
@@ -365,6 +371,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "treasury-category",
     target: "treasury-category",
+    module: "budget",
     title: "Budget category",
     body:
       "Which part of the budget the money comes out of. This is what the Spending Budget page adds up. If you're not sure, pick “Not sure” and an executive will sort it out later.",
@@ -407,6 +414,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "claim-category",
     target: "claim-category",
+    module: "budget",
     minRole: "EXECUTIVE",
     title: "Reclassifying",
     body:
@@ -434,7 +442,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "printing-allowance",
     title: "Secretarial allowance",
     body:
-      "Your Arc club tier sets the allowance (Bronze $150, Silver $225, Gold $405), and the bar shows how much is used. Only approved jobs count against it, so pending requests don't use any of it up. Deleting an approved job gives its cost back.",
+      "Your Arc club tier sets the allowance (Bronze $150, Silver $225, Gold $405). With Rubric connected, the tier comes from your active member count, checked daily. The bar shows how much is used. Only approved jobs count against it, so pending requests don't use any of it up. Deleting an approved job gives its cost back.",
   },
   {
     id: "printing-rates",
@@ -564,6 +572,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "queue-rubric",
     target: "queue-rubric",
+    module: "ticketing",
     minRole: "EXECUTIVE",
     title: "Rubric events to create",
     body:
@@ -572,6 +581,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "queue-grants",
     target: "queue-grants",
+    module: "grants",
     minRole: "EXECUTIVE",
     title: "Activity grants to submit",
     body: "Once an event with a Rubric event has happened, it waits here until its activity grant is submitted. Arc only accepts a grant within 30 days of the event, so each one counts down and turns amber in its last week and red in its last two days. It also shows whether anyone has uploaded activity photos yet.",
@@ -579,6 +589,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "queue-rooms",
     target: "queue-rooms",
+    module: "roomBookings",
     minRole: "EXECUTIVE",
     title: "Room bookings to send to Arc",
     body:
@@ -587,6 +598,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "queue-printing",
     target: "queue-printing",
+    module: "printing",
     minRole: "EXECUTIVE",
     title: "Printing in progress",
     body:
@@ -781,12 +793,12 @@ export const TOUR_STEPS: TourStep[] = [
   // ── Settings ───────────────────────────────────────────────────────────────
   {
     id: "nav-settings",
-    path: "/settings",
+    path: "/settings/general",
     target: "nav-settings",
     minRole: "EXECUTIVE",
     title: "Society settings",
     body:
-      "Settings for the whole society. Only executives can change them.",
+      "Settings for the whole society, split into tabs. Only executives can change them.",
   },
   {
     id: "settings-general",
@@ -799,10 +811,11 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "settings-tier",
     target: "settings-tier",
+    module: "printing",
     minRole: "EXECUTIVE",
     title: "Club tier",
     body:
-      "Your Arc club tier, which sets the printing allowance on the Printing page.",
+      "Your Arc club tier, which sets the printing allowance on the Printing page. With Rubric connected it follows your member count; otherwise pick it here.",
   },
   {
     id: "settings-years",
@@ -829,12 +842,13 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "settings-portfolios",
+    path: "/settings/portfolios",
     target: "settings-portfolios",
     minRole: "EXECUTIVE",
     title: "Portfolios",
     body:
-      "The areas the committee is split into. A new society starts with none, and one button adds the nine standard ones. You can add, rename and remove portfolios here.\n\n" +
-      "Removing a portfolio takes its titles and members out of it rather than deleting them, and its AHEGS meetings become whole-committee meetings. Nobody is put in a portfolio directly, so each portfolio needs titles set up below.",
+      "The areas the committee is split into. A new society starts with none. You can add, rename and remove portfolios here.\n\n" +
+      "Removing a portfolio takes its titles and members out of it rather than deleting them, and its AHEGS meetings become whole-committee meetings. A member is in the portfolio of their title, set up below, and can be added to more from the Members page.",
   },
   {
     id: "settings-titles",
@@ -845,7 +859,36 @@ export const TOUR_STEPS: TourStep[] = [
       "The titles you can choose from when adding or editing a member, grouped by role. Each director and subcommittee title belongs to a portfolio, and that's what groups people on the Members page. Move a title to another portfolio and everyone with that title moves too. Executive titles don't have a portfolio.",
   },
   {
+    id: "settings-features",
+    path: "/settings/features",
+    target: "settings-features",
+    minRole: "EXECUTIVE",
+    title: "Features",
+    body:
+      "Switch off the parts of the portal your society doesn't use, like room bookings or AHEGS. They disappear from the menu, and nothing is deleted, so switching one back on brings everything back.\n\n" +
+      "Below that, choose whether treasury plans spending with a yearly budget or just records claims as they come in.",
+  },
+  {
+    id: "settings-policies",
+    path: "/settings/policies",
+    target: "settings-policies",
+    minRole: "EXECUTIVE",
+    title: "Policies",
+    body:
+      "The rules each request form shows before someone submits. The standard ones can't be changed. Add your society's own underneath, one per line, such as who has to approve spending. Members see both together, above the standard rules, and agree to them as one.",
+  },
+  {
+    id: "settings-import",
+    path: "/settings/members",
+    target: "settings-import",
+    minRole: "EXECUTIVE",
+    title: "Import members",
+    body:
+      "Add your whole committee at once from a spreadsheet. Download the template, fill it in, and upload it: the preview shows who will be added and flags anything to fix before a single person is written. Nobody is emailed. Each person shows as Not invited on the Members page until you issue them a passphrase.",
+  },
+  {
     id: "settings-rubric",
+    path: "/settings/rubric",
     target: "settings-rubric",
     minRole: "EXECUTIVE",
     title: "Rubric integration",
@@ -854,6 +897,7 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "settings-discord",
+    path: "/settings/discord",
     target: "settings-discord",
     minRole: "EXECUTIVE",
     title: "Discord",
@@ -999,13 +1043,17 @@ export function normalisePage(pathname: string, slug?: string): string {
 }
 
 /** Steps for one page only. Welcome and cleanup belong to the full tour. */
-export function stepsForPage(role: string | undefined, page: string): TourStep[] {
-  return stepsFor(role).filter((step) => !step.kind && PAGE_BY_STEP[step.id] === page);
+export function stepsForPage(role: string | undefined, page: string, modules?: ModuleFlags | null): TourStep[] {
+  return stepsFor(role, modules).filter((step) => !step.kind && PAGE_BY_STEP[step.id] === page);
 }
 
-export function stepsFor(role: string | undefined): TourStep[] {
+// Steps are dropped by role, and by feature module: a step on a switched-off module's
+// page would navigate to a 404.
+export function stepsFor(role: string | undefined, modules?: ModuleFlags | null): TourStep[] {
   const rank = ROLE_RANK[(role ?? "SUBCOMMITTEE") as TourRole] ?? 1;
-  return TOUR_STEPS.filter((s) => !s.minRole || rank >= ROLE_RANK[s.minRole]);
+  return TOUR_STEPS.filter(
+    (s) => (!s.minRole || rank >= ROLE_RANK[s.minRole]) && (!modules || (pageEnabled(modules, PAGE_BY_STEP[s.id]) && (!s.module || modules[s.module])))
+  );
 }
 
 export function resolvePath(step: TourStep, ids: DemoIds): string | undefined {

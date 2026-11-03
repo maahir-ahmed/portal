@@ -19,6 +19,12 @@ export const SECRETARIAL_ALLOWANCE: Record<SecretarialTier, number> = {
   GOLD: 405,
 };
 
+// Arc's club tiers by active Arc members: 5-74 Bronze, 75-249 Silver, 250+ Gold
+// (arc.unsw.edu.au/clubs/club-forms/grants). Under 5 can't affiliate; Bronze anyway.
+export function tierForMembers(count: number): SecretarialTier {
+  return count >= 250 ? "GOLD" : count >= 75 ? "SILVER" : "BRONZE";
+}
+
 export type PaperSize = "A4" | "A3";
 export type Sided = "SINGLE" | "DOUBLE_SHORT" | "DOUBLE_LONG";
 export type Colour = "BW" | "COLOUR";

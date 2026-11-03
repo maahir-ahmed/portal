@@ -93,6 +93,19 @@ enum SecretarialTier {
   GOLD
 }
 
+// "Transactions only" records claims with no budget behind them: no budget page, no
+// prompt to set a year's budget, no category on a claim.
+enum InviteStatus {
+  NOT_INVITED
+  INVITED
+  ACTIVE
+}
+
+enum TreasuryMode {
+  BUDGET
+  TRANSACTIONS
+}
+
 // Columns of the executive board. Fixed set: it is a to-do board, not a workflow.
 enum BoardLane {
   TODO
@@ -175,12 +188,39 @@ model Society {
   // The Discord role pinged on each new request (the marketing director role). A role
   // ID, not a secret; Discord only pings a role by its numeric ID.
   eventsWebhookRoleId    String?
+  // Whether that webhook's channel is a forum, where each request is its own post.
+  // Learnt from Discord on the first post (src/lib/discordEvents.ts), and reset when the
+  // webhook is replaced.
+  eventsWebhookForum     Boolean      @default(false)
   secretarialTier      SecretarialTier @default(BRONZE)
+  // Active members on Rubric, which set secretarialTier when Rubric is connected
+  // (refreshArcTier in src/lib/rubric.ts). Null when it has never been read.
+  arcMemberCount       Int?
+  arcMemberCountAt     DateTime?
   // The academic year AHEGS is being collated for. Set in Settings because it does
   // not follow the calendar: a submission is prepared over one year and lodged at its
   // end, so the page must not roll over to a new, empty year on 1 January. Null falls
   // back to the calendar year.
   ahegsYear            Int?   // superseded by SocietyYear.term3End; unread, kept so db push drops nothing
+  // Feature modules (Settings > Features, src/lib/modules.ts). Off hides the section and
+  // refuses its API; nothing is deleted. Default on, which is how every stack ran before
+  // these existed.
+  moduleEvents         Boolean      @default(true)
+  moduleRoomBookings   Boolean      @default(true)
+  modulePrinting       Boolean      @default(true)
+  moduleGrants         Boolean      @default(true)
+  moduleTicketing      Boolean      @default(true)
+  moduleBoard          Boolean      @default(true)
+  moduleAhegs          Boolean      @default(true)
+  treasuryMode         TreasuryMode @default(BUDGET)
+  // IANA zone that real moments (createdAt and the like) are shown in. Typed-in dates
+  // are naive wall-clock and ignore it (see formatTimestamp in src/lib/utils.ts).
+  timezone             String       @default("Australia/Sydney")
+  // First-run setup (/setup). setupStep is the step to resume at; setupCompletedAt
+  // set means the wizard is done and never shown again. A post-push fix marks every
+  // society that existed before the wizard as done.
+  setupStep            Int          @default(0)
+  setupCompletedAt     DateTime?
   createdAt            DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -199,6 +239,22 @@ model Society {
   ahegsEvidence    AhegsEvidence[]
   ahegsMeetings    AhegsMeeting[]
   years            SocietyYear[]
+  policyAdditions  PolicyAddition[]
+}
+
+// A society's own lines on top of a request type's base policy (src/lib/policies.ts),
+// such as "Get approval in the exec Discord before buying". kind is a PolicyKind,
+// checked in code so a new request type needs no enum change.
+model PolicyAddition {
+  id        String   @id @default(cuid())
+  societyId String
+  kind      String
+  text      String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  society Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
+
+  @@unique([societyId, kind])
 }
 
 // The two dates each year that decide which year a record belongs to. Records keep
@@ -232,6 +288,11 @@ model User {
   phone            String?
   zId              String?
   emailVerified    DateTime?
+  // Discord handle, from a member import. Not verified.
+  discordUsername  String?
+  // Their Discord account's ID, stored the first time they use the /print command
+  // (src/lib/discordBot.ts). Unique: one portal account per Discord account.
+  discordUserId    String?   @unique
   twoFactorEnabled Boolean   @default(false)
   twoFactorSecret  String?
   createdAt        DateTime  @default(now())
@@ -264,6 +325,10 @@ model SocietyMembership {
   portfolioId  String?
   title        String?
   isActive     Boolean  @default(true)
+  // How far this member is from signing in. Imported members start NOT_INVITED, with
+  // no password; issuing them a passphrase makes them INVITED, and their first sign-in
+  // ACTIVE. Everyone added any other way is ACTIVE from the start.
+  inviteStatus InviteStatus @default(ACTIVE)
   joinedAt     DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -272,28 +337,49 @@ model SocietyMembership {
   portfolio   Portfolio?   @relation(fields: [portfolioId], references: [id])
   ahegsEntries AhegsEntry[]
   ahegsAttendance AhegsAttendance[]
+  extraPortfolios MemberPortfolio[]
 
   @@unique([userId, societyId])
   @@index([societyId])
   @@index([userId])
 }
 
-// An area of the committee (Careers, Creatives, CTF, ...). Each one has a director
-// title and a subcom title; a member's portfolio follows from the title they hold,
-// so it is never set directly. Executives are grouped by role and hold none.
+// An area of the committee (Events, Marketing, Sponsorship, ...). A member's main
+// portfolio follows from the title they hold, so SocietyMembership.portfolioId is
+// never set directly; MemberPortfolio adds any others. Executives are grouped by
+// role and hold none through their title.
 model Portfolio {
   id        String   @id @default(cuid())
   societyId String
   name      String
   sortOrder Int      @default(0)
+  // The Discord role pinged by deadline reminders for events this portfolio runs.
+  discordRoleId String?
   createdAt DateTime @default(now())
 
   society     Society             @relation(fields: [societyId], references: [id], onDelete: Cascade)
   memberships SocietyMembership[]
+  contentRequests ContentRequest[]
   titles      SocietyTitle[]
   ahegsMeetings AhegsMeeting[]
+  extraMembers MemberPortfolio[]
 
   @@unique([societyId, name])
+}
+
+// The portfolios a member is in beyond the one their title gives them: a CTF director
+// who also helps run Socials, or an executive who looks after Sponsorship. Read
+// together with portfolioId through memberPortfolioIds (src/lib/titles.ts).
+model MemberPortfolio {
+  id           String @id @default(cuid())
+  membershipId String
+  portfolioId  String
+
+  membership SocietyMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  portfolio  Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, portfolioId])
+  @@index([portfolioId])
 }
 
 // ─── Auth (NextAuth) ──────────────────────────────────────────────────────────
@@ -361,6 +447,9 @@ model ContentRequest {
   // The events-webhook message this request was posted as, so an edit here edits it
   // there instead of posting again. Null until the request is first submitted.
   discordMessageId String?
+  // The portfolio running the event, if the submitter picked one. Its Discord role is
+  // who the deadline reminders ping (src/lib/reminders.ts).
+  portfolioId     String?
   bannerDone      Boolean              @default(false)
   blurbDone       Boolean              @default(false)
   createdAt       DateTime             @default(now())
@@ -369,13 +458,29 @@ model ContentRequest {
   society      Society @relation(fields: [societyId], references: [id], onDelete: Cascade)
   submittedBy  User    @relation("ContentRequestSubmitter", fields: [submittedById], references: [id])
   assignedTo   User?   @relation("ContentRequestAssignee", fields: [assignedToId], references: [id])
+  portfolio    Portfolio? @relation(fields: [portfolioId], references: [id], onDelete: SetNull)
   thread       Thread?
   deliverables ContentDeliverable[]
   photos       EventPhoto[]
   expenses     TreasuryRequest[]
+  reminders    EventReminder[]
 
   @@index([societyId])
   @@index([status])
+}
+
+// The deadline stages (src/lib/urgency.ts) a request has reached, one row each, so a
+// reminder goes out once per stage however often the job runs or the app restarts.
+// The row is written before the Discord post, and removed if the post fails.
+model EventReminder {
+  id               String   @id @default(cuid())
+  contentRequestId String
+  stage            String
+  sentAt           DateTime @default(now())
+
+  contentRequest ContentRequest @relation(fields: [contentRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([contentRequestId, stage])
 }
 
 // Photos taken at the event. Arc's activity grant asks for evidence the event ran,
@@ -812,6 +917,17 @@ model BoardCard {
   createdBy User    @relation(fields: [createdById], references: [id])
 
   @@index([societyId, lane])
+}
+
+// ─── Post-push data fixes ─────────────────────────────────────────────────────
+
+// Which prisma/post-push/*.sql files have run (scripts/post-push.mjs). Modelled only
+// so db push keeps it: a table missing from this schema is dropped on the next push.
+model AppliedFix {
+  name      String   @id
+  appliedAt DateTime @default(now())
+
+  @@map("_applied_fixes")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

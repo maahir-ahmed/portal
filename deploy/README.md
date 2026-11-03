@@ -44,36 +44,87 @@ point a tunnel hostname at the port.
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build --remove-orphans
    ```
 
-7. **Seed** the first admin (once per stack). The app runs `db push` on startup, so the
-   schema already exists; this just inserts the society + admin user:
+7. **First account** (once per stack). For a new society, put a long random
+   `SETUP_TOKEN` (`openssl rand -hex 24`) and optionally `ADMIN_EMAIL` in the env file
+   before the first deploy, then open `https://<domain>/setup?token=<SETUP_TOKEN>`. It
+   creates the first executive and the society (slug `SOCIETY_SLUG`), then runs the setup
+   wizard. The token only works while the database has no accounts, so it can stay set.
+
+   The SecSoc demo data comes from the seed instead (it creates UNSW Security Society
+   and its accounts, already marked as set up). The app runs `db push` on startup, so the
+   schema already exists:
    ```bash
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml --profile seed run --rm seed
    ```
 
+   Societies that existed before the wizard are marked as set up by a post-push fix, so
+   their executives never see it.
+
 ## Backups
 
-The `backup` service in each stack dumps the database and archives the uploads volume
-once a day, and once on start. No crontab: an earlier cron line lived here for months
-without ever being installed, and nothing was backed up.
+The `backup` service in each stack backs up the database and the uploads volume
+together once a day, and once on start. No crontab: an earlier cron line lived here for
+months without ever being installed, and nothing was backed up.
 
-Files land in `${BACKUP_DIR}` (default `~/containers/rubric-backups`) as
-`<stack>_<date>.sql.gz` and `<stack>_uploads_<date>.tar.gz`, keeping
-`${BACKUP_KEEP_DAYS}` days (14). Change the hour with `BACKUP_HOUR` in the env file.
+Each backup is one archive in `${BACKUP_DIR}` (default `~/containers/rubric-backups`),
+`<stack>_<date>.tar.gz`, holding `database.sql`, `uploads/` and a `manifest.json` that
+ties the two together. `${BACKUP_KEEP_DAYS}` days (14) are kept. Change the hour with
+`BACKUP_HOUR` in the env file. The same archive restores from the command line below or
+from Settings > Debugging, and either can restore the other's.
 
 ```bash
+C="docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml"
+
 # back up right now
-docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml run --rm backup once
+$C run --rm backup once
 # what it has been doing
 docker logs rubric_prod_backup
 
-# restore a database dump (stops the app first — it will not restore under load)
+# check an archive is whole before relying on it
+$C run --rm backup validate /backups/rubric_prod_2026-11-03_030000.tar.gz
+
+# restore: stop the app (the web container shows the maintenance page meanwhile),
+# replace the database and uploads, start it again (which brings the schema up to date)
+$C stop app
+$C run --rm backup restore /backups/rubric_prod_2026-11-03_030000.tar.gz
+$C start app
+```
+
+The restore replaces the whole database in one transaction, so a dump that fails
+partway changes nothing. Backups from before November 2026 are two files,
+`<stack>_<date>.sql.gz` and `<stack>_uploads_<date>.tar.gz`; restore those by hand:
+
+```bash
 gunzip -c ~/containers/rubric-backups/rubric_prod_2026-08-28_0300.sql.gz \
   | docker exec -i rubric_prod-db-1 psql -U society_user -d society_platform
-
-# restore the uploads volume
 docker run --rm -v rubric_prod_uploads_data:/uploads -v ~/containers/rubric-backups:/b alpine \
   tar xzf /b/rubric_prod_uploads_2026-08-28_0300.tar.gz -C /uploads
 ```
+
+## Debugging tab
+
+`ENABLE_DEBUG_TOOLS=true` in a stack's env file adds Settings > Debugging for its
+executives: a read-only database viewer (passwords, tokens, sessions, webhooks and bank
+details masked), backups to download, restore from an uploaded archive, and running a
+`.sql` file in one transaction. Restore and SQL need the society's name typed in and take
+a backup first; all three are in the audit log. It is off by default, and forced off with
+`DEMO_MODE=1`, where every visitor is an executive.
+
+Archives made in the tab go to the `debug_backups` volume (the app runs as a user that
+cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere.
+
+## Discord reminders and the /print bot
+
+Deadline reminders are off on a stack until `DISCORD_REMINDERS=on` is in its env file
+(the self-host installer sets it), so upgrading SecSoc or PCSoc changes nothing until
+you add it. Then a timer in `src/instrumentation.ts` checks every 10 minutes, and does
+nothing for a society without an events webhook. The first pass only records where each
+open request stands, so nothing pings until a request's deadline actually moves into a
+more urgent stage.
+
+The `/print` bot is a spike, off unless `ENABLE_DISCORD_BOT=true` with `DISCORD_APP_ID`,
+`DISCORD_PUBLIC_KEY` and `DISCORD_BOT_TOKEN` set. Setup and findings are in
+[docs/DISCORD_BOT_SPIKE.md](../docs/DISCORD_BOT_SPIKE.md).
 
 ## Demo stack (no login)
 
@@ -110,4 +161,32 @@ there is no login step. Consequences, all deliberate:
 
 ## Notes
 - Schema is applied with `prisma db push` (no migrations dir). Fine for now; add a migrations history later for safe prod schema changes.
-- App ports are NOT published to the host; only cloudflared (via the `edge` network) can reach them.
+- Data changes a schema change needs (a backfill, keeping an existing society's behaviour)
+  go in `prisma/post-push/*.sql`. The app applies each once, after `db push`, on start;
+  `_applied_fixes` records which have run. A failing fix stops the app starting, with
+  nothing from it kept.
+- The app itself is never published to the host. Only the `web` (nginx) container is,
+  on `${APP_BIND:-0.0.0.0}:${APP_PORT}`, which is what the box's cloudflared reaches through
+  `host.docker.internal`.
+- The prisma CLI that runs `db push` on start is baked into the app image at the
+  lockfile's version, so a start needs no network. Bump it with `package.json`.
+
+## Self-hosting and the published images
+
+The same compose file runs self-hosted portals ([docs/SELF_HOSTING.md](../docs/SELF_HOSTING.md)).
+The differences are all settings in that stack's `portal.env`, written by `./portal install`:
+
+- `APP_IMAGE`, `WEB_IMAGE`, `BACKUP_IMAGE` point at the published images instead of the
+  stack-named local builds. Unset (as on the hosted stacks), they default to
+  `${STACK}-app` and so on, the names compose gave them before.
+- `APP_BIND=127.0.0.1`, since the tunnel or Caddy is on the compose network.
+- `METHOD` picks the `cloudflare` profile (a `cloudflared` container using
+  `TUNNEL_TOKEN`) or the `caddy` profile (`caddy reverse-proxy` for `DOMAIN`, ports 80
+  and 443). The hosted stacks use neither, so neither starts there.
+
+[.github/workflows/images.yml](../.github/workflows/images.yml) publishes
+`ghcr.io/<owner>/<repo>-app`, `-web` and `-backup` for amd64 and arm64 on every push to
+`main` (`latest`) and on `v*` tags. **After its first run, check each of the three packages
+is public** (GitHub, your profile, Packages, the package, Package settings, Change
+visibility): a new package can start private, and self-hosters then can't download it
+(the installer falls back to building from source, which works but is slow).

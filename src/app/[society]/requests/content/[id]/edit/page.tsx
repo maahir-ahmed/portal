@@ -39,6 +39,7 @@ export default async function EditContentRequestPage({ params }: Props) {
         blurbRequired: request.blurbRequired,
         rubricRequired: request.rubricRequired,
         otherNotes: request.otherNotes,
+        portfolioId: request.portfolioId,
       }}
     />
   );

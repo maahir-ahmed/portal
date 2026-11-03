@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { EXTRA_PORTFOLIOS, memberPortfolioIds } from "@/lib/titles";
 import { AhegsClient } from "@/components/ahegs/AhegsClient";
 import { ahegsScope, canTouchPortfolio, resolveRow } from "@/lib/ahegs";
 import { ahegsYearOf, FIRST_YEAR, parseYear } from "@/lib/years";
@@ -27,11 +28,12 @@ export default async function AhegsPage({ params, searchParams }: Props) {
     include: {
       society: { select: { name: true } },
       user: { select: { name: true, email: true, zId: true, phone: true } },
+      ...EXTRA_PORTFOLIOS,
     },
   });
   if (!membership || membership.role === "SUBCOMMITTEE") redirect(`/${societySlug}/dashboard`);
 
-  const scope = ahegsScope(membership.role, membership.portfolioId);
+  const scope = ahegsScope(membership.role, memberPortfolioIds(membership));
   // AHEGS years end with Term 3 (src/lib/years.ts), so the page rolls over to the next
   // year only once this year's Term 3 is over, not on 1 January.
   const calendar = await prisma.societyYear.findMany({ where: { societyId: membership.societyId } });
@@ -53,7 +55,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
           { ahegsEntries: { some: { year, included: true } } },
         ],
       },
-      include: { user: { select: { name: true, email: true, zId: true } } },
+      include: { user: { select: { name: true, email: true, zId: true } }, ...EXTRA_PORTFOLIOS },
       orderBy: { joinedAt: "asc" },
     }),
     prisma.ahegsEntry.findMany({ where: { societyId: membership.societyId, year } }),
@@ -87,6 +89,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
           membershipId: m.id,
           role: m.role,
           portfolioId: m.portfolioId,
+          portfolioIds: memberPortfolioIds(m),
           title: m.title,
           isActive: m.isActive,
           joinedAt: m.joinedAt,
@@ -101,7 +104,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
     )
     // A director sees only their own portfolio. Filtering here, on the server, means
     // the other portfolios' names, zIDs and emails never reach their browser.
-    .filter((r) => canTouchPortfolio(scope, r.portfolioId));
+    .filter((r) => canTouchPortfolio(scope, r.portfolioIds));
 
   // Same rule for the meetings list: hours counted everything, but only meetings the
   // caller owns are sent down, so another portfolio's minutes stay private.

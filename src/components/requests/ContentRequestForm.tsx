@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useModules } from "@/hooks/useModules";
+import { usePolicy } from "@/hooks/usePolicy";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ export interface ContentRequestInitial {
   blurbRequired: boolean;
   rubricRequired: boolean;
   otherNotes: string | null;
+  portfolioId: string | null;
 }
 
 // Stored instant -> value for <input type="datetime-local">. Dates are treated as
@@ -37,6 +40,16 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
   const editing = !!initial;
   const [loading, setLoading] = useState(false);
   const [rubricRequired, setRubricRequired] = useState(initial?.rubricRequired ?? false);
+  const modules = useModules(societySlug);
+  const policy = usePolicy(societySlug, "CONTENT");
+  const [portfolios, setPortfolios] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch(`/api/societies/${societySlug}/portfolios`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setPortfolios)
+      .catch(() => {});
+  }, [societySlug]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,6 +69,8 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
       blurbRequired: form.get("blurbRequired") === "true",
       rubricRequired: form.get("rubricRequired") === "true",
       otherNotes: form.get("otherNotes") || null,
+      // Left out when the society has no portfolios, so an edit doesn't clear one.
+      ...(form.has("portfolioId") ? { portfolioId: form.get("portfolioId") || null } : {}),
       ...(editing ? {} : { status: form.get("action") === "submit" ? "SUBMITTED" : "DRAFT" }),
     };
 
@@ -97,6 +112,13 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
         </div>
       </div>
 
+      {/* No base policy for content: this shows only once the society adds its own. */}
+      {policy.length > 0 && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 space-y-1.5">
+          {policy.map((rule, i) => <p key={i}>{rule}</p>)}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card data-tour="content-form">
           <CardHeader>
@@ -119,7 +141,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location *</Label>
-              <Input id="location" name="location" placeholder="e.g. CATS Room, UNSW" defaultValue={initial?.location} required />
+              <Input id="location" name="location" placeholder="e.g. Main Hall, Level 2" defaultValue={initial?.location} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="keyPoints">Key Points *</Label>
@@ -137,6 +159,23 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
               <DateTimeField id="deadline" name="deadline" defaultValue={dtLocal(initial?.deadline)} required />
               <p className="text-xs text-muted-foreground">When do you need the content ready by?</p>
             </div>
+            {portfolios.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="portfolioId">Which portfolio is running this?</Label>
+                <select
+                  id="portfolioId"
+                  name="portfolioId"
+                  defaultValue={initial?.portfolioId ?? ""}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">Not sure, or none</option>
+                  {portfolios.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">They get the reminders on Discord as the deadline gets close.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -150,24 +189,30 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
               { name: "bannerRequired", label: "Banner / Graphic", desc: "Social media banner or event graphic", checked: initial?.bannerRequired },
               { name: "blurbRequired", label: "Event Blurb", desc: "Written description for the event", checked: initial?.blurbRequired },
               { name: "rubricRequired", label: "Rubric Event", desc: "Requires executive to create a Rubric event + QR code", checked: initial?.rubricRequired },
-            ] as const).map(({ name, label, desc, checked }) => (
-              <label key={name} className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="checkbox"
-                  name={name}
-                  value="true"
-                  defaultChecked={checked ?? false}
-                  onChange={name === "rubricRequired" ? (e) => setRubricRequired(e.target.checked) : undefined}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300"
-                />
-                <div>
-                  <p className="font-medium text-sm">{label}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-              </label>
-            ))}
+            ] as const).map(({ name, label, desc, checked }) =>
+              // With the Rubric portal off there is nobody to make the event, so the
+              // option goes, but an edit must not quietly clear what was asked for.
+              name === "rubricRequired" && modules && !modules.ticketing ? (
+                <input key={name} type="hidden" name={name} value={checked ? "true" : ""} />
+              ) : (
+                <label key={name} className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    name={name}
+                    value="true"
+                    defaultChecked={checked ?? false}
+                    onChange={name === "rubricRequired" ? (e) => setRubricRequired(e.target.checked) : undefined}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                  />
+                  <div>
+                    <p className="font-medium text-sm">{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </div>
+                </label>
+              )
+            )}
 
-            {rubricRequired && (
+            {rubricRequired && modules?.ticketing !== false && (
               <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-sm text-orange-800">
                 <strong>Note:</strong> Selecting Rubric Event means an executive will need to create the Rubric event, attach the link, and generate a QR code.
               </div>

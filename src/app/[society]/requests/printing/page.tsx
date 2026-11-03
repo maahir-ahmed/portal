@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { PrintingRates } from "@/components/requests/PrintingRates";
+import { refreshArcTier } from "@/lib/rubric";
 import { Plus, FileText, Info } from "lucide-react";
 
 interface Props {
@@ -22,12 +23,16 @@ export default async function PrintingRequestsPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { id: true, secretarialTier: true } } },
+    select: { societyId: true },
   });
   if (!membership) redirect("/");
 
-  const societyId = membership.society.id;
-  const tier = membership.society.secretarialTier;
+  const societyId = membership.societyId;
+  await refreshArcTier(societyId);
+  const { secretarialTier: tier, arcMemberCount } = await prisma.society.findUniqueOrThrow({
+    where: { id: societyId },
+    select: { secretarialTier: true, arcMemberCount: true },
+  });
 
   const [requests, approvedSum] = await Promise.all([
     prisma.printingRequest.findMany({
@@ -62,7 +67,9 @@ export default async function PrintingRequestsPage({ params }: Props) {
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="text-sm text-muted-foreground">Secretarial Allowance ({tier.charAt(0) + tier.slice(1).toLowerCase()} Tier)</p>
+              <p className="text-sm text-muted-foreground">Secretarial Allowance ({tier.charAt(0) + tier.slice(1).toLowerCase()} Tier
+                {arcMemberCount !== null && `, ${arcMemberCount} Arc members`})
+              </p>
               <p className={`text-2xl font-bold ${remaining < 0 ? "text-red-600" : ""}`}>
                 {formatCurrency(Math.abs(remaining))}{" "}
                 <span className="text-sm font-normal text-muted-foreground">

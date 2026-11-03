@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+# Run your own society portal. See docs/SELF_HOSTING.md.
+#
+#   ./portal install          set up (asks a few questions), then start
+#   ./portal start | stop     start or stop everything
+#   ./portal update           back up, then move to the newest version
+#   ./portal backup           back up the database and uploads now
+#   ./portal restore <file>   put a backup back, replacing what's there
+#   ./portal logs [service]   follow the logs (app, web, db, backup, cloudflared, caddy)
+#   ./portal status           what's running
+#
+# Settings live in portal.env next to this script; it holds your passwords, so keep it
+# safe and out of git. Every command can be run again safely: install never overwrites
+# a setting that is already there. Written for bash 3.2, so it also runs on a Mac.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$ROOT/portal.env"
+COMPOSE_FILE="$ROOT/deploy/docker-compose.yml"
+IMAGES="ghcr.io/maahir-ahmed/portal"
+
+say() { printf '%s\n' "$*"; }
+# Docker commands that need no input get </dev/null: `compose run` reads stdin even
+# with -T, and would swallow the answer to the next question.
+die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
+ask() { # ask "Question" [default] -> answer on stdout
+  local a def="${2:-}"
+  read -r -p "$1${def:+ [$def]}: " a || true
+  printf '%s' "${a:-$def}"
+}
+random_hex() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
+
+get() { [ -f "$ENV_FILE" ] && sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1 || true; }
+has() { [ -f "$ENV_FILE" ] && grep -q "^$1=" "$ENV_FILE"; }
+# Appends KEY=value unless KEY is already there, so a re-run keeps every existing setting.
+ensure() { has "$1" || printf '%s=%s\n' "$1" "$2" >> "$ENV_FILE"; }
+
+compose() {
+  [ -f "$ENV_FILE" ] || die "no portal.env yet. Run ./portal install first."
+  local profile=() method
+  method="$(get METHOD)"
+  case "$method" in cloudflare | caddy) profile=(--profile "$method") ;; esac
+  docker compose --env-file "$ENV_FILE" -p "$(get STACK)" -f "$COMPOSE_FILE" ${profile[@]+"${profile[@]}"} "$@"
+}
+
+check_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    case "$(uname -s)" in
+      Linux)
+        say "Docker isn't installed. It runs the portal and its database."
+        [ "$(ask "Install it now with Docker's official script? (y/n)" y)" = y ] || die "install Docker, then run ./portal install again"
+        command -v curl >/dev/null || die "curl is needed to install Docker (sudo apt install curl)"
+        curl -fsSL https://get.docker.com | sudo sh
+        sudo usermod -aG docker "$USER" || true
+        say "Docker is installed. Log out and back in (so you can use it without sudo), then run ./portal install again."
+        exit 0
+        ;;
+      Darwin) die "install Docker Desktop from https://www.docker.com/products/docker-desktop/, open it once, then run ./portal install again" ;;
+      *) die "install Docker Desktop (https://www.docker.com/products/docker-desktop/), or on Windows use portal.ps1" ;;
+    esac
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    if docker info 2>&1 | grep -qi "permission denied"; then
+      die "your user can't use Docker yet. Run: sudo usermod -aG docker \$USER, log out and back in, then try again"
+    fi
+    die "Docker is installed but not running. Start it (Docker Desktop, or: sudo systemctl start docker) and try again"
+  fi
+  docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is missing. Update Docker, or install the docker-compose-plugin package"
+  case "$(uname -m)" in
+    x86_64 | amd64 | aarch64 | arm64) ;;
+    armv7l | armv6l | armhf) die "this is a 32-bit system. On a Raspberry Pi, install Raspberry Pi OS (64-bit) and try again" ;;
+    *) say "Warning: $(uname -m) isn't a tested processor type. Carrying on." ;;
+  esac
+}
+
+port_free() { ! (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+
+host_timezone() {
+  local tz=""
+  [ -f /etc/timezone ] && tz="$(head -n 1 /etc/timezone)"
+  [ -z "$tz" ] && [ -L /etc/localtime ] && tz="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
+  printf '%s' "${tz:-UTC}"
+}
+
+write_settings() {
+  umask 077
+  [ -f "$ENV_FILE" ] && say "Found portal.env: keeping the settings already in it."
+
+  local name slug method domain port
+  name="$(get APP_NAME)"
+  while [ -z "$name" ]; do name="$(ask "Your society's name (e.g. Chess Society)")"; done
+  ensure APP_NAME "$name"
+  slug="$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]\{1,\}/-/g' -e 's/^-//' -e 's/-$//')"
+  ensure SOCIETY_SLUG "${slug:-society}"
+  ensure STACK portal
+  has ADMIN_EMAIL || ensure ADMIN_EMAIL "$(ask "Your email, for the first account (optional)")"
+
+  method="$(get METHOD)"
+  if [ -z "$method" ]; then
+    say ""
+    say "How will people reach the portal?"
+    say "  1) Through a Cloudflare Tunnel (recommended: works anywhere, no ports to open)"
+    say "  2) My server has a public IP address, and I'll point the domain at it (Caddy)"
+    say "  3) Just on this computer for now, to try it out"
+    case "$(ask "Choose 1, 2 or 3" 1)" in
+      1) method=cloudflare ;; 2) method=caddy ;; 3) method=local ;; *) die "choose 1, 2 or 3" ;;
+    esac
+    ensure METHOD "$method"
+  fi
+
+  port="$(get APP_PORT)"
+  if [ -z "$port" ]; then
+    port=8080
+    while ! port_free "$port"; do port=$((port + 1)); done
+    ensure APP_PORT "$port"
+  fi
+  ensure APP_BIND 127.0.0.1
+
+  if [ "$method" = local ]; then
+    ensure NEXTAUTH_URL "http://localhost:$port"
+  else
+    domain="$(get DOMAIN)"
+    while [ -z "$domain" ]; do domain="$(ask "The web address it will live at, without https:// (e.g. portal.chesssoc.org)")"; done
+    domain="${domain#https://}"; domain="${domain#http://}"; domain="${domain%%/*}"
+    ensure DOMAIN "$domain"
+    ensure NEXTAUTH_URL "https://$domain"
+  fi
+  if [ "$method" = cloudflare ] && ! has TUNNEL_TOKEN; then
+    say ""
+    say "Paste your Cloudflare Tunnel token (docs/SELF_HOSTING.md, \"Cloudflare Tunnel\", shows where to get it)."
+    local token=""
+    while [ -z "$token" ]; do token="$(ask "Tunnel token")"; done
+    # The dashboard offers a whole command; keep just the token from it.
+    token="${token##* }"
+    ensure TUNNEL_TOKEN "$token"
+  fi
+
+  ensure AUTH_SECRET "$(random_hex 32)"
+  ensure DB_PASSWORD "$(random_hex 24)"
+  ensure RUBRIC_SECRET_KEY "$(head -c 32 /dev/urandom | base64 | tr -d '\n')" # base64, as src/lib/secrets.ts reads it
+  ensure SETUP_TOKEN "$(random_hex 24)"
+  ensure ENABLE_DEBUG_TOOLS false
+  ensure DISCORD_REMINDERS on
+  ensure TZ "$(host_timezone)"
+  ensure BACKUP_DIR "$ROOT/backups"
+  ensure APP_IMAGE "$IMAGES-app:latest"
+  ensure WEB_IMAGE "$IMAGES-web:latest"
+  ensure BACKUP_IMAGE "$IMAGES-backup:latest"
+  ensure BUILD_FROM_SOURCE false
+  chmod 600 "$ENV_FILE"
+  mkdir -p "$(get BACKUP_DIR)"
+}
+
+# Downloads the published images, or builds them here if this checkout is set to (or
+# they can't be downloaded).
+get_images() {
+  if [ "$(get BUILD_FROM_SOURCE)" != true ]; then
+    say "Downloading the portal (a few hundred MB the first time)..."
+    if compose pull; then return; fi
+    say ""
+    say "Couldn't download the images. Building them on this computer instead: this takes"
+    say "10 to 30 minutes and needs about 3 GB of free memory."
+    printf 'BUILD_FROM_SOURCE=true\n' >> "$ENV_FILE" # a later line wins: get reads the last
+  fi
+  compose pull --ignore-buildable
+  compose build
+}
+
+wait_ready() {
+  say "Waiting for the portal to start (it brings the database up to date first)..."
+
+  for _ in $(seq 1 90); do
+    if compose exec -T web wget -q -O /dev/null http://app:3000/login </dev/null 2>/dev/null; then return 0; fi
+    sleep 2
+  done
+  say "It hasn't answered after 3 minutes. See what it's doing with: ./portal logs app"
+  return 1
+}
+
+cmd_install() {
+  check_docker
+  write_settings
+  get_images
+  compose up -d --no-build --remove-orphans
+  wait_ready || exit 1
+  local url method
+  url="$(get NEXTAUTH_URL)"
+  method="$(get METHOD)"
+  say ""
+  say "The portal is running."
+  case "$method" in
+    cloudflare) say "In Cloudflare, the tunnel's public hostname $(get DOMAIN) must point to the service http://web:80." ;;
+    caddy) say "Point $(get DOMAIN)'s DNS (an A record) at this server and open ports 80 and 443. The certificate arrives on its own." ;;
+    local) say "It's only reachable from this computer." ;;
+  esac
+  say ""
+  local users
+  users="$(compose exec -T db psql -U society_user -d society_platform -tAc 'select count(*) from "User"' </dev/null 2>/dev/null || echo 0)"
+  if [ "${users//[^0-9]/}" = 0 ]; then
+    say "Finish setting up here (this link only works until the first account exists):"
+    say "  $url/setup?token=$(get SETUP_TOKEN)"
+  else
+    say "Open it at $url"
+  fi
+  say ""
+  say "portal.env holds your passwords: keep it safe, and back it up somewhere else too."
+}
+
+cmd_backup() {
+  local out
+  out="$(compose run --rm -T backup archive </dev/null | tail -n 1)"
+  case "$out" in /backups/*) say "Backed up to $(get BACKUP_DIR)/${out#/backups/}" ;; *) die "the backup failed: $out" ;; esac
+}
+
+cmd_restore() {
+  local file="${1:-}" dir name
+  [ -n "$file" ] || die "say which backup: ./portal restore <file.tar.gz>"
+  [ -f "$file" ] || die "no such file: $file"
+  dir="$(get BACKUP_DIR)"
+  name="$(basename "$file")"
+  [ "$(cd "$(dirname "$file")" && pwd)/$name" = "$dir/$name" ] || cp "$file" "$dir/$name"
+
+  say "Checking the backup..."
+  compose run --rm -T backup validate "/backups/$name" </dev/null || die "that file isn't a backup this portal can restore"
+  say ""
+  say "This replaces everything in the portal (every account, request and upload) with the backup."
+  [ "$(ask "Type restore to go ahead")" = restore ] || die "stopped, nothing changed"
+
+  say "Backing up what's there now first, in case you want it back..."
+  cmd_backup
+  compose stop app
+  if compose run --rm -T backup restore "/backups/$name" </dev/null; then
+    say "Restored."
+  else
+    say "The restore failed and the database was left as it was."
+  fi
+  compose up -d --no-build app
+  wait_ready
+}
+
+cmd_update() {
+  check_docker
+  say "Backing up before the update..."
+  cmd_backup
+  if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+    git -C "$ROOT" pull --ff-only || die "couldn't update the scripts with git pull. Undo local changes to this folder and try again"
+  fi
+  write_settings # adds any setting a newer version needs
+  get_images
+  compose up -d --no-build --remove-orphans
+  wait_ready
+  docker image prune -f >/dev/null
+  say "Up to date."
+}
+
+case "${1:-}" in
+  install) cmd_install ;;
+  start) compose up -d --no-build && wait_ready ;;
+  stop) compose stop ;;
+  update) cmd_update ;;
+  backup) cmd_backup ;;
+  restore) cmd_restore "${2:-}" ;;
+  logs) compose logs -f --tail 200 ${2:+"$2"} ;;
+  status) compose ps ;;
+  *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+esac

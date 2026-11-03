@@ -55,3 +55,7 @@ next-env.d.ts
 # Playwright layout audit output (contains real member data)
 /test-results/
 /playwright-report/
+
+# Settings > Debugging archives in dev (BACKUP_OUT); they hold real data
+/backups
+portal.env

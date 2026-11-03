@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { EXTRA_PORTFOLIOS, memberPortfolioIds } from "./titles";
 import { requireAuth, requireMembership } from "./api";
 import { ahegsScope, canTouchPortfolio, type AhegsScope } from "./ahegs";
 import type { NextResponse } from "next/server";
@@ -30,7 +31,16 @@ export async function requireAhegsAccess(society: string): Promise<Access> {
     error: null,
     session: session!,
     membership: membership!,
-    scope: ahegsScope(membership!.role, membership!.portfolioId),
+    scope: ahegsScope(
+      membership!.role,
+      memberPortfolioIds({
+        portfolioId: membership!.portfolioId,
+        extraPortfolios: await prisma.memberPortfolio.findMany({
+          where: { membershipId: membership!.id },
+          select: { portfolioId: true },
+        }),
+      })
+    ),
   };
 }
 
@@ -43,8 +53,8 @@ export async function membershipsInScope(societyId: string, scope: AhegsScope, i
   if (ids.length === 0) return [];
   const found = await prisma.societyMembership.findMany({
     where: { id: { in: ids }, societyId },
-    select: { id: true, portfolioId: true },
+    select: { id: true, portfolioId: true, ...EXTRA_PORTFOLIOS },
   });
   if (found.length !== new Set(ids).size) return null;
-  return found.every((m) => canTouchPortfolio(scope, m.portfolioId)) ? found : null;
+  return found.every((m) => canTouchPortfolio(scope, memberPortfolioIds(m))) ? found : null;
 }

@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { InviteMemberDialog } from "@/components/shared/InviteMemberDialog";
 import { EditMemberDialog } from "@/components/shared/EditMemberDialog";
+import { EXTRA_PORTFOLIOS, memberPortfolioIds } from "@/lib/titles";
 
 interface Props {
   params: Promise<{ society: string }>;
@@ -46,6 +47,7 @@ export default async function MembersPage({ params }: Props) {
       include: {
         user: { select: { id: true, name: true, email: true, avatarUrl: true, zId: true, phone: true } },
         portfolio: true,
+        ...EXTRA_PORTFOLIOS,
       },
       orderBy: [{ role: "asc" }, { user: { name: "asc" } }],
     }),
@@ -62,17 +64,22 @@ export default async function MembersPage({ params }: Props) {
     SUBCOMMITTEE: members.filter((m) => m.role === "SUBCOMMITTEE").length,
   };
 
-  // Executives are grouped by role and hold no portfolio; everyone else sits in the
-  // portfolio their title belongs to, in committee order.
+  // Executives are grouped by role; everyone else sits in the portfolio their title
+  // belongs to, in committee order. Someone added to more portfolios (an executive
+  // included) also appears under each of those.
   const nonExec = members.filter((m) => m.role !== "EXECUTIVE");
   const groups = [
     { key: "execs", name: "Executives", members: members.filter((m) => m.role === "EXECUTIVE") },
     ...portfolios.map((p) => ({
       key: p.id,
       name: p.name,
-      members: nonExec.filter((m) => m.portfolioId === p.id),
+      members: members.filter((m) => memberPortfolioIds(m).includes(p.id)),
     })),
-    { key: "none", name: "No portfolio", members: nonExec.filter((m) => !m.portfolioId) },
+    {
+      key: "none",
+      name: portfolios.length ? "No portfolio" : "Committee",
+      members: nonExec.filter((m) => memberPortfolioIds(m).length === 0),
+    },
   ]
     .filter((g) => g.members.length > 0)
     // Within a portfolio: executives, then directors, then subcommittee, by name.
@@ -85,12 +92,22 @@ export default async function MembersPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Members</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{members.length} active members</p>
         </div>
-        {isExec && <InviteMemberDialog societySlug={societySlug} />}
+        {isExec && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              href={`/${societySlug}/settings/members`}
+              className="text-sm font-medium underline-offset-4 hover:underline"
+            >
+              Import from a spreadsheet
+            </Link>
+            <InviteMemberDialog societySlug={societySlug} />
+          </div>
+        )}
       </div>
 
       {/* Role totals across the whole committee */}
@@ -106,12 +123,10 @@ export default async function MembersPage({ params }: Props) {
       </div>
 
       {portfolios.length === 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
-          This society has no portfolios yet, so everyone outside the executive team is listed as
-          unassigned. Create them in{" "}
-          <Link href={`/${societySlug}/settings`} className="font-medium underline">Settings</Link>, give
-          each one a director and subcom title, and members will be grouped by the title they hold.
-        </div>
+        <p className="text-sm text-muted-foreground">
+          To group people by area (Events, Marketing, Sponsorship…), add portfolios in{" "}
+          <Link href={`/${societySlug}/settings/portfolios`} className="font-medium underline">Settings</Link>.
+        </p>
       )}
 
       {groups.map((group) => (
@@ -137,6 +152,8 @@ export default async function MembersPage({ params }: Props) {
                             memberPhone={m.user.phone ?? null}
                             currentRole={m.role}
                             currentTitle={m.title}
+                            extraPortfolioIds={m.extraPortfolios.map((e) => e.portfolioId)}
+                            notInvited={m.inviteStatus === "NOT_INVITED"}
                           />
                         )}
                       </div>
@@ -148,6 +165,14 @@ export default async function MembersPage({ params }: Props) {
                         <span className={`text-xs px-2 py-0.5 rounded-full ${ROLE_COLORS[m.role]}`}>
                           {m.role.toLowerCase()}
                         </span>
+                        {m.inviteStatus === "NOT_INVITED" && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800"
+                            title="Imported, with no way to sign in yet. Issue a passphrase from the pencil button."
+                          >
+                            not invited
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

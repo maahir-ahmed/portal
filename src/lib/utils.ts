@@ -18,23 +18,31 @@ export function formatDateTime(date: Date | string) {
 // pickup) are naive wall-clock stored as UTC, so formatDate/formatDateTime/formatTime
 // show them as-is in the server's UTC; see dtLocal in ContentRequestForm. Real moments
 // (createdAt, submitted-to-Rubric) are true instants and must be shown in the society's
-// own timezone, or a claim made at 11:59 PM reads as 12:59 PM. That's this function.
-const SOCIETY_TZ = "Australia/Sydney";
-const timestampParts = new Intl.DateTimeFormat("en-US", {
-  timeZone: SOCIETY_TZ,
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-});
+// own timezone (Society.timezone, set in Settings), or a claim made at 11:59 PM reads
+// as 12:59 PM. That's this function.
+const timestampFormats = new Map<string, Intl.DateTimeFormat>();
 
-/** A real moment in Sydney time, in the same "5 Oct 2026, 11:59 PM" shape as formatDateTime. */
-export function formatTimestamp(date: Date | string) {
-  const p = Object.fromEntries(timestampParts.formatToParts(new Date(date)).map((x) => [x.type, x.value]));
+/** A real moment in the society's timezone, in the same "5 Oct 2026, 11:59 PM" shape as formatDateTime. */
+export function formatTimestamp(date: Date | string, timeZone: string) {
+  let f = timestampFormats.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    timestampFormats.set(timeZone, f);
+  }
+  const p = Object.fromEntries(f.formatToParts(new Date(date)).map((x) => [x.type, x.value]));
   return `${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute} ${p.dayPeriod}`;
 }
+
+/** Every IANA timezone this runtime knows, for the Settings picker and its validation. */
+export const TIMEZONES: readonly string[] = Intl.supportedValuesOf("timeZone");
 
 export function formatTime(date: Date | string) {
   return format(new Date(date), "h:mm a");

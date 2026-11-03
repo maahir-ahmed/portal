@@ -5,33 +5,79 @@ import { formatDateTime, formatTimeRange, statusLabel } from "./utils";
 // The marketing channel's copy of each event request. Posted once, when the request
 // is first submitted (drafts are private), pinging the marketing director role; after
 // that every change on the website edits the same message, so the channel always
-// shows the current version and the thread under it stays attached. Discord doesn't
-// ping again on an edit, so updates are quiet.
+// shows the current version. Discord doesn't ping again on an edit, so edits are quiet.
+//
+// The channel can be a text channel or a forum. Discord says which on the first post
+// (a forum refuses a post without a thread title), and Society.eventsWebhookForum
+// remembers it. In a forum each request is its own post; in a text channel people open
+// a thread on the message. Either way the thread's ID is the message's ID, so
+// discordMessageId is also where a request's updates and reminders go.
 
 const TIMEOUT = 5000; // a Discord post is never worth holding a submission open for
 const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+const FORUM_NEEDS_TITLE = 220001; // Discord's error code for a forum post without thread_name
+
+type Sent = { ok: true; id: string; forum: boolean } | { ok: false; status: number };
 
 /**
- * Posts or updates the request's message on the events webhook, if one is set. Never
+ * Posts to a webhook and returns the message, starting a forum post titled `title` if
+ * the webhook turns out to belong to a forum. `forum` says what's already known, saving
+ * the first try. `threadId` posts into an existing thread instead.
+ */
+export async function postToWebhook(
+  url: string,
+  payload: object,
+  opts: { title: string; forum?: boolean; threadId?: string | null }
+): Promise<Sent> {
+  const send = (forum: boolean) =>
+    fetch(`${url}?wait=true${opts.threadId ? `&thread_id=${opts.threadId}` : ""}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(TIMEOUT),
+      body: JSON.stringify(forum && !opts.threadId ? { ...payload, thread_name: cut(opts.title, 100) } : payload),
+    });
+  let forum = !!opts.forum;
+  let res = await send(forum);
+  if (!forum && !opts.threadId && res.status === 400) {
+    const err = (await res.clone().json().catch(() => ({}))) as { code?: number };
+    if (err.code === FORUM_NEEDS_TITLE) {
+      forum = true;
+      res = await send(true);
+    }
+  }
+  if (!res.ok) return { ok: false, status: res.status };
+  const message = (await res.json()) as { id: string };
+  return { ok: true, id: message.id, forum };
+}
+
+/** The events webhook's URL, or null if none is set or it can't be read. */
+export function eventsWebhook(stored: string | null): string | null {
+  if (!stored) return null;
+  try {
+    return decryptSecret(stored);
+  } catch {
+    return null; // stored under a key we no longer have
+  }
+}
+
+/**
+ * Posts or updates the request's message on the events webhook, if one is set, then
+ * posts `note` (say, "Status changed to Completed by Sam") into its thread. Never
  * throws: a broken webhook must not fail the request that triggered it.
  */
-export async function syncEventToDiscord(contentRequestId: string): Promise<void> {
+export async function syncEventToDiscord(contentRequestId: string, note?: string): Promise<void> {
   try {
     const r = await prisma.contentRequest.findUnique({
       where: { id: contentRequestId },
       include: {
         submittedBy: { select: { name: true } },
-        society: { select: { eventsWebhookUrl: true, eventsWebhookRoleId: true } },
+        society: { select: { id: true, eventsWebhookUrl: true, eventsWebhookRoleId: true, eventsWebhookForum: true } },
       },
     });
-    if (!r || r.status === "DRAFT" || !r.society.eventsWebhookUrl) return;
-
-    let url: string;
-    try {
-      url = decryptSecret(r.society.eventsWebhookUrl);
-    } catch {
-      return; // stored under a key we no longer have
-    }
+    if (!r || r.status === "DRAFT") return;
+    const url = eventsWebhook(r.society.eventsWebhookUrl);
+    if (!url) return;
+    const forum = r.society.eventsWebhookForum;
 
     const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
     // Slug-free, like the exec queue's Discord links: the deployment is single-society
@@ -49,8 +95,8 @@ export async function syncEventToDiscord(contentRequestId: string): Promise<void
     const payload = {
       username: "Society Portal",
       content:
-        `${roleId ? `<@&${roleId}> ` : ""}New marketing request from ${r.submittedBy.name}: **${r.eventName}**.\n` +
-        "Please create a thread on this message to discuss it",
+        `${roleId ? `<@&${roleId}> ` : ""}New marketing request from ${r.submittedBy.name}: **${r.eventName}**.` +
+        (forum ? "" : "\nPlease create a thread on this message to discuss it"),
       allowed_mentions: { roles: roleId ? [roleId] : [] },
       embeds: [
         {
@@ -74,8 +120,10 @@ export async function syncEventToDiscord(contentRequestId: string): Promise<void
       ],
     };
 
-    if (r.discordMessageId) {
-      const res = await fetch(`${url}/messages/${r.discordMessageId}`, {
+    let messageId = r.discordMessageId;
+    if (messageId) {
+      // A forum post's starter message lives in its thread, so the edit has to say so.
+      const res = await fetch(`${url}/messages/${messageId}${forum ? `?thread_id=${messageId}` : ""}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(TIMEOUT),
@@ -83,32 +131,32 @@ export async function syncEventToDiscord(contentRequestId: string): Promise<void
         // is quiet, and keeps older messages' wording in step with this file.
         body: JSON.stringify({ content: payload.content, embeds: payload.embeds, allowed_mentions: payload.allowed_mentions }),
       });
-      if (res.ok) return;
       // Someone deleted the message (or the webhook was swapped for another channel):
       // post it afresh below rather than leave the channel without it.
-      if (res.status !== 404) {
-        console.warn(`Events webhook edit returned ${res.status} for request ${r.id}`);
-        return;
-      }
+      if (res.status === 404) messageId = null;
+      else if (!res.ok) console.warn(`Events webhook edit returned ${res.status} for request ${r.id}`);
     }
 
-    // ?wait=true makes Discord return the message, whose id the edits need.
-    const res = await fetch(`${url}?wait=true`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(TIMEOUT),
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      console.warn(`Events webhook returned ${res.status} for request ${r.id}`);
-      return;
+    if (!messageId) {
+      const sent = await postToWebhook(url, payload, { title: r.eventName, forum });
+      if (!sent.ok) {
+        console.warn(`Events webhook returned ${sent.status} for request ${r.id}`);
+        return;
+      }
+      messageId = sent.id;
+      await prisma.contentRequest.update({ where: { id: r.id }, data: { discordMessageId: messageId }, select: { id: true } });
+      if (sent.forum !== forum) {
+        await prisma.society.update({ where: { id: r.society.id }, data: { eventsWebhookForum: sent.forum }, select: { id: true } });
+      }
+      return; // the new post already shows the latest; no note needed
     }
-    const message = (await res.json()) as { id?: string };
-    if (message.id) {
-      await prisma.contentRequest.update({
-        where: { id: r.id },
-        data: { discordMessageId: message.id },
-        select: { id: true },
+
+    // In a text channel there's only a thread if someone opened one, and Discord
+    // refuses the post otherwise. That's fine: the edit above already shows the change.
+    if (note) {
+      await postToWebhook(url, { username: "Society Portal", content: cut(note, 2000), allowed_mentions: { parse: [] } }, {
+        title: r.eventName,
+        threadId: messageId,
       });
     }
   } catch (err) {

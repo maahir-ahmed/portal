@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
+import { parseCsv } from "./csv";
 
 // Arc rejects AHEGS lists that aren't on its own template, so the export fills the
 // real .xlsx rather than emitting a CSV: read the template, swap the sheet's rows,
@@ -43,7 +44,7 @@ export function readZip(buf: Buffer): ZipEntries {
   return entries;
 }
 
-function writeZip(entries: ZipEntries): Buffer {
+export function writeZip(entries: ZipEntries): Buffer {
   const locals: Buffer[] = [];
   const centrals: Buffer[] = [];
   let offset = 0;
@@ -146,4 +147,48 @@ export function fillTemplate(templatePath: string, rows: Cell[][]): Buffer {
     Buffer.from(sheet.replace(/<sheetData>[\s\S]*?<\/sheetData>/, `<sheetData>${rowXml(1)}${rowXml(2)}${body}</sheetData>`))
   );
   return writeZip(entries);
+}
+
+// Reading, for member imports: the first sheet's cells as text, row by row.
+// ponytail: takes xl/worksheets/sheet1.xml as the first sheet, which is what Excel,
+// LibreOffice and Google Sheets all write; dates and formulas come through as their
+// stored values. Enough for a list of names and emails.
+const decodeXml = (s: string) =>
+  s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, e: string) => {
+    const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+    if (e[0] !== "#") return named[e.toLowerCase()];
+    return String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : Number(e.slice(1)));
+  });
+
+/** The text of every <t> in a fragment: a shared string or inline string may be split into runs. */
+const textOf = (xml: string) => [...xml.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => decodeXml(m[1])).join("");
+
+const columnIndex = (ref: string) =>
+  [...ref.replace(/\d+$/, "")].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+
+/** A spreadsheet or CSV upload as rows of text. XLSX is recognised by its zip header. */
+export function readTable(buf: Buffer): string[][] {
+  return buf.subarray(0, 2).toString("latin1") === "PK" ? readSheet(buf) : parseCsv(buf.toString("utf8"));
+}
+
+function readSheet(buf: Buffer): string[][] {
+  const zip = readZip(buf);
+  const sheet = zip.get("xl/worksheets/sheet1.xml")?.toString("utf8");
+  if (!sheet) throw new Error("no worksheet found");
+  const shared = [...(zip.get("xl/sharedStrings.xml")?.toString("utf8") ?? "").matchAll(/<si>([\s\S]*?)<\/si>/g)].map(
+    (m) => textOf(m[1])
+  );
+  const rows: string[][] = [];
+  for (const [, body = ""] of sheet.matchAll(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+    const row: string[] = [];
+    for (const [, attrs, inner = ""] of body.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const ref = attrs.match(/\br="([A-Z]+\d+)"/)?.[1];
+      const type = attrs.match(/\bt="(\w+)"/)?.[1];
+      const v = inner.match(/<v>([\s\S]*?)<\/v>/)?.[1] ?? "";
+      const value = type === "s" ? shared[Number(v)] ?? "" : type === "inlineStr" ? textOf(inner) : decodeXml(v);
+      row[ref ? columnIndex(ref) : row.length] = value;
+    }
+    rows.push(Array.from(row, (x) => x ?? ""));
+  }
+  return rows;
 }

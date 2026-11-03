@@ -97,6 +97,8 @@ export interface RosterSource {
   membershipId: string;
   role: Role;
   portfolioId: string | null;
+  /** Every portfolio they are in (memberPortfolioIds). Defaults to the title's one. */
+  portfolioIds?: string[];
   title: string | null;
   isActive: boolean;
   joinedAt: Date;
@@ -120,6 +122,7 @@ export interface RosterEntryOverride {
 export interface RosterRow {
   membershipId: string;
   portfolioId: string | null;
+  portfolioIds: string[];
   category: AhegsCategory;
   included: boolean;
   fullName: string;
@@ -182,6 +185,7 @@ export function resolveRow(
   return {
     membershipId: m.membershipId,
     portfolioId: m.portfolioId,
+    portfolioIds: m.portfolioIds ?? (m.portfolioId ? [m.portfolioId] : []),
     // A submission edited before directors were folded in still stores MENTOR; it is
     // read as sub-committee rather than dropping those people off every list.
     category: normaliseCategory(o?.category) ?? CATEGORY_FOR_ROLE[m.role],
@@ -212,22 +216,24 @@ export function resolveRow(
 
 export interface AhegsScope {
   isExec: boolean;
-  /** The director's portfolio. Null for an executive (who is not limited to one). */
-  portfolioId: string | null;
+  /** The director's portfolios. Empty for an executive (who is not limited to any). */
+  portfolioIds: string[];
 }
 
-export function ahegsScope(role: Role, portfolioId: string | null): AhegsScope {
-  return { isExec: role === "EXECUTIVE", portfolioId: role === "EXECUTIVE" ? null : portfolioId };
+export function ahegsScope(role: Role, portfolioIds: string[]): AhegsScope {
+  return { isExec: role === "EXECUTIVE", portfolioIds: role === "EXECUTIVE" ? [] : portfolioIds };
 }
 
 /**
  * Whether this viewer may see and edit a row. Enforced in the route handlers, not
  * just the UI — a director must not be able to reach another portfolio by id.
  * A director with no portfolio (a title outside the society's list) sees nobody.
+ * A row in several portfolios (a member's) is reachable from any of them.
  */
-export function canTouchPortfolio(scope: AhegsScope, portfolioId: string | null): boolean {
+export function canTouchPortfolio(scope: AhegsScope, portfolioId: string | null | string[]): boolean {
   if (scope.isExec) return true;
-  return scope.portfolioId !== null && portfolioId === scope.portfolioId;
+  const ids = Array.isArray(portfolioId) ? portfolioId : [portfolioId];
+  return ids.some((id) => id !== null && scope.portfolioIds.includes(id));
 }
 
 // Arc's own spreadsheet refuses a zID outside this range ("A valid zID must be

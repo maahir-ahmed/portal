@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Send, Loader2 } from "lucide-react";
+import { usePolicy } from "@/hooks/usePolicy";
 
 // Moves a DRAFT claim into the payout queue. The owner may submit their own draft;
 // the API enforces that transition (and alerts the execs). A draft saved without the
@@ -20,21 +22,11 @@ export function SubmitClaimButton({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const rules = usePolicy(societySlug, "TREASURY");
 
   async function submit() {
-    if (
-      !acknowledged &&
-      !confirm(
-        "Reimbursement policy:\n\n" +
-          "• The spend was approved in the committee Discord before you bought it.\n" +
-          "• No alcohol.\n" +
-          "• No personal transport (Uber, taxi, fuel) unless approved in writing first.\n" +
-          "• Claims more than 3 weeks after the purchase may not be reimbursed.\n" +
-          "• Bond money only once it has been returned.\n\n" +
-          "I have read and understood the reimbursement policy."
-      )
-    )
-      return;
+    setAsking(false);
     setLoading(true);
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
@@ -52,9 +44,30 @@ export function SubmitClaimButton({
   }
 
   return (
-    <Button size="sm" onClick={submit} disabled={loading} className="gap-1.5">
-      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-      Submit for reimbursement
-    </Button>
+    <>
+      <Button size="sm" onClick={() => (acknowledged ? submit() : setAsking(true))} disabled={loading} className="gap-1.5">
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+        Submit for reimbursement
+      </Button>
+      <Dialog open={asking} onOpenChange={setAsking}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reimbursement policy</DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-2 text-sm">
+            {rules.map((rule, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="text-amber-600 flex-shrink-0">•</span>
+                <span>{rule}</span>
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAsking(false)}>Cancel</Button>
+            <Button onClick={submit}>I have read and understood the policy</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

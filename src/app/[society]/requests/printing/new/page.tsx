@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { usePolicy } from "@/hooks/usePolicy";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { PrintingRates } from "@/components/requests/PrintingRates";
 
 export default function NewPrintingRequestPage() {
   const params = useParams<{ society: string }>();
+  const rules = usePolicy(params.society, "PRINTING");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -105,9 +107,7 @@ export default function NewPrintingRequestPage() {
 
       <Card className="bg-amber-50 border-amber-200">
         <CardContent className="p-4 text-sm text-amber-900 space-y-1.5">
-          <p>Requests with less than two full business days&apos; notice may not be processed at all.</p>
-          <p>Collect from <strong>Arc Front Desk, 10AM–4PM on business days</strong>. Uncollected prints are disposed of one week after the requested collection date.</p>
-          <p>Prepare your file print-ready (PDF or Word). We can&apos;t trim, cut, or staple; resources for that are at Arc Reception.</p>
+          {rules.map((rule, i) => <p key={i}>{rule}</p>)}
         </CardContent>
       </Card>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
+import { MODULE_SELECT } from "@/lib/modules";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -21,7 +22,29 @@ const updateSchema = z.object({
   secretarialTier: z.enum(["BRONZE", "SILVER", "GOLD"]).optional(),
   // Arrives as a string from the settings form; "" has already become null above.
   ahegsYear: z.coerce.number().int().min(2000).max(2100).nullable().optional(),
+  // Settings > Features. Sent as JSON booleans, never through the general form.
+  moduleEvents: z.boolean(),
+  moduleRoomBookings: z.boolean(),
+  modulePrinting: z.boolean(),
+  moduleGrants: z.boolean(),
+  moduleTicketing: z.boolean(),
+  moduleBoard: z.boolean(),
+  moduleAhegs: z.boolean(),
+  treasuryMode: z.enum(["BUDGET", "TRANSACTIONS"]),
+  timezone: z.string().refine(validTimeZone, "Unknown timezone"),
+  // First-run setup: the step to resume at, and finishing it.
+  setupStep: z.number().int().min(0).max(20),
+  setupDone: z.literal(true),
 }).partial();
+
+function validTimeZone(tz: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
@@ -52,8 +75,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       linkedinUrl: true,
       description: true,
       secretarialTier: true,
+      arcMemberCount: true,
+      arcMemberCountAt: true,
       ahegsYear: true,
       rubricSocietyId: true,
+      ...MODULE_SELECT,
+      timezone: true,
+      setupStep: true,
+      setupCompletedAt: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -73,7 +102,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
     // The settings form posts every field. Empty strings on the always-present
     // required fields (name, colours, tier) are dropped; on optional/nullable
     // fields an empty string means "clear it" → null (so e.g. removing the logo works).
-    const ALWAYS_PRESENT = new Set(["name", "primaryColor", "secondaryColor", "secretarialTier"]);
+    const ALWAYS_PRESENT = new Set(["name", "primaryColor", "secondaryColor", "secretarialTier", "timezone"]);
     const raw = (await req.json()) as Record<string, unknown>;
     for (const k of Object.keys(raw)) {
       if (raw[k] === "") {
@@ -81,10 +110,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
         else raw[k] = null;
       }
     }
-    const body = updateSchema.parse(raw);
+    const { setupDone, ...body } = updateSchema.parse(raw);
     await prisma.society.update({
       where: { id: membership!.societyId },
-      data: body,
+      data: { ...body, ...(setupDone ? { setupCompletedAt: new Date() } : {}) },
     });
 
     await createAuditLog({
@@ -93,6 +122,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       action: "UPDATE",
       entityType: "Society",
       entityId: membership!.societyId,
+      metadata: { fields: [...Object.keys(body), ...(setupDone ? ["setupCompletedAt"] : [])].join(", ") },
     });
 
     // Same reason as GET: reply with the accepted changes, not the stored row.

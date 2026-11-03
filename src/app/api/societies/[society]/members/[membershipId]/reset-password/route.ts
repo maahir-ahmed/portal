@@ -32,6 +32,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
     where: { id: target.userId },
     data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true },
   });
+  // An imported member's first passphrase is their invitation.
+  if (target.inviteStatus === "NOT_INVITED") {
+    await prisma.societyMembership.update({ where: { id: target.id }, data: { inviteStatus: "INVITED" } });
+  }
 
   await createAuditLog({
     societyId: membership!.societyId,
@@ -39,7 +43,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
     action: "UPDATE",
     entityType: "User",
     entityId: target.userId,
-    metadata: { action: "password_reset" },
+    metadata: { action: target.inviteStatus === "NOT_INVITED" ? "first_passphrase" : "password_reset" },
   });
 
   return NextResponse.json({ tempPassword });

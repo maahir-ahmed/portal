@@ -26,6 +26,14 @@ interface EditMemberDialogProps {
   memberPhone: string | null;
   currentRole: string;
   currentTitle: string | null;
+  extraPortfolioIds: string[];
+  /** Imported and never given a passphrase: the reset button issues their first. */
+  notInvited?: boolean;
+}
+
+interface Portfolio {
+  id: string;
+  name: string;
 }
 
 export function EditMemberDialog({
@@ -35,6 +43,8 @@ export function EditMemberDialog({
   memberPhone,
   currentRole,
   currentTitle,
+  extraPortfolioIds,
+  notInvited = false,
 }: EditMemberDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -46,12 +56,18 @@ export function EditMemberDialog({
   const [role, setRole] = useState(currentRole);
   const [title, setTitle] = useState(currentTitle ?? "__none__");
   const [phone, setPhone] = useState(memberPhone ?? "");
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [extras, setExtras] = useState<string[]>(extraPortfolioIds);
 
   useEffect(() => {
     if (open) {
       fetch(`/api/societies/${societySlug}/titles`)
         .then((r) => r.json())
         .then(setTitles)
+        .catch(() => {});
+      fetch(`/api/societies/${societySlug}/portfolios`)
+        .then((r) => r.json())
+        .then(setPortfolios)
         .catch(() => {});
     }
   }, [open, societySlug]);
@@ -70,6 +86,7 @@ export function EditMemberDialog({
         role,
         title: title === "__none__" ? null : title,
         phone: phone.trim() || null,
+        extraPortfolioIds: extras,
       }),
     });
     setSaving(false);
@@ -99,12 +116,13 @@ export function EditMemberDialog({
   }
 
   async function handleReset() {
-    if (!confirm(`Reset ${memberName}'s password? Their current password stops working immediately.`)) return;
+    if (!notInvited && !confirm(`Reset ${memberName}'s password? Their current password stops working immediately.`)) return;
     setResetting(true);
     const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}/reset-password`, { method: "POST" });
     setResetting(false);
     if (res.ok) {
       setTempPassword((await res.json()).tempPassword);
+      if (notInvited) router.refresh(); // drops the "not invited" badge
     } else {
       const data = await res.json().catch(() => ({}));
       toast.error(data.error ?? "Failed to reset password");
@@ -113,8 +131,9 @@ export function EditMemberDialog({
 
   const titleOptions = titles.filter((t) => t.roleLevel === role);
   // Executives hold no portfolio; everyone else inherits their title's.
-  const derivedPortfolio =
-    role === "EXECUTIVE" ? null : titles.find((t) => t.name === title)?.portfolio?.name ?? null;
+  const derivedId = role === "EXECUTIVE" ? null : titles.find((t) => t.name === title)?.portfolio?.id ?? null;
+  const derivedPortfolio = portfolios.find((p) => p.id === derivedId)?.name ?? null;
+  const otherPortfolios = portfolios.filter((p) => p.id !== derivedId);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTempPassword(null); }}>
@@ -154,6 +173,26 @@ export function EditMemberDialog({
             <span className="font-medium text-foreground">{derivedPortfolio ?? "none"}</span>
             {role === "EXECUTIVE" ? ", executives are grouped by role" : ", from the title"}
           </p>
+          {otherPortfolios.length > 0 && (
+            <div className="space-y-2">
+              <Label>Also in</Label>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                {otherPortfolios.map((p) => (
+                  <label key={p.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={extras.includes(p.id)}
+                      onChange={(e) =>
+                        setExtras(e.target.checked ? [...extras, p.id] : extras.filter((x) => x !== p.id))
+                      }
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    {p.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Phone (contact details)</Label>
             <Input
@@ -178,6 +217,13 @@ export function EditMemberDialog({
                     Copy
                   </Button>
                 </div>
+              </div>
+            ) : notInvited ? (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Not invited yet: they have no way to sign in.</p>
+                <Button type="button" size="sm" onClick={handleReset} disabled={resetting}>
+                  {resetting ? "Issuing…" : "Issue passphrase"}
+                </Button>
               </div>
             ) : (
               <Button type="button" variant="outline" size="sm" onClick={handleReset} disabled={resetting}>

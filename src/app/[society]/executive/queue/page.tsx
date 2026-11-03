@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +30,8 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   const societyId = membership.societyId;
 
   const now = new Date();
-  const [rubricPending, roomPending, reimbursementPending, printingPending, grantsDue] = await Promise.all([
+  const modules = await modulesForSociety(societyId);
+  const [rubricAll, roomAll, reimbursementPending, printingAll, grantsAll] = await Promise.all([
     prisma.contentRequest.findMany({
       where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
@@ -73,6 +75,12 @@ export default async function ExecutiveQueuePage({ params }: Props) {
       orderBy: { startDate: "asc" }, // least time left first
     }),
   ]);
+
+  // Records of a switched-off module stay in the database but leave the queue.
+  const rubricPending = modules.events && modules.ticketing ? rubricAll : [];
+  const roomPending = modules.roomBookings ? roomAll : [];
+  const printingPending = modules.printing ? printingAll : [];
+  const grantsDue = modules.events && modules.grants && modules.ticketing ? grantsAll : [];
 
   const totalPending =
     rubricPending.length + roomPending.length + reimbursementPending.length + printingPending.length + grantsDue.length;

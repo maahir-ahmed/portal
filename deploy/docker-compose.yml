@@ -1,7 +1,11 @@
-# One compose file for both hosted stacks. Pick the stack via --env-file:
+# One compose file for the hosted stacks and for self-hosting. Pick the stack via --env-file:
 #   prod: docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build
 #   dev:  docker compose --env-file deploy/.env.dev  -p rubric_dev  -f deploy/docker-compose.yml up -d --build
-# cloudflared reaches the app via host.docker.internal:${APP_PORT} (matches the existing tunnel setup).
+# The hosted stacks build from source, and their own cloudflared reaches the app via
+# host.docker.internal:${APP_PORT}. A self-hosted stack (./portal, docs/SELF_HOSTING.md)
+# pulls the published images instead (APP_IMAGE, WEB_IMAGE, BACKUP_IMAGE) and turns on
+# one of the cloudflare or caddy profiles below. Unset, each image is named after the
+# stack, which is what compose called them before these settings existed.
 services:
   db:
     image: postgres:16-alpine
@@ -35,18 +39,18 @@ services:
 
   app:
     build: { context: .., dockerfile: Dockerfile }
+    image: ${APP_IMAGE:-${STACK}-app}
     container_name: ${STACK}_app
     restart: unless-stopped
     # Sync schema (idempotent) then start the server, no separate migrate container to clean up.
     # $$ escapes compose interpolation so sh expands the runtime DATABASE_URL.
     # Note: db push + --accept-data-loss; ceiling = destructive schema change applies silently.
-    # One-time data fixes (e.g. the PrintingStatus enum remap, the TreasuryStatus one)
-    # are applied out-of-band via psql, because `prisma db execute` can't run in this
-    # image (no CLI shipped; npx-fetched prisma can't load the TS config). db push
-    # alone reconciles fresh DBs correctly.
-    # Pinned to the lockfile's prisma: unpinned npx follows npm's `latest`, which
-    # pointed at 8.0.0-rc.27 in Oct 2026 and crash-looped the app. Bump with package.json.
-    command: sh -c "npx -y prisma@7.10.1 db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" --accept-data-loss && node server.js"
+    # One-time data fixes that must run BEFORE the push (e.g. the PrintingStatus enum
+    # remap) are applied out-of-band via psql. Fixes that must run AFTER it live in
+    # prisma/post-push/ and apply themselves once each (scripts/post-push.mjs).
+    # The prisma CLI is baked into the image at the lockfile's version (see Dockerfile);
+    # the image has no prisma.config.ts, hence --schema and --url.
+    command: sh -c "prisma db push --schema=prisma/schema.prisma --url \"$$DATABASE_URL\" --accept-data-loss && node scripts/post-push.mjs && node server.js"
     # No published port: the web service in front owns ${APP_PORT} so that something
     # still answers while this container is being rebuilt.
     expose:
@@ -72,8 +76,31 @@ services:
       # Encrypts the Rubric session and Discord webhook URLs at rest (src/lib/secrets.ts).
       # Optional: empty stores them in plain text, which is how older stacks still run.
       RUBRIC_SECRET_KEY: ${RUBRIC_SECRET_KEY:-}
+      # Settings > Debugging (database viewer, backup, restore, raw SQL). Off unless set
+      # to true, and always off with DEMO_MODE. See deploy/README.md.
+      ENABLE_DEBUG_TOOLS: ${ENABLE_DEBUG_TOOLS:-false}
+      # First-run setup: /setup?token=<SETUP_TOKEN> makes the first account on an empty
+      # database, and does nothing once any account exists. ADMIN_EMAIL prefills it.
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      # Discord deadline reminders (src/lib/reminders.ts): "on" pings under each event's
+      # post as its deadline nears. Off unless set, so existing stacks don't start
+      # pinging on upgrade; the installer sets it. The /print bot is a spike, off unless
+      # ENABLE_DISCORD_BOT=true: see docs/DISCORD_BOT_SPIKE.md.
+      DISCORD_REMINDERS: ${DISCORD_REMINDERS:-}
+      ENABLE_DISCORD_BOT: ${ENABLE_DISCORD_BOT:-false}
+      DISCORD_APP_ID: ${DISCORD_APP_ID:-}
+      DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      STACK: ${STACK}
+      UPLOADS_DIR: /app/uploads
+      BACKUP_OUT: /app/backups
     volumes:
       - uploads_data:/app/uploads
+      # The Debugging tab's own archives. A volume rather than ${BACKUP_DIR}: the app
+      # runs as an unprivileged user that cannot write to a host folder it doesn't own.
+      # Same format as the daily backups, so either restores with either.
+      - debug_backups:/app/backups
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
@@ -83,10 +110,14 @@ services:
   # Its own config rarely changes, so `up -d --build` leaves it running.
   web:
     build: { context: ., dockerfile: Dockerfile.web }
+    image: ${WEB_IMAGE:-${STACK}-web}
     container_name: ${STACK}_web
     restart: unless-stopped
     ports:
-      - "${APP_PORT}:80"   # cloudflared hits host.docker.internal:${APP_PORT}
+      # The hosted stacks' cloudflared hits host.docker.internal:${APP_PORT}, which needs
+      # every interface. A self-hosted stack binds 127.0.0.1: its tunnel or Caddy is on
+      # the compose network, and the port is only for opening it on the machine itself.
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT}:80"
     networks: [internal]
 
   # Dumps the database and archives the uploads volume into ${BACKUP_DIR} daily,
@@ -95,6 +126,7 @@ services:
   # only backup on this box was one manual dump.
   backup:
     build: { context: ., dockerfile: Dockerfile.backup }
+    image: ${BACKUP_IMAGE:-${STACK}-backup}
     container_name: ${STACK}_backup
     restart: unless-stopped
     environment:
@@ -104,15 +136,51 @@ services:
       BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
       TZ: ${TZ:-Australia/Sydney}   # so BACKUP_HOUR means the local 3am
     volumes:
-      - uploads_data:/uploads:ro
+      # Writable so `backup restore` can put the uploads back (deploy/README.md).
+      - uploads_data:/uploads
       - ${BACKUP_DIR:-../../rubric-backups}:/backups
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
 
+  # Self-hosting, domain method 1 (recommended): a Cloudflare Tunnel. No open ports, and
+  # it works behind home and university networks. The tunnel's public hostname points at
+  # http://web:80, set where the token was made (docs/SELF_HOSTING.md).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ${STACK}_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on: [web]
+    networks: [internal]
+    profiles: ["cloudflare"]
+
+  # Self-hosting, domain method 2: Caddy, for a server with a public IP. Gets and renews
+  # the HTTPS certificate itself; needs ports 80 and 443 open and DOMAIN pointing here.
+  caddy:
+    image: caddy:2-alpine
+    container_name: ${STACK}_caddy
+    restart: unless-stopped
+    command: caddy reverse-proxy --from ${DOMAIN:-localhost} --to web:80
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    networks: [internal]
+    profiles: ["caddy"]
+
 volumes:
+  caddy_data:
+  caddy_config:
   db_data:
   uploads_data:
+  debug_backups:
 
 networks:
   internal:

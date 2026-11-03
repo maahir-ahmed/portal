@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { pageEnabled } from "@/lib/modules";
+import { useModules } from "@/hooks/useModules";
 import { ExternalLink, Settings } from "lucide-react";
 
 const TABS = [
@@ -39,7 +41,10 @@ export function RubricShell({ children }: RubricShellProps) {
     }
   }, [role, pathname, base, router]);
 
-  const tabs = isExec ? TABS : TABS.filter((t) => t.href === "/events");
+  const modules = useModules(params.society);
+  const tabs = (isExec ? TABS : TABS.filter((t) => t.href === "/events")).filter(
+    (t) => !modules || pageEnabled(modules, `/rubric${t.href}`)
+  );
 
   return (
     <div className="space-y-6">

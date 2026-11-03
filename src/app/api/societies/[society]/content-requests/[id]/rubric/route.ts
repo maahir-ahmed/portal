@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     link: `/requests/content/${id}`,
   });
 
-  await syncEventToDiscord(id); // ticks the Rubric event off in the marketing channel
+  await syncEventToDiscord(id, `${session!.user.name} attached the Rubric event.`); // and ticks it off in the message
 
   return NextResponse.json(updated);
 }

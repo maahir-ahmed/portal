@@ -18,6 +18,7 @@ const createSchema = z.object({
   blurbRequired: z.boolean().default(false),
   rubricRequired: z.boolean().default(false),
   otherNotes: z.string().nullable().optional(),
+  portfolioId: z.string().nullable().optional(),
   status: z.enum(["DRAFT", "SUBMITTED"]).default("SUBMITTED"),
 });
 
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
 
   try {
     const body = createSchema.parse(await req.json());
+    if (body.portfolioId && !(await prisma.portfolio.count({ where: { id: body.portfolioId, societyId: membership!.societyId } }))) {
+      return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+    }
 
     const request = await prisma.contentRequest.create({
       data: {
@@ -74,6 +78,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         blurbRequired: body.blurbRequired,
         rubricRequired: body.rubricRequired,
         otherNotes: body.otherNotes,
+        portfolioId: body.portfolioId || null,
         status: body.status,
       },
     });

@@ -27,10 +27,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   try {
     const body = schema.parse(await req.json());
 
-    // A director may only file against their own portfolio; an executive may pick any,
-    // their own exec team, or none at all for a whole-of-committee meeting.
+    // A director may only file against their own portfolios (the first, unless they
+    // picked another of theirs); an executive may pick any, their own exec team, or
+    // none at all for a whole-of-committee meeting.
     const execTeam = scope.isExec && body.execTeam;
-    const portfolioId = execTeam ? null : scope.isExec ? (body.portfolioId ?? null) : scope.portfolioId;
+    const portfolioId = execTeam
+      ? null
+      : scope.isExec
+        ? (body.portfolioId ?? null)
+        : body.portfolioId && scope.portfolioIds.includes(body.portfolioId)
+          ? body.portfolioId
+          : (scope.portfolioIds[0] ?? null);
     if (!canTouchPortfolio(scope, portfolioId)) {
       return NextResponse.json({ error: "Not your portfolio" }, { status: 403 });
     }

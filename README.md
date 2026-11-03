@@ -8,7 +8,7 @@ Web app for running a university society committee: content requests, room booki
 - **Content requests**: marketing workflow. The list is ordered by event date, colour-coded by how close the event is, and each status tab shows a count. Marketing directors upload finished graphics, paste the event blurb, and tick items done. Rubric event links generate a transparent QR code automatically.
 - **Room bookings**: Arc booking requests, with a warning when external guests need 7 business days' notice.
 - **Treasury**: reimbursement claims. Spending approval happens in the committee Discord before the purchase, so the site only records the claim and tracks the payout: submit, then an exec marks it reimbursed (or rejects it). A claim is visible only to whoever submitted it and to executives. Owners can edit claims and add/remove receipts until the claim is paid out. Bank details saved per user.
-- **Printing**: club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold), approved by execs; approved requests draw down the budget. Arc's per-page rate table (size, sides, colour) is shown on the list and on the form, where the row matching your options is highlighted next to the live estimate.
+- **Printing**: club printing requests costed against a per-tier secretarial budget (Bronze/Silver/Gold, set from the active member count on Rubric when it is connected, otherwise picked in Settings), approved by execs; approved requests draw down the budget. Arc's per-page rate table (size, sides, colour) is shown on the list and on the form, where the row matching your options is highlighted next to the live estimate.
 
 **Spending budget** (exec-only tab) is the yearly budget tracker that replaced the committee's spreadsheet:
 - **Current Year**: each category's 2026 budget vs live spend (summed from classified claims that are awaiting reimbursement or already reimbursed), with % used/left bars and an unclassified bucket.
@@ -21,11 +21,17 @@ Rubric credentials never leave the server. The browser calls `POST /api/societie
 
 **Platform**
 - Roles: Executive, Director, Subcommittee, with a shared exec queue for anything needing action (Rubric events, Arc lodgements, printing, payouts).
-- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login is the only unauthenticated page.
+- No self-registration: an account exists only because an executive created it from the Members tab, which hands back a four-word temporary passphrase (`otter-cobalt-thimble-meadow`) to pass on. Login and first-run setup are the only unauthenticated pages.
+- **First-run setup**: on an empty database, `/setup?token=<SETUP_TOKEN>` creates the first executive account and the society, then walks through six steps (details and timezone, portfolios, features, policies, member import, Discord). Each is the same form as its Settings tab, every optional step can be skipped, and it resumes where it was left. The token stops working once any account exists.
+- **Member import** (Settings > Import members): a CSV or Excel file, checked row by row in a preview before anything is written, then imported all or nothing. Nobody is emailed. Imported people show as "not invited" on the Members page until an executive issues them a passphrase.
 - The member is then blocked on a change-password dialog until they pick their own — no dismissing it, and the new password has to differ from the passphrase. Same flow after an exec resets a password.
 - Per-society branding (logo/banner upload, colours), notifications, and an audit log.
-- Nine portfolios (Careers, Conferences, Creatives, CTF, Education, Marketing, Projects, Socials, Media), each with a director title and a subcom title. A member's portfolio follows their title, so "Creative Subcom" groups them under Creatives; it is never set by hand. Executives are grouped by role and hold no portfolio.
-- Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Portfolios and titles are both managed in Settings.
+- Portfolios: the areas a society splits its committee into (Events, Marketing, Sponsorship…), defined per society in Settings, and optional. A member is in the portfolio of the title they hold ("Events Director"), and can be added to more from the Members page. Executives are grouped by role.
+- **Discord** (Settings > Discord): the exec queue and new event requests post to webhooks. The events channel can be a text channel or a forum, where each request becomes its own post; edits on the portal update it in place, and status changes are noted in its thread. As an event's content deadline gets closer (two weeks, a week, two days, overdue: the same stages that colour the events list), the portfolio running it is pinged under its post, once per stage (with `DISCORD_REMINDERS=on`, which the self-host installer sets). A `/print` slash command that files a printing request from Discord is a spike behind `ENABLE_DISCORD_BOT` ([write-up](docs/DISCORD_BOT_SPIKE.md)).
+- Member directory: role head counts, then the executive team, then one section per portfolio with directors before subcommittee. Someone in two portfolios appears under both.
+- **Feature modules**: each society switches off the sections it doesn't use (events, room bookings, printing, Rubric, activity grants, AHEGS, the exec board) in Settings > Features. A switched-off section leaves the menu and refuses its pages and API; nothing is deleted. Treasury can run with a yearly budget or as transactions only.
+- **Policies**: each request form shows the app's standard rules plus the society's own lines (Settings > Policies), and one "I agree" covers both.
+- **Debugging** (opt-in, `ENABLE_DEBUG_TOOLS=true`): a read-only database viewer with credentials masked, one-archive backups of the database and uploads, restore from an uploaded archive, and running a `.sql` file in one transaction. See [`deploy/README.md`](deploy/README.md).
 - Single-society mode: set `SOCIETY_SLUG` to serve one society at the root domain (clean, slug-free URLs).
 - **Guided tour**: the mortarboard button in the header (or "Take the tour" in the sidebar) walks new committee members through every page with hovering callout boxes. It creates a set of demo records (content request, room booking, reimbursement claim, printing job, budget category, notification) so the pages aren't empty, all tagged `[Tutorial demo]`, and deletes them when the tour ends. Steps above your role are skipped. Arrow keys move, Esc leaves and cleans up.
 - **Per-page help**: the question mark next to it runs only the steps for the page you're on, creating nothing and deleting nothing. Same copy as the tour, so there is one place to keep it correct, and the button hides itself on pages the tour doesn't cover.
@@ -36,7 +42,7 @@ Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL · Ne
 
 ## Getting started
 
-Needs Node 20+ and Docker (for the local database).
+Needs Node 22+ and Docker (for the local database).
 
 ```bash
 npm install
@@ -52,7 +58,7 @@ npm run db:seed      # demo society + accounts
 npm run dev
 ```
 
-App runs at `http://localhost:3000`. The seed prints demo logins (password `password123`).
+App runs at `http://localhost:3000`. The seed prints demo logins (password `password123`). To try first-run setup instead, skip the seed, set `SETUP_TOKEN` in `.env` and open `/setup?token=<that value>`.
 
 ## Environment
 
@@ -65,6 +71,9 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `SMTP_*`, `EMAIL_FROM` | Email notifications (optional) |
 | `MAX_FILE_SIZE_MB` | Upload size cap (default 10) |
 | `RUBRIC_SECRET_KEY` | Encrypts the stored Rubric session at rest (optional; `openssl rand -base64 32`) |
+| `SETUP_TOKEN` | Opens first-run setup on an empty database: `/setup?token=<value>`. Does nothing once an account exists |
+| `ADMIN_EMAIL` | Prefills the first account's email in setup (optional) |
+| `ENABLE_DEBUG_TOOLS` | `true` adds Settings > Debugging (database viewer, backup, restore, SQL). Off by default, always off with `DEMO_MODE` |
 
 ## Scripts
 
@@ -79,11 +88,16 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 | `npm run check:tutorial` | Verifies every guided-tour step still points at a `data-tour` anchor that exists |
 | `npm run check:rubric` | Verifies the Rubric session ID cannot reach a browser and every allowlisted call is role-gated |
 | `npm run check:passphrase` | Verifies the temporary-passphrase wordlist stays unique and large enough for the entropy it claims |
+| `npm run check:modules` | Verifies a switched-off feature module refuses exactly its own pages and API routes |
+| `npm run check:import` | Verifies the member import's CSV and XLSX readers and its row checks |
+| `npm run check:debug` | Verifies the database viewer masks credentials and the SQL runner refuses files that end its transaction |
 | `npm run rubric:snapshot` | Refreshes the demo's Rubric fixture from a connected deployment (anonymises people first) |
 
 ## Deployment
 
-Runs in Docker behind Cloudflare Tunnel, with a GitHub Actions self-hosted runner for push-to-deploy. See [`deploy/README.md`](deploy/README.md).
+**Running it for your own society:** see [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md). One command (`./portal install`, or `portal.ps1` on Windows) sets up a cloud server, a Raspberry Pi or a Windows or Mac computer, behind a Cloudflare Tunnel or Caddy, from images published for amd64 and arm64. The same script updates, backs up and restores.
+
+The hosted stacks run in Docker behind Cloudflare Tunnel, with a GitHub Actions self-hosted runner for push-to-deploy. See [`deploy/README.md`](deploy/README.md).
 
 ## Structure
 
