@@ -55,7 +55,7 @@ for approval; **info** = noted only.
 | F25 | Low | rubric | link route accepts form bodies (CSRF shape), no zod | fix | todo |
 | F26 | Low | email | SMTP opportunistic TLS, no timeouts, awaited in requests | proposal | - |
 | F27 | Low | discord | /print no replay window; reply outside try, no timeout | fix | done (this commit) |
-| F28 | Low | rubric | audit only after success, no target id; credentials 500 on bad input | fix (400); proposal (audit) | todo |
+| F28 | Low | rubric | audit only after success, no target id; credentials 500 on bad input | fix (400); proposal (audit) | 400 done (this commit); audit-before-write and target ids are proposals |
 | F29 | Low | discord | concurrent first posts duplicate the event post | proposal | - |
 | F30 | Info | misc | RUBRIC_CALLS prototype lookup, exec-queue allowed_mentions, GHCR Link origin | fix | todo |
 | F31 | Info | discord | reminder retry loop for a dead webhook; role changes not audited | proposal | - |

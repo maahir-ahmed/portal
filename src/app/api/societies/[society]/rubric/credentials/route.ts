@@ -61,7 +61,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
     return NextResponse.json({ error: "Exec only" }, { status: 403 });
   }
 
-  const body = patchSchema.parse(await req.json());
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  const body = parsed.data;
   if (body.rubricSessionId === undefined && body.rubricSocietyId === undefined) {
     return NextResponse.json({ ok: true });
   }
