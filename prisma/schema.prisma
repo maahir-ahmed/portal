@@ -193,6 +193,10 @@ model Society {
   // webhook is replaced.
   eventsWebhookForum     Boolean      @default(false)
   secretarialTier      SecretarialTier @default(BRONZE)
+  // Active members on Rubric, which set secretarialTier when Rubric is connected
+  // (refreshArcTier in src/lib/rubric.ts). Null when it has never been read.
+  arcMemberCount       Int?
+  arcMemberCountAt     DateTime?
   // The academic year AHEGS is being collated for. Set in Settings because it does
   // not follow the calendar: a submission is prepared over one year and lodged at its
   // end, so the page must not roll over to a new, empty year on 1 January. Null falls

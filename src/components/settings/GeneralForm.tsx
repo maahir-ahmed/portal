@@ -12,7 +12,7 @@ import { YearCalendarSettings } from "@/components/settings/YearCalendarSettings
 import { ImageUploadField } from "@/components/settings/ImageUploadField";
 import { SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { useModules } from "@/hooks/useModules";
-import { TIMEZONES } from "@/lib/utils";
+import { TIMEZONES, formatDate } from "@/lib/utils";
 import type { Society } from "@prisma/client";
 
 const SELECT_CLASS =
@@ -110,19 +110,31 @@ export function GeneralForm({
               <CardDescription>Your Arc club tier sets the printing budget for the year.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Label htmlFor="secretarialTier">Club Tier</Label>
-              <select
-                id="secretarialTier"
-                name="secretarialTier"
-                defaultValue={society.secretarialTier ?? "BRONZE"}
-                className={SELECT_CLASS}
-              >
-                {Object.entries(SECRETARIAL_ALLOWANCE).map(([tier, amount]) => (
-                  <option key={tier} value={tier}>
-                    {tier.charAt(0) + tier.slice(1).toLowerCase()} (${amount})
-                  </option>
-                ))}
-              </select>
+              {society.arcMemberCount !== null ? (
+                <p className="text-sm">
+                  <strong>{society.secretarialTier.charAt(0) + society.secretarialTier.slice(1).toLowerCase()}</strong>{" "}
+                  (${SECRETARIAL_ALLOWANCE[society.secretarialTier]}), from {society.arcMemberCount} active members on
+                  Rubric{society.arcMemberCountAt && `, checked ${formatDate(society.arcMemberCountAt)}`}. Arc tiers:
+                  Bronze 5 to 74 members, Silver 75 to 249, Gold 250 or more.
+                </p>
+              ) : (
+                <>
+                  <Label htmlFor="secretarialTier">Club Tier</Label>
+                  <select
+                    id="secretarialTier"
+                    name="secretarialTier"
+                    defaultValue={society.secretarialTier ?? "BRONZE"}
+                    className={SELECT_CLASS}
+                  >
+                    {Object.entries(SECRETARIAL_ALLOWANCE).map(([tier, amount]) => (
+                      <option key={tier} value={tier}>
+                        {tier.charAt(0) + tier.slice(1).toLowerCase()} (${amount})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">Connect Rubric to set this from your member count.</p>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

@@ -442,7 +442,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "printing-allowance",
     title: "Secretarial allowance",
     body:
-      "Your Arc club tier sets the allowance (Bronze $150, Silver $225, Gold $405), and the bar shows how much is used. Only approved jobs count against it, so pending requests don't use any of it up. Deleting an approved job gives its cost back.",
+      "Your Arc club tier sets the allowance (Bronze $150, Silver $225, Gold $405). With Rubric connected, the tier comes from your active member count, checked daily. The bar shows how much is used. Only approved jobs count against it, so pending requests don't use any of it up. Deleting an approved job gives its cost back.",
   },
   {
     id: "printing-rates",
@@ -815,7 +815,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Club tier",
     body:
-      "Your Arc club tier, which sets the printing allowance on the Printing page.",
+      "Your Arc club tier, which sets the printing allowance on the Printing page. With Rubric connected it follows your member count; otherwise pick it here.",
   },
   {
     id: "settings-years",

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { getRubricCredentials, setRubricSession } from "@/lib/rubric";
+import { getRubricCredentials, postRubric } from "@/lib/rubric";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "@/lib/rubricCalls";
 import { demoEnabled, demoResponse } from "@/lib/rubricDemo";
 import { z } from "zod";
@@ -12,9 +12,6 @@ import { z } from "zod";
 // itself, which meant any authenticated member could lift it out of network traffic
 // and act as the executive who created it, across every society that executive
 // belongs to.
-
-const RUBRIC_BASE = "https://api.hellorubric.com";
-const TIMEOUT_MS = 20_000;
 
 const bodySchema = z.object({
   type: z.string().min(1),
@@ -90,45 +87,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   const creds = await getRubricCredentials(membership!.societyId);
   if (!creds) return NextResponse.json({ error: "not_configured" }, { status: 400 });
 
-  // societyID comes from our database, never from the caller, so a member cannot
-  // point our session at another society this executive happens to run.
-  const payload: Record<string, unknown> = {
-    ...callParams.data,
-    type: parsed.data.type,
-    sessionid: creds.sessionId,
-    societyID: creds.societyId,
-    currentUrl: "https://portal.hellorubric.com/",
-    device: "web_portal",
-    version: 4,
-    timestamp: Date.now(),
-    ...(creds.unionSessionId ? { unionSessionID: creds.unionSessionId } : {}),
-    ...(spec.societyIdKey ? { [spec.societyIdKey]: Number(creds.societyId) } : {}),
-  };
-
-  let res: Response;
+  let r: Awaited<ReturnType<typeof postRubric>>;
   try {
-    res = await fetch(`${RUBRIC_BASE}/${parsed.data.type}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+    r = await postRubric(membership!.societyId, creds, parsed.data.type, callParams.data, {
+      societyIdKey: spec.societyIdKey,
     });
   } catch {
     return NextResponse.json({ error: "Could not reach Rubric" }, { status: 504 });
   }
 
-  if (!res.ok) {
-    return NextResponse.json({ error: `Rubric HTTP ${res.status}` }, { status: 502 });
+  if (!r.ok) {
+    return NextResponse.json({ error: `Rubric HTTP ${r.status}` }, { status: 502 });
   }
 
-  const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  // A replacement session Rubric hands back is persisted by postRubric; it must not
+  // reach the browser either, which is what scrubResponse guarantees below.
+  const data = r.data;
   if (!data) return NextResponse.json({ error: "Unreadable Rubric response" }, { status: 502 });
-
-  // Rubric hands back a replacement session on some calls. Persist it here; it must
-  // not reach the browser, which is what scrubResponse guarantees below.
-  if (typeof data.rotating_session_ID === "string" && data.rotating_session_ID.length > 0) {
-    await setRubricSession(membership!.societyId, data.rotating_session_ID);
-  }
 
   // Writes, and reads that return personal data. The impact of the old design was
   // bulk PII exfiltration, so who read what has to be answerable after the fact.

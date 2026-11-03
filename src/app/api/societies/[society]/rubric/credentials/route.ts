@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { setRubricSession, SESSION_MAX_AGE_DAYS } from "@/lib/rubric";
+import { refreshArcTier, setRubricSession, SESSION_MAX_AGE_DAYS } from "@/lib/rubric";
 import { z } from "zod";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -89,6 +89,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
     entityId: membership!.societyId,
     metadata: { sessionChanged: body.rubricSessionId !== undefined, disconnected },
   });
+
+  // New credentials: read the member count now, so Settings shows the tier straight away.
+  if (!disconnected) await refreshArcTier(membership!.societyId, true);
 
   return NextResponse.json({ ok: true });
 }

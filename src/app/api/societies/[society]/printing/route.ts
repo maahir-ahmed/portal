@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { createPrintingRequest } from "@/lib/printingServer";
+import { refreshArcTier } from "@/lib/rubric";
 import { z } from "zod";
 
 // Contact details (club, name, email, phone) are derived server-side from the
@@ -37,6 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
+  await refreshArcTier(membership!.societyId);
   const soc = await prisma.society.findUnique({
     where: { id: membership!.societyId },
     select: { secretarialTier: true },

@@ -75,6 +75,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       linkedinUrl: true,
       description: true,
       secretarialTier: true,
+      arcMemberCount: true,
+      arcMemberCountAt: true,
       ahegsYear: true,
       rubricSocietyId: true,
       ...MODULE_SELECT,
