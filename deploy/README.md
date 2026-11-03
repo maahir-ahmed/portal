@@ -113,6 +113,18 @@ a backup first; all three are in the audit log. It is off by default, and forced
 Archives made in the tab go to the `debug_backups` volume (the app runs as a user that
 cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere.
 
+## Discord reminders and the /print bot
+
+Deadline reminders start with the app in production (a timer in `src/instrumentation.ts`,
+every 10 minutes) and do nothing until a society has an events webhook. The first pass
+after an upgrade only records where each open request stands, so nothing pings until a
+request's deadline actually moves into a more urgent stage. `DISCORD_REMINDERS=off` in
+the env file stops them.
+
+The `/print` bot is a spike, off unless `ENABLE_DISCORD_BOT=true` with `DISCORD_APP_ID`,
+`DISCORD_PUBLIC_KEY` and `DISCORD_BOT_TOKEN` set. Setup and findings are in
+[docs/DISCORD_BOT_SPIKE.md](../docs/DISCORD_BOT_SPIKE.md).
+
 ## Demo stack (no login)
 
 `rubric_dev` is a public showcase, not a staging copy of prod. Set in `deploy/.env.dev`:

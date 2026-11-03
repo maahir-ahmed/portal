@@ -48,11 +48,10 @@ export function PortfolioRoles({ societySlug }: { societySlug: string }) {
       <CardHeader>
         <CardTitle className="text-base">Discord: deadline reminders</CardTitle>
         <CardDescription>
-          As an event&apos;s content deadline gets closer (two weeks, one week, two days, then
-          overdue), the portal posts a reminder under the request in the marketing channel
-          above. It pings the role of the portfolio running the event, or the marketing role
-          above if that portfolio has none. In Discord, right-click a role and choose Copy
-          Role ID (turn on Developer Mode in Settings, Advanced, if you can&apos;t see it).
+          As an event&apos;s content deadline gets closer (two weeks, one week, two days,
+          overdue), a reminder goes under its request in the marketing channel, pinging the
+          portfolio running it, or the role above if that portfolio has none. Copy each role
+          ID the same way as above.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
