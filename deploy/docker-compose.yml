@@ -1,7 +1,11 @@
-# One compose file for both hosted stacks. Pick the stack via --env-file:
+# One compose file for the hosted stacks and for self-hosting. Pick the stack via --env-file:
 #   prod: docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build
 #   dev:  docker compose --env-file deploy/.env.dev  -p rubric_dev  -f deploy/docker-compose.yml up -d --build
-# cloudflared reaches the app via host.docker.internal:${APP_PORT} (matches the existing tunnel setup).
+# The hosted stacks build from source, and their own cloudflared reaches the app via
+# host.docker.internal:${APP_PORT}. A self-hosted stack (./portal, docs/SELF_HOSTING.md)
+# pulls the published images instead (APP_IMAGE, WEB_IMAGE, BACKUP_IMAGE) and turns on
+# one of the cloudflare or caddy profiles below. Unset, each image is named after the
+# stack, which is what compose called them before these settings existed.
 services:
   db:
     image: postgres:16-alpine
@@ -35,6 +39,7 @@ services:
 
   app:
     build: { context: .., dockerfile: Dockerfile }
+    image: ${APP_IMAGE:-${STACK}-app}
     container_name: ${STACK}_app
     restart: unless-stopped
     # Sync schema (idempotent) then start the server, no separate migrate container to clean up.
@@ -96,10 +101,14 @@ services:
   # Its own config rarely changes, so `up -d --build` leaves it running.
   web:
     build: { context: ., dockerfile: Dockerfile.web }
+    image: ${WEB_IMAGE:-${STACK}-web}
     container_name: ${STACK}_web
     restart: unless-stopped
     ports:
-      - "${APP_PORT}:80"   # cloudflared hits host.docker.internal:${APP_PORT}
+      # The hosted stacks' cloudflared hits host.docker.internal:${APP_PORT}, which needs
+      # every interface. A self-hosted stack binds 127.0.0.1: its tunnel or Caddy is on
+      # the compose network, and the port is only for opening it on the machine itself.
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT}:80"
     networks: [internal]
 
   # Dumps the database and archives the uploads volume into ${BACKUP_DIR} daily,
@@ -108,6 +117,7 @@ services:
   # only backup on this box was one manual dump.
   backup:
     build: { context: ., dockerfile: Dockerfile.backup }
+    image: ${BACKUP_IMAGE:-${STACK}-backup}
     container_name: ${STACK}_backup
     restart: unless-stopped
     environment:
@@ -124,7 +134,41 @@ services:
       db: { condition: service_healthy }
     networks: [internal]
 
+  # Self-hosting, domain method 1 (recommended): a Cloudflare Tunnel. No open ports, and
+  # it works behind home and university networks. The tunnel's public hostname points at
+  # http://web:80, set where the token was made (docs/SELF_HOSTING.md).
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ${STACK}_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on: [web]
+    networks: [internal]
+    profiles: ["cloudflare"]
+
+  # Self-hosting, domain method 2: Caddy, for a server with a public IP. Gets and renews
+  # the HTTPS certificate itself; needs ports 80 and 443 open and DOMAIN pointing here.
+  caddy:
+    image: caddy:2-alpine
+    container_name: ${STACK}_caddy
+    restart: unless-stopped
+    command: caddy reverse-proxy --from ${DOMAIN:-localhost} --to web:80
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    networks: [internal]
+    profiles: ["caddy"]
+
 volumes:
+  caddy_data:
+  caddy_config:
   db_data:
   uploads_data:
   debug_backups:
