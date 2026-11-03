@@ -52,6 +52,23 @@ export async function requireMembership(
 // account, so any write that changes that account's password or role locks the
 // demo out for everyone until the next reseed. Refuse those, and only those —
 // visitors are otherwise free to click around and create things.
+/**
+ * Refuses to change a user account (its password, its phone) when that account also
+ * belongs to another society. Accounts are global but exec powers are per society, so
+ * without this the exec of any society could add a stranger by email and reset their
+ * password: a takeover of an account someone else's society relies on.
+ */
+export async function blockForeignAccountWrite(userId: string, societyId: string): Promise<NextResponse | null> {
+  const elsewhere = await prisma.societyMembership.count({
+    where: { userId, isActive: true, societyId: { not: societyId } },
+  });
+  if (!elsewhere) return null;
+  return NextResponse.json(
+    { error: "This person also belongs to another society, so only they can change their account" },
+    { status: 403 }
+  );
+}
+
 export async function blockDemoAccountWrite(userId: string): Promise<NextResponse | null> {
   if (process.env.DEMO_MODE !== "1") return null;
   const demoEmail = process.env.DEMO_EMAIL?.toLowerCase();
