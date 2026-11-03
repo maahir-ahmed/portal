@@ -152,4 +152,28 @@ there is no login step. Consequences, all deliberate:
   go in `prisma/post-push/*.sql`. The app applies each once, after `db push`, on start;
   `_applied_fixes` records which have run. A failing fix stops the app starting, with
   nothing from it kept.
-- App ports are NOT published to the host; only cloudflared (via the `edge` network) can reach them.
+- The app itself is never published to the host. Only the `web` (nginx) container is,
+  on `${APP_BIND:-0.0.0.0}:${APP_PORT}`, which is what the box's cloudflared reaches through
+  `host.docker.internal`.
+- The prisma CLI that runs `db push` on start is baked into the app image at the
+  lockfile's version, so a start needs no network. Bump it with `package.json`.
+
+## Self-hosting and the published images
+
+The same compose file runs self-hosted portals ([docs/SELF_HOSTING.md](../docs/SELF_HOSTING.md)).
+The differences are all settings in that stack's `portal.env`, written by `./portal install`:
+
+- `APP_IMAGE`, `WEB_IMAGE`, `BACKUP_IMAGE` point at the published images instead of the
+  stack-named local builds. Unset (as on the hosted stacks), they default to
+  `${STACK}-app` and so on, the names compose gave them before.
+- `APP_BIND=127.0.0.1`, since the tunnel or Caddy is on the compose network.
+- `METHOD` picks the `cloudflare` profile (a `cloudflared` container using
+  `TUNNEL_TOKEN`) or the `caddy` profile (`caddy reverse-proxy` for `DOMAIN`, ports 80
+  and 443). The hosted stacks use neither, so neither starts there.
+
+[.github/workflows/images.yml](../.github/workflows/images.yml) publishes
+`ghcr.io/<owner>/<repo>-app`, `-web` and `-backup` for amd64 and arm64 on every push to
+`main` (`latest`) and on `v*` tags. **After its first run, check each of the three packages
+is public** (GitHub, your profile, Packages, the package, Package settings, Change
+visibility): a new package can start private, and self-hosters then can't download it
+(the installer falls back to building from source, which works but is slow).

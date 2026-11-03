@@ -94,7 +94,9 @@ App runs at `http://localhost:3000`. The seed prints demo logins (password `pass
 
 ## Deployment
 
-Runs in Docker behind Cloudflare Tunnel, with a GitHub Actions self-hosted runner for push-to-deploy. See [`deploy/README.md`](deploy/README.md).
+**Running it for your own society:** see [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.md). One command (`./portal install`, or `portal.ps1` on Windows) sets up a cloud server, a Raspberry Pi or a Windows or Mac computer, behind a Cloudflare Tunnel or Caddy, from images published for amd64 and arm64. The same script updates, backs up and restores.
+
+The hosted stacks run in Docker behind Cloudflare Tunnel, with a GitHub Actions self-hosted runner for push-to-deploy. See [`deploy/README.md`](deploy/README.md).
 
 ## Structure
 
