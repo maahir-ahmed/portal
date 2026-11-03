@@ -95,6 +95,8 @@ services:
       DISCORD_APP_ID: ${DISCORD_APP_ID:-}
       DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      # Optional: the society's Discord server ID; /print is then refused anywhere else.
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
       # Self-hosted updates (src/lib/updates.ts): the image this runs, to find newer
       # releases on its channel, and the token `./portal tick` checks in with. Unset on
       # the hosted stacks, which hides the update card and banner.

@@ -83,6 +83,7 @@ export function parsePickup(s: string): Date | null {
 interface Interaction {
   application_id: string;
   token: string;
+  guild_id?: string;
   member?: { user: DiscordUser };
   user?: DiscordUser;
   data: {
@@ -117,6 +118,10 @@ async function linkedUser(u: DiscordUser) {
 export async function handlePrint(i: Interaction): Promise<string> {
   const discordUser = i.member?.user ?? i.user;
   if (!discordUser) return "Use /print in your society's server.";
+  // The command is registered for the app, so it works in any server the app is added
+  // to. With DISCORD_GUILD_ID set, only the society's own server is listened to.
+  const guild = process.env.DISCORD_GUILD_ID;
+  if (guild && i.guild_id !== guild) return "Use /print in your society's server.";
   const user = await linkedUser(discordUser);
   if (!user) {
     return "I don't know who you are on the portal yet. Ask an executive to add your Discord username to your portal account, then try again.";
