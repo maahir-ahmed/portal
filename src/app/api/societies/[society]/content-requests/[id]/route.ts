@@ -148,7 +148,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<Params
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true, email: true } },
       assignedTo: { select: { id: true, name: true, avatarUrl: true } },
-      thread: { include: { comments: { include: { author: { select: { id: true, name: true, avatarUrl: true } } } } } },
+      thread: {
+        include: {
+          comments: {
+            // Same rule as the detail page: internal notes are for executives only.
+            where: membership!.role === "EXECUTIVE" ? {} : { isInternal: false },
+            include: { author: { select: { id: true, name: true, avatarUrl: true } } },
+          },
+        },
+      },
     },
   });
 
