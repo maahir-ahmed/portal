@@ -64,7 +64,7 @@ for approval; **info** = noted only.
 | F34 | High | debug | debug tools (instance-wide) gated only by exec of the URL's society | fix | done 186d7b3 |
 | F35 | High | auth | exec of any society could attach an existing account and reset its password/phone | fix | done 0558858 |
 | F36 | Medium | auth | JWT sessions never revoked after reset/password change/removal | proposal | - |
-| F37 | Medium | auth | no login rate limit; email enumeration by timing | fix (timing); proposal (limiter) | todo |
+| F37 | Medium | auth | no login rate limit; email enumeration by timing | fix (timing); proposal (limiter) | timing done (this commit); the rate limiter is a proposal |
 | F38 | Medium | members | last executive can demote themselves | proposal | - |
 | F39 | Medium | members | add-member doesn't lowercase email, account unusable | proposal | - |
 | F40 | Medium | demo | demo visitor can change the shared account's email | fix | done (this commit) |
