@@ -31,11 +31,21 @@ RUN npm run build
 FROM base AS runner
 # postgresql16-client: pg_dump and psql for Settings > Debugging's backup and restore,
 # which run deploy/backup.sh in here. 16 to match the postgres:16 the stack runs.
-RUN apk add --no-cache openssl postgresql16-client
+# tzdata: so TZ means something when this image runs the daily backup.
+RUN apk add --no-cache openssl postgresql16-client tzdata
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# No update check or telemetry call from the prisma CLI on every start.
+ENV CHECKPOINT_DISABLE=1
+
+# The prisma CLI that runs `db push` on start, at the lockfile's version. It used to be
+# fetched with npx at every start, which needed npm to be reachable to boot and once
+# crash-looped prod when an unpinned npx picked up a release candidate.
+COPY package-lock.json /tmp/
+RUN npm install -g "prisma@$(node -p "require('/tmp/package-lock.json').packages['node_modules/prisma'].version")" \
+    && npm cache clean --force && rm /tmp/package-lock.json
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
