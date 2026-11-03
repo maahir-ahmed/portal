@@ -70,7 +70,7 @@ for approval; **info** = noted only.
 | F40 | Medium | demo | demo visitor can change the shared account's email | fix | done (this commit) |
 | F41 | Medium | ahegs | directors can edit their own AHEGS row; AHEGS writes unaudited | proposal | - |
 | F42 | Low | auth | open redirect via login callbackUrl | fix | done (this commit) |
-| F43 | Low | auth | session update copies client-supplied name/email into the JWT | fix | todo |
+| F43 | Low | auth | session update copies client-supplied name/email into the JWT | fix | done (this commit) |
 | F44 | Low | titles | titles accept another society's portfolioId | fix | todo |
 | F45 | Low | titles | renaming a title orphans its members | proposal | - |
 | F46 | Low | requests | detail views open to all members while lists are scoped | proposal | - |
