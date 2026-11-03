@@ -53,6 +53,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
   }
 
+  // Only a manager's status is applied, so only theirs is announced: anyone else's
+  // would otherwise be logged, notified and posted to Discord without having happened.
+  const statusSent = canManage && body.status ? body.status : null;
+  const statusChanged = !!statusSent && statusSent !== request.status;
+
   const updated = await prisma.contentRequest.update({
     where: { id },
     data: {
@@ -107,18 +112,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   await createAuditLog({
     societyId: membership!.societyId,
     userId: session!.user.id,
-    action: body.status ? "STATUS_CHANGE" : "UPDATE",
+    action: statusSent ? "STATUS_CHANGE" : "UPDATE",
     entityType: "ContentRequest",
     entityId: id,
-    ...(body.status ? { metadata: { from: request.status, to: body.status } } : {}),
+    ...(statusSent ? { metadata: { from: request.status, to: statusSent } } : {}),
   });
 
-  if (body.status && body.status !== request.status) {
+  if (statusChanged) {
     await createNotification({
       userId: request.submittedById,
       type: "STATUS_CHANGE",
       title: `Content Request Updated: ${request.eventName}`,
-      body: `Status changed to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
+      body: `Status changed to ${statusSent!.replace(/_/g, " ").toLowerCase()}.`,
       link: `/requests/content/${id}`,
     });
   }
@@ -127,8 +132,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // one that submits a draft, and says what changed in its thread.
   await syncEventToDiscord(
     id,
-    body.status && body.status !== request.status
-      ? `Status changed to **${statusLabel(body.status)}** by ${session!.user.name}.`
+    statusChanged
+      ? `Status changed to **${statusLabel(statusSent!)}** by ${session!.user.name}.`
       : `${session!.user.name} updated the request.`
   );
 

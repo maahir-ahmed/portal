@@ -34,7 +34,7 @@ for approval; **info** = noted only.
 | F04 | Medium | treasury | owner amount edit not status-guarded at write (race with payout) | fix (guard); proposal (expectedAmount, audit before/after) | todo |
 | F05 | Medium | printing | allowance sums all-time spend, not per year | proposal | - |
 | F06 | Medium | printing | requester phone/email visible to every member (page + GET API) | fix API (unused by UI); proposal page | todo |
-| F07 | Medium | content | PATCH logs/notifies/posts a status change it didn't make | fix | todo |
+| F07 | Medium | content | PATCH logs/notifies/posts a status change it didn't make | fix | done (this commit) |
 | F08 | Medium | requests | room-booking and content-request PATCH have no zod, 500 on bad input | fix (validation); proposal (owner status gate) | todo |
 | F09 | Low | dates | far-future/invalid dates accepted (yearOptions blowup) | fix | todo |
 | F10 | Low | dates | seven-business-day rule uses UTC today | proposal | - |
