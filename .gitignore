@@ -58,3 +58,4 @@ next-env.d.ts
 
 # Settings > Debugging archives in dev (BACKUP_OUT); they hold real data
 /backups
+portal.env

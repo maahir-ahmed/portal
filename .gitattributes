@@ -1,0 +1,4 @@
+# Shell scripts run inside Linux containers and on Linux hosts; a Windows checkout
+# with autocrlf would otherwise give them CRLF endings that sh cannot run.
+*.sh text eol=lf
+portal text eol=lf
