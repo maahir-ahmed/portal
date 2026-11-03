@@ -151,7 +151,9 @@ function Write-Settings {
 
   Ensure "AUTH_SECRET" (RandomHex 32)
   Ensure "DB_PASSWORD" (RandomHex 24)
-  Ensure "RUBRIC_SECRET_KEY" (RandomHex 32)
+  $key = New-Object byte[] 32
+  [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($key)
+  Ensure "RUBRIC_SECRET_KEY" ([Convert]::ToBase64String($key)) # base64, as src/lib/secrets.ts reads it
   Ensure "SETUP_TOKEN" (RandomHex 24)
   Ensure "ENABLE_DEBUG_TOOLS" "false"
   if (-not (Has-Setting "TZ")) { Ensure "TZ" (Host-Timezone) }

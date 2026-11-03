@@ -137,7 +137,7 @@ write_settings() {
 
   ensure AUTH_SECRET "$(random_hex 32)"
   ensure DB_PASSWORD "$(random_hex 24)"
-  ensure RUBRIC_SECRET_KEY "$(random_hex 32)"
+  ensure RUBRIC_SECRET_KEY "$(head -c 32 /dev/urandom | base64 | tr -d '\n')" # base64, as src/lib/secrets.ts reads it
   ensure SETUP_TOKEN "$(random_hex 24)"
   ensure ENABLE_DEBUG_TOOLS false
   ensure TZ "$(host_timezone)"
