@@ -92,7 +92,7 @@ for approval; **info** = noted only.
 | F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | done (this commit) |
 | F63 | Medium | updates | portal update pulls main, not the release tag | fix | done e0ab7b4 (bash) + this commit (ps1) |
 | F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | done (this commit) |
-| F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | todo |
+| F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | done (this commit) |
 | F66 | Medium | db | app and SQL runner connect as Postgres superuser | proposal | - |
 | F67 | Low | headers | no security headers; X-Powered-By; server_tokens | fix (nosniff, referrer, tokens); proposal (frame-ancestors) | todo |
 | F68 | Low | export | CSV formula injection in Rubric exports | proposal | - |
