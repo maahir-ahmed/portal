@@ -41,7 +41,7 @@ for approval; **info** = noted only.
 | F11 | Low | dates | other naive-vs-real now comparisons (queue grants, board, AHEGS default) | proposal | - |
 | F12 | Low | dates | typed datetimes parsed in server-local TZ; prod correct only because TZ unset | fix (pin TZ=UTC) | done (this commit, image); dev-server TZ is a proposal |
 | F13 | Low | threads | any member can comment on any treasury thread; requestType free string | fix | done (this commit) |
-| F14 | Low | treasury | POST loosely validated (lengths, amount cap, receipt URLs), not atomic | fix (caps, transaction); proposal (URL pattern if any doubt) | todo |
+| F14 | Low | treasury | POST loosely validated (lengths, amount cap, receipt URLs), not atomic | fix (caps, transaction); proposal (URL pattern if any doubt) | caps and upload-only file links done (this commit); the transaction is a proposal |
 | F15 | Low | treasury | draft submitted with amount 0 in the same PATCH | fix | done (this commit) |
 | F16 | Low | printing | refreshArcTier has no backoff, any member page load retries Rubric | fix | todo |
 | F17 | Low | tutorial | demo records appear in the real exec queue and allowance | proposal | - |

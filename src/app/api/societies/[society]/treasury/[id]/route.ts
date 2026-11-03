@@ -5,6 +5,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification, notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
 import type { TreasuryStatus } from "@prisma/client";
 
@@ -24,11 +25,13 @@ const patchSchema = z.object({
   // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
   // new Date() would turn into an Invalid Date.
   expenseDate: z.string().refine(isPlausibleDate, "Enter a real date").optional(),
-  locationSupplier: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
+  locationSupplier: z.string().min(1).max(500).optional(),
+  description: z.string().min(1).max(10000).optional(),
   // .finite() matters: JSON.parse turns 1e999 into Infinity, which reaches Decimal as junk.
-  amount: z.number().nonnegative().finite().optional(),
-  addReceipts: z.array(z.object({ fileName: z.string().optional(), fileUrl: z.string().min(1) })).optional(),
+  amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
+  addReceipts: z
+    .array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here") }))
+    .optional(),
   removeReceiptIds: z.array(z.string()).optional(),
   // Sent with a draft submit when the policy wasn't ticked at draft time.
   acknowledgedRules: z.literal(true).optional(),

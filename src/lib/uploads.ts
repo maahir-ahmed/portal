@@ -27,3 +27,7 @@ export async function saveUpload(bytes: Buffer, ext: string): Promise<string> {
   await writeFile(join(uploadDir, filename), bytes);
   return `/uploads/${filename}`;
 }
+
+// What the upload route hands back, and so the only file link a receipt or print job
+// should carry: an off-site "receipt" can be a phishing page, or change after approval.
+export const UPLOADED_FILE = /^\/uploads\/[A-Za-z0-9-]+\.[a-z0-9]+$/;

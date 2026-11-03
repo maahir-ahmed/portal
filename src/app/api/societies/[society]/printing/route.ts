@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { createPrintingRequest } from "@/lib/printingServer";
+import { UPLOADED_FILE } from "@/lib/uploads";
 import { refreshArcTier } from "@/lib/rubric";
 import { z } from "zod";
 
@@ -10,13 +11,15 @@ import { z } from "zod";
 // logged-in user + society (createPrintingRequest), so the form doesn't ask for them.
 const schema = z.object({
   pickupAt: z.string().min(1),
-  quantity: z.number().int().positive(),
-  pages: z.number().int().positive(),
+  // Far past any real job, and low enough that the cost (A3 colour double sided at
+  // the most) stays inside its Decimal(10,2) column instead of failing with a 500.
+  quantity: z.number().int().positive().max(5000),
+  pages: z.number().int().positive().max(5000),
   paperSize: z.enum(["A4", "A3"]),
   sided: z.enum(["SINGLE", "DOUBLE_SHORT", "DOUBLE_LONG"]),
   colour: z.enum(["BW", "COLOUR"]),
-  fileUrl: z.string().min(1),
-  fileName: z.string().min(1),
+  fileUrl: z.string().regex(UPLOADED_FILE, "The file has to be uploaded here"),
+  fileName: z.string().min(1).max(500),
   additionalDetails: z.string().optional(),
 });
 

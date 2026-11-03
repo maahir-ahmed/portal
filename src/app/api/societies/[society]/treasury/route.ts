@@ -4,6 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
 
 // Fields are optional so a partial claim can be saved as a DRAFT; the full set
@@ -11,16 +12,18 @@ import { isPlausibleDate } from "@/lib/utils";
 const schema = z.object({
   contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
   expenseDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").optional(),
-  locationSupplier: z.string().optional(),
-  description: z.string().optional(),
-  amount: z.number().nonnegative().optional(),
+  locationSupplier: z.string().max(500).optional(),
+  description: z.string().max(10000).optional(),
+  // Decimal(10,2) holds up to 99,999,999.99; past that Postgres refuses it with a 500.
+  amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
   useExistingBank: z.boolean(),
-  bankAccountName: z.string().nullable().optional(),
-  bankBsb: z.string().nullable().optional(),
-  bankAccountNumber: z.string().nullable().optional(),
+  // The same limits as saving bank details on the Account page.
+  bankAccountName: z.string().max(100).nullable().optional(),
+  bankBsb: z.string().max(20).nullable().optional(),
+  bankAccountNumber: z.string().max(30).nullable().optional(),
   saveToProfile: z.boolean().optional(),
   acknowledgedRules: z.boolean().optional(),
-  receiptUrls: z.array(z.string()).optional(),
+  receiptUrls: z.array(z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here")).optional(),
   budgetCategoryId: z.string().nullable().optional(),
   // The event this was spent on, if any.
   contentRequestId: z.string().nullable().optional(),
