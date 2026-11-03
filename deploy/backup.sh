@@ -73,26 +73,35 @@ archive() {
     rm -rf "$work"
     die "database dump failed for $STACK"
   fi
-  count=0
-  [ -d "$UPLOADS" ] && count=$(find "$UPLOADS" -type f | wc -l | tr -d ' ')
-  printf '{"format":%s,"stack":"%s","created":"%s","database_sha256":"%s","upload_count":%s}\n' \
-    "$FORMAT" "$STACK" "$(date -Is)" "$(sha "$work/database.sql")" "$count" > "$work/manifest.json"
-
-  # The uploads go straight from where they live into the archive, through a link
-  # tar follows (-h), rather than being copied first, so a large uploads directory
-  # does not need twice its size free. A link and not a second -C: busybox tar keeps
-  # only the last -C it is given.
+  # The uploads are counted and then archived from where they live, so a file uploaded
+  # in between would leave the manifest one short, and validate refuses the archive for
+  # good. The finished archive's count is checked against the manifest, and the archive
+  # made again if someone uploaded mid-backup.
   if [ -d "$UPLOADS" ]; then
     ln -s "$(cd "$UPLOADS" && pwd)" "$work/uploads"
   else
     mkdir "$work/uploads"
   fi
-  # Written under .part and renamed once complete, so a backup cut off halfway
-  # never looks like a good one to whoever comes to restore it.
-  if ! tar czhf "$dest.part" -C "$work" manifest.json database.sql uploads; then
-    rm -rf "$work" "$dest.part"
-    die "archive failed for $STACK"
-  fi
+  for attempt in 1 2 3; do
+    count=0
+    [ -d "$UPLOADS" ] && count=$(find "$UPLOADS" -type f | wc -l | tr -d ' ')
+    printf '{"format":%s,"stack":"%s","created":"%s","database_sha256":"%s","upload_count":%s}\n' \
+      "$FORMAT" "$STACK" "$(date -Is)" "$(sha "$work/database.sql")" "$count" > "$work/manifest.json"
+
+    # The uploads go straight from where they live into the archive, through a link
+    # tar follows (-h), rather than being copied first, so a large uploads directory
+    # does not need twice its size free. A link and not a second -C: busybox tar keeps
+    # only the last -C it is given.
+    # Written under .part and renamed once complete, so a backup cut off halfway
+    # never looks like a good one to whoever comes to restore it.
+    if ! tar czhf "$dest.part" -C "$work" manifest.json database.sql uploads; then
+      rm -rf "$work" "$dest.part"
+      die "archive failed for $STACK"
+    fi
+    [ "$(tar tzf "$dest.part" | grep -c '^uploads/.*[^/]$')" = "$count" ] && break
+    [ "$attempt" = 3 ] && { rm -rf "$work" "$dest.part"; die "uploads kept changing during the backup of $STACK; try again"; }
+    log "an upload arrived during the backup; making it again"
+  done
   rm -rf "$work"
   mv "$dest.part" "$dest"
   log "wrote $dest ($(wc -c < "$dest" | tr -d ' ') bytes, $count uploads)"
