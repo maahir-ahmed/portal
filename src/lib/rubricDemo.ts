@@ -50,10 +50,14 @@ export function anonymisePeople(value: unknown, counter = { n: 0 }): unknown {
       out[k] = `${FIRST[i % FIRST.length]} ${LAST[(i * 7) % LAST.length]}`;
     } else if (typeof v === "string" && key.includes("email")) {
       out[k] = `member${++counter.n}@example.com`;
-    } else if (typeof v === "string" && (key === "student number" || key === "zid")) {
+    } else if (typeof v === "string" && (key.includes("student") || key === "zid")) {
+      // "student number", "studentnumber" (ticket lists), "Student ID" (form answers).
       out[k] = `z${5000000 + ++counter.n}`;
-    } else if (typeof v === "string" && (key === "phone" || key.includes("mobile"))) {
+    } else if (typeof v === "string" && (key.includes("phone") || key.includes("mobile"))) {
+      // "phone", "phonenumber" (ticket lists), "Phone Number" (form answers).
       out[k] = "";
+    } else if (typeof v === "string" && ["firstname", "lastname", "preferredname", "full name"].includes(key)) {
+      out[k] = key === "lastname" ? LAST[++counter.n % LAST.length] : FIRST[++counter.n % FIRST.length];
     } else {
       out[k] = anonymisePeople(v, counter);
     }
