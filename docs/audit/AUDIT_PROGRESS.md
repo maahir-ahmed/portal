@@ -89,7 +89,7 @@ for approval; **info** = noted only.
 | F59 | Low | backup | concurrent archives make one fail; leftover files never cleaned | proposal | - |
 | F60 | Low | uploads | malformed multipart 500; MAX_FILE_SIZE_MB NaN disables the cap | fix | todo |
 | F61 | High | ci | self-hosted runner on a public repo (fork PR workflows) | proposal (repo settings) + fix (deploy.yml permissions) | todo |
-| F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | todo |
+| F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | done (this commit) |
 | F63 | Medium | updates | portal update pulls main, not the release tag | fix | done e0ab7b4 (bash) + this commit (ps1) |
 | F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | todo |
 | F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | todo |

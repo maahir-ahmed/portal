@@ -59,6 +59,8 @@ next-env.d.ts
 # Settings > Debugging archives in dev (BACKUP_OUT); they hold real data
 /backups
 portal.env
+# Env files under any other name hold secrets too
+*.env
 # The updater's log and state (./portal tick)
 /update.log
 /.update-skip
