@@ -31,7 +31,7 @@ for approval; **info** = noted only.
 | F01 | Low | tests | bad96e8 weakened check:rubric's host check | fix | done 025c09d |
 | F02 | Medium | email | member text unescaped in exec notification email HTML | fix | done 3b7caa5 |
 | F03 | High | requests | internal (exec-only) comments sent to every viewer in the RSC payload; content-request GET API too | fix | done 8d698fe |
-| F04 | Medium | treasury | owner amount edit not status-guarded at write (race with payout) | fix (guard); proposal (expectedAmount, audit before/after) | todo |
+| F04 | Medium | treasury | owner amount edit not status-guarded at write (race with payout) | fix (guard); proposal (expectedAmount, audit before/after) | guard done (this commit); expectedAmount and audit before/after are proposals |
 | F05 | Medium | printing | allowance sums all-time spend, not per year | proposal | - |
 | F06 | Medium | printing | requester phone/email visible to every member (page + GET API) | fix API (unused by UI); proposal page | todo |
 | F07 | Medium | content | PATCH logs/notifies/posts a status change it didn't make | fix | done (this commit) |

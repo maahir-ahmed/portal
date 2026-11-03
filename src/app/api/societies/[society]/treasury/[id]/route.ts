@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
@@ -115,20 +116,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "This claim can no longer be edited" }, { status: 403 });
   }
 
-  const updated = await prisma.treasuryRequest.update({
-    where: { id },
-    data: {
-      ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
-      ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
-      ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
-      ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
-      ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
-      ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
-      ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
-      ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
-      ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
-    },
-  });
+  // canEdit was decided on the status read above. For an owner the write re-checks it,
+  // so an edit can't land on a claim an executive has just started paying, or has paid:
+  // the amount they confirmed is the amount recorded.
+  const ownerGuard = isExec ? {} : { status: isOwnerSubmit ? ("DRAFT" as const) : { in: EDITABLE_STATUSES } };
+  const updated = await prisma.treasuryRequest
+    .update({
+      where: { id, ...ownerGuard },
+      data: {
+        ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
+        ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
+        ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
+        ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
+        ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
+        ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
+        ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
+        ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
+        ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
+      },
+    })
+    .catch((err) => {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
+      throw err;
+    });
+  if (!updated) {
+    return NextResponse.json({ error: "This claim was just updated by someone else. Reload and try again." }, { status: 409 });
+  }
 
   if (canEdit && Array.isArray(body.addReceipts) && body.addReceipts.length > 0) {
     await prisma.treasuryAttachment.createMany({
