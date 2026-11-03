@@ -7,18 +7,19 @@ Branch: `audit-sweep` (cut from `phase-5-updates` at a8d8bda). Report:
 
 - [x] Step 1: baseline (checks, lint, types, build, layout sweep, npm audit)
 - [x] Step 2: research checklist (sources gathered; checklist goes in the report)
-- [ ] Step 3: sweep (five review areas, run in parallel)
+- [x] Step 3: sweep (five review areas, run in parallel)
   - [x] Auth, sessions, proxy, API authorisation (report in)
   - [x] Uploads, files, parsers, debugging tools (report in)
   - [x] Treasury, money, requests, dates (report in)
   - [x] Discord, Rubric, updates, email, outbound calls (report in)
   - [x] Frontend rendering, infrastructure, dependencies, git history (report in)
-- [ ] Step 4: fixes, one commit each, baseline rerun per area
-- [ ] Step 5: report
+- [x] Step 4: fixes, one commit each, baseline rerun per area
+- [x] Step 5: report ([AUDIT_REPORT.md](AUDIT_REPORT.md))
 
 ## In progress
 
-Step 1 baseline, and the five reviews.
+Nothing: the audit is complete. Final baseline matches the starting one (lint, types,
+13 checks, build, npm audit, the same 7 layout results).
 
 ## Findings so far
 
@@ -109,24 +110,8 @@ for approval; **info** = noted only.
 
 ## Next step
 
-1. (done) Mirror F63 in portal.ps1: `Update` and `Install` should fetch tags and check out the
-   newest `v<channel>.*` tag (see `channel`, `newest_release`, `update_scripts` and the
-   re-exec at the top of `cmd_install` in `portal`), with `latest` still pulling main.
-   Parse-check with powershell.exe, then commit.
-2. Remaining `todo` rows, in order: F13, F15, F04, F06, F09, F12, F14, F16, F18,
-   F19, F20, F21, F25, F27, F28, F30, F37 (timing part only). Every other fix row is
-   done. Helper for marking rows: a tiny script that rewrites the Status cell of
-   `| Fnn |` (or edit by hand). Test scripts go in scripts/_x.ts and are deleted after.
-3. After each area: rerun the full baseline (lint, tsc, 13 checks incl. check:security,
-   build, audit:layout). Dev server for testing: scratch DB
-   `postgresql://society_user:sptest@127.0.0.1:55432/sp_p4l` (tunnel:
-   `ssh -fN -L 55432:127.0.0.1:55432 mini-new`), seed logins alice/bob/charlie
-   @example.com, password123. Never the local society_platform DB (real data).
-4. Write docs/audit/AUDIT_REPORT.md (severity counts, every finding with file/line,
-   fix or proposal, commit hash; proposals listed separately; refactors; baseline vs
-   final; research sources below).
-5. After the audit: the user asked to create release 1 (tag v1.0.0). That needs the
-   branches merged and pushed, which deploys prod: confirm with the user first.
+Waiting on the user: the proposals in AUDIT_REPORT.md, the four "Needs you" items, and
+approval to merge and push for release v1.0.0 (pushing main deploys SecSoc and PCSoc).
 
 Research sources gathered (for the report): Vercel May 2026 Next.js security release;
 Next.js Oct 14 2026 security update (16.4.1); GitLab advisory CVE-2026-23870 (React RSC
