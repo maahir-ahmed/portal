@@ -67,7 +67,7 @@ for approval; **info** = noted only.
 | F37 | Medium | auth | no login rate limit; email enumeration by timing | fix (timing); proposal (limiter) | todo |
 | F38 | Medium | members | last executive can demote themselves | proposal | - |
 | F39 | Medium | members | add-member doesn't lowercase email, account unusable | proposal | - |
-| F40 | Medium | demo | demo visitor can change the shared account's email | fix | todo |
+| F40 | Medium | demo | demo visitor can change the shared account's email | fix | done (this commit) |
 | F41 | Medium | ahegs | directors can edit their own AHEGS row; AHEGS writes unaudited | proposal | - |
 | F42 | Low | auth | open redirect via login callbackUrl | fix | todo |
 | F43 | Low | auth | session update copies client-supplied name/email into the JWT | fix | todo |

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/api";
+import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -42,6 +42,10 @@ export async function PATCH(req: NextRequest) {
     if (data.email) {
       const email = data.email.trim().toLowerCase();
       if (email !== user.email) {
+        // The demo account's password is public, and moving its email off DEMO_EMAIL
+        // would break the automatic sign-in for every later visitor.
+        const demoBlocked = await blockDemoAccountWrite(user.id);
+        if (demoBlocked) return demoBlocked;
         // Changing the email is sensitive, so confirm with the account password.
         if (!user.passwordHash) {
           return NextResponse.json({ error: "Password not set on this account" }, { status: 400 });
