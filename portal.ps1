@@ -6,10 +6,13 @@
 #   install           set up (asks a few questions), then start
 #   start | stop      start or stop everything
 #   update            back up, then move to the newest version
+#   autoupdate on     install new releases each night, and allow "Update now" in
+#   autoupdate off    Settings (a check every 5 minutes); off stops both
 #   backup            back up the database and uploads now
 #   restore <file>    put a backup back, replacing what's there
 #   logs [service]    follow the logs (app, web, db, backup, cloudflared, caddy)
 #   status            what's running
+#   tick              what autoupdate runs every 5 minutes
 #
 # Settings live in portal.env next to this script, in the same format ./portal writes,
 # so a portal set up with either script can be run with the other. Runs on the
@@ -25,6 +28,8 @@ $Images = "ghcr.io/maahir-ahmed/portal"
 function Say([string]$s = "") { Write-Host $s }
 function Die([string]$s) { Write-Host "Error: $s" -ForegroundColor Red; exit 1 }
 function Ask([string]$q, [string]$def = "") {
+  # Unattended (an automatic update): nobody can answer, so stop and say why.
+  if ($env:PORTAL_UNATTENDED) { Die "a new setting needs an answer ($q). Run portal.ps1 update yourself." }
   $prompt = $q; if ($def) { $prompt = "$q [$def]" }
   $a = Read-Host $prompt
   if ($a) { return $a.Trim() } else { return $def }
@@ -160,9 +165,14 @@ function Write-Settings {
   if (-not (Has-Setting "TZ")) { Ensure "TZ" (Host-Timezone) }
   # Forward slashes: Docker Desktop takes them, and nothing has to be escaped.
   Ensure "BACKUP_DIR" ((Join-Path $Root "backups") -replace "\\", "/")
-  Ensure "APP_IMAGE" "$Images-app:latest"
-  Ensure "WEB_IMAGE" "$Images-web:latest"
-  Ensure "BACKUP_IMAGE" "$Images-backup:latest"
+  # The `1` channel: every 1.x release, never a 2.0 that might need you (images.yml).
+  Ensure "APP_IMAGE" "$Images-app:1"
+  Ensure "WEB_IMAGE" "$Images-web:1"
+  Ensure "BACKUP_IMAGE" "$Images-backup:1"
+  # Empty: a schema change that would delete data stops the app instead (compose file).
+  Ensure "DB_PUSH_FLAGS" ""
+  Ensure "UPDATE_TOKEN" (RandomHex 24)
+  Ensure "UPDATE_HOUR" "4"
   Ensure "BUILD_FROM_SOURCE" "false"
   New-Item -ItemType Directory -Force -Path (Get-Setting "BACKUP_DIR") | Out-Null
 }
@@ -172,6 +182,8 @@ function Get-Images {
     Say "Downloading the portal (a few hundred MB the first time)..."
     Compose pull
     if ($LASTEXITCODE -eq 0) { return }
+    # Overnight, a registry hiccup shouldn't turn into a half-hour build, kept for good.
+    if ($env:PORTAL_UNATTENDED) { Die "couldn't download the new version; trying again tomorrow" }
     Say ""
     Say "Couldn't download the images. Building them on this computer instead: this takes"
     Say "10 to 30 minutes and needs about 3 GB of memory free for Docker."
@@ -219,6 +231,8 @@ function Install {
     Say "Open it at $url"
   }
   Say ""
+  Autoupdate "on"
+  Say ""
   Say "portal.env holds your passwords: keep it safe, and back it up somewhere else too."
 }
 
@@ -252,20 +266,185 @@ function Restore([string]$file) {
   Wait-Ready | Out-Null
 }
 
+# The image IDs the three portal images point at now, "none" for one not here.
+function Image-Ids {
+  $ids = foreach ($v in "APP_IMAGE", "WEB_IMAGE", "BACKUP_IMAGE") {
+    $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $id = docker image inspect -f "{{.Id}}" (Get-Setting $v) 2> $null
+    $ErrorActionPreference = $old
+    if ($LASTEXITCODE -eq 0 -and $id) { "$id".Trim() } else { "none" }
+  }
+  return ($ids -join " ")
+}
+
+# Points the three image names back at the IDs Image-Ids gave.
+function Retag([string]$ids) {
+  $names = "APP_IMAGE", "WEB_IMAGE", "BACKUP_IMAGE"
+  $list = $ids -split " "
+  for ($i = 0; $i -lt 3; $i++) {
+    if ($list[$i] -ne "none") { docker tag $list[$i] (Get-Setting $names[$i]) }
+  }
+}
+
 function Update {
   Check-Docker
-  Say "Backing up before the update..."
-  Backup
+  $before = Image-Ids
+  $head = ""
   if ((Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+    $head = (git -C $Root rev-parse HEAD)
     git -C $Root pull --ff-only
     if ($LASTEXITCODE -ne 0) { Die "couldn't update the scripts with git pull. Undo local changes to this folder and try again" }
   }
   Write-Settings # adds any setting a newer version needs
   Get-Images
+  $after = Image-Ids
+  # The version just downloaded, for the portal to say which one did or didn't install.
+  $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  $envLines = docker image inspect -f "{{range .Config.Env}}{{println .}}{{end}}" (Get-Setting "APP_IMAGE") 2> $null
+  $ErrorActionPreference = $old
+  $version = ($envLines | Where-Object { $_ -like "APP_VERSION=*" } | Select-Object -First 1)
+  if ($version) { $version = $version.Substring(12) }
+  Say "Version: $version"
+
+  if ($before -eq $after) {
+    Compose up -d --no-build --remove-orphans # picks up a changed compose file, if any
+    Say "Already up to date."
+    return
+  }
+  # A version that failed to start before isn't retried every night; a newer one is,
+  # and so is this one when you run update yourself or press "Update now" (PORTAL_RETRY).
+  $skipFile = Join-Path $Root ".update-skip"
+  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw).Trim() -eq $after)) {
+    Retag $before
+    Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
+    return
+  }
+
+  Say "Backing up before the update..."
+  $out = Compose run --rm -T backup archive | Select-Object -Last 1
+  if ($LASTEXITCODE -ne 0 -or -not ("$out" -like "/backups/*")) {
+    Retag $before
+    Die "the backup failed, so nothing was updated"
+  }
+  Say "Backed up to $(Get-Setting 'BACKUP_DIR')/$("$out".Substring(9))"
+  Compose up -d --no-build --remove-orphans
+  if (Wait-Ready) {
+    Remove-Item $skipFile -ErrorAction SilentlyContinue
+    Quiet { docker image prune -f } | Out-Null
+    Say "Up to date."
+    return
+  }
+
+  Say "The new version didn't start. Going back to the one before..."
+  [IO.File]::WriteAllText($skipFile, $after)
+  Retag $before
+  if ($head) { Quiet { git -C $Root reset -q --keep $head } | Out-Null }
   Compose up -d --no-build --remove-orphans
   Wait-Ready | Out-Null
-  Quiet { docker image prune -f } | Out-Null
-  Say "Up to date."
+  Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: portal.ps1 logs app"
+}
+
+# Talks to the portal's update endpoint from inside the web container, so it works
+# however the port is published. Returns the reply, or "" if the portal didn't answer.
+function Clean-Json([string]$s) {
+  $c = ($s -replace '["\\]', "" -replace "\s+", " ")
+  if ($c.Length -gt 400) { $c = $c.Substring(0, 400) }
+  return $c
+}
+
+function Check-In([string]$result = "", [string]$detail = "", [string]$version = "") {
+  $body = "{}"
+  if ($result) {
+    $body = "{`"result`":`"$result`",`"detail`":`"$(Clean-Json $detail)`",`"version`":`"$(Clean-Json $version)`"}"
+  }
+  $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  # PowerShell 5.1 mangles double quotes in native arguments, so escape them for it.
+  $reply = Compose exec -T web wget -q -O - -T 20 --header "Authorization: Bearer $(Get-Setting 'UPDATE_TOKEN')" `
+    --header "Content-Type: application/json" --post-data ($body -replace '"', '\"') http://app:3000/api/system/update 2> $null
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $old
+  if ($code -eq 0) { return "$reply" } else { return "" }
+}
+
+# Every 5 minutes (autoupdate): update if someone pressed "Update now", or once a night
+# after UPDATE_HOUR, then tell the portal how it went.
+function Tick {
+  $lock = Join-Path $Root ".update.lock"
+  $resultFile = Join-Path $Root ".update-result"
+  # One at a time: an update can take longer than 5 minutes. A lock older than two hours
+  # is from a run that died.
+  if (Test-Path $lock) {
+    if ((Get-Item $lock).LastWriteTime -gt (Get-Date).AddHours(-2)) { return }
+    Remove-Item $lock -Recurse -Force
+  }
+  New-Item -ItemType Directory -Path $lock | Out-Null
+  try {
+    # A result the portal hasn't heard yet (it was restarting) goes with this check-in.
+    if (Test-Path $resultFile) {
+      $lines = @(Get-Content $resultFile) + @("", "", "")
+      $reply = Check-In $lines[0] $lines[1] $lines[2]
+      if ($reply) { Remove-Item $resultFile }
+    } else {
+      $reply = Check-In
+    }
+
+    $today = (Get-Date).ToString("yyyy-MM-dd")
+    $lastFile = Join-Path $Root ".last-update"
+    $requested = $reply -like '*"requested":true*'
+    if (-not $requested) {
+      $hour = 0; [int]::TryParse((Get-Setting "UPDATE_HOUR"), [ref]$hour) | Out-Null
+      if ((Get-Date).Hour -lt $hour) { return }
+      if ((Test-Path $lastFile) -and ((Get-Content $lastFile -Raw).Trim() -eq $today)) { return }
+    }
+    [IO.File]::WriteAllText($lastFile, $today)
+
+    Say "--- $(Get-Date) update"
+    # Its own process, so a question it can't ask (PORTAL_UNATTENDED) ends only that.
+    $env:PORTAL_UNATTENDED = "1"
+    if ($requested) { $env:PORTAL_RETRY = "1" }
+    $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update 2>&1 | Out-String)
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $old
+    Remove-Item Env:PORTAL_UNATTENDED
+    Remove-Item Env:PORTAL_RETRY -ErrorAction SilentlyContinue
+    Say $out
+    # Nothing new, or only the version that failed before: a nightly run that did nothing
+    # has nothing to report, and mustn't paper over how the last real update went.
+    if (-not $requested -and $code -eq 0 -and ($out -like "*Already up to date.*" -or $out -like "*Skipped:*")) { return }
+    $status = "failed"
+    if ($code -eq 0) { $status = "ok" }
+    if ($out -like "*rolled back:*") { $status = "rolled_back" }
+    $lines = $out -split "`r?`n"
+    $last = ($lines | Where-Object { $_.Trim() } | Select-Object -Last 1) -replace "^Error: ", ""
+    $version = ($lines | Where-Object { $_ -like "Version: *" } | Select-Object -Last 1)
+    if ($version) { $version = $version.Substring(9) }
+    [IO.File]::WriteAllText($resultFile, "$status`n$last`n$version`n")
+    if (Check-In $status $last $version) { Remove-Item $resultFile }
+  } finally {
+    Remove-Item $lock -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Autoupdate([string]$state) {
+  $name = "Society portal updates ($(Get-Setting 'STACK'), $(Split-Path $Root -Leaf))"
+  if ($state -eq "on") {
+    # conhost --headless: without it, a console window flashes up every 5 minutes.
+    $log = Join-Path $Root "update.log"
+    $action = New-ScheduledTaskAction -Execute "conhost.exe" -WorkingDirectory $Root `
+      -Argument "--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -Command `"& '$PSCommandPath' tick *>> '$log'`""
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
+    $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+    Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
+    Say "Automatic updates are on: new releases install each night after $(Get-Setting 'UPDATE_HOUR'):00,"
+    Say "after a backup, and `"Update now`" in Settings works within 5 minutes, while you're"
+    Say "signed in to Windows (Docker Desktop only runs then). Log: update.log"
+  } elseif ($state -eq "off") {
+    Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
+    Say "Automatic updates are off. Update with: portal.ps1 update"
+  } else {
+    Die "say on or off: portal.ps1 autoupdate on"
+  }
 }
 
 switch ($Command) {
@@ -273,12 +452,14 @@ switch ($Command) {
   "start" { Compose up -d --no-build; Wait-Ready | Out-Null }
   "stop" { Compose stop }
   "update" { Update }
+  "tick" { Tick }
+  "autoupdate" { Autoupdate $Arg }
   "backup" { Backup }
   "restore" { Restore $Arg }
   "logs" { if ($Arg) { Compose logs -f --tail 200 $Arg } else { Compose logs -f --tail 200 } }
   "status" { Compose ps }
   default {
-    Get-Content $PSCommandPath | Select-Object -Skip 3 -First 9 | ForEach-Object { $_ -replace "^# ?", "" }
+    Get-Content $PSCommandPath | Select-Object -Skip 3 -First 12 | ForEach-Object { $_ -replace "^# ?", "" }
     exit 1
   }
 }

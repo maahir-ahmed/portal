@@ -4,10 +4,13 @@
 #   ./portal install          set up (asks a few questions), then start
 #   ./portal start | stop     start or stop everything
 #   ./portal update           back up, then move to the newest version
+#   ./portal autoupdate on    install new releases each night, and allow "Update now"
+#   ./portal autoupdate off   in Settings (a check every 5 minutes); off stops both
 #   ./portal backup           back up the database and uploads now
 #   ./portal restore <file>   put a backup back, replacing what's there
 #   ./portal logs [service]   follow the logs (app, web, db, backup, cloudflared, caddy)
 #   ./portal status           what's running
+#   ./portal tick             what autoupdate runs every 5 minutes
 #
 # Settings live in portal.env next to this script; it holds your passwords, so keep it
 # safe and out of git. Every command can be run again safely: install never overwrites
@@ -25,6 +28,12 @@ say() { printf '%s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 ask() { # ask "Question" [default] -> answer on stdout
   local a def="${2:-}"
+  # Unattended (an automatic update): nobody can answer, and an empty answer would loop
+  # forever, so stop the whole run and say why. $$ is the script, not this subshell.
+  if [ -n "${PORTAL_UNATTENDED:-}" ]; then
+    printf 'Error: a new setting needs an answer (%s). Run ./portal update yourself.\n' "$1" >&2
+    kill -TERM $$
+  fi
   read -r -p "$1${def:+ [$def]}: " a || true
   printf '%s' "${a:-$def}"
 }
@@ -143,9 +152,14 @@ write_settings() {
   ensure DISCORD_REMINDERS on
   ensure TZ "$(host_timezone)"
   ensure BACKUP_DIR "$ROOT/backups"
-  ensure APP_IMAGE "$IMAGES-app:latest"
-  ensure WEB_IMAGE "$IMAGES-web:latest"
-  ensure BACKUP_IMAGE "$IMAGES-backup:latest"
+  # The `1` channel: every 1.x release, never a 2.0 that might need you (images.yml).
+  ensure APP_IMAGE "$IMAGES-app:1"
+  ensure WEB_IMAGE "$IMAGES-web:1"
+  ensure BACKUP_IMAGE "$IMAGES-backup:1"
+  # Empty: a schema change that would delete data stops the app instead (compose file).
+  ensure DB_PUSH_FLAGS ""
+  ensure UPDATE_TOKEN "$(random_hex 24)"
+  ensure UPDATE_HOUR 4
   ensure BUILD_FROM_SOURCE false
   chmod 600 "$ENV_FILE"
   mkdir -p "$(get BACKUP_DIR)"
@@ -157,6 +171,8 @@ get_images() {
   if [ "$(get BUILD_FROM_SOURCE)" != true ]; then
     say "Downloading the portal (a few hundred MB the first time)..."
     if compose pull; then return; fi
+    # Overnight, a registry hiccup shouldn't turn into a half-hour build, kept for good.
+    [ -z "${PORTAL_UNATTENDED:-}" ] || die "couldn't download the new version; trying again tomorrow"
     say ""
     say "Couldn't download the images. Building them on this computer instead: this takes"
     say "10 to 30 minutes and needs about 3 GB of free memory."
@@ -203,6 +219,12 @@ cmd_install() {
     say "Open it at $url"
   fi
   say ""
+  if command -v crontab >/dev/null 2>&1; then
+    cmd_autoupdate on
+  else
+    say "To install updates automatically, install cron, then run: ./portal autoupdate on"
+  fi
+  say ""
   say "portal.env holds your passwords: keep it safe, and back it up somewhere else too."
 }
 
@@ -238,19 +260,153 @@ cmd_restore() {
   wait_ready
 }
 
+# The image IDs the three portal images point at now, "none" for one not here.
+image_ids() {
+  local v
+  for v in APP_IMAGE WEB_IMAGE BACKUP_IMAGE; do
+    printf '%s ' "$(docker image inspect -f '{{.Id}}' "$(get "$v")" 2>/dev/null || echo none)"
+  done
+}
+
+# Points the three image names back at the IDs image_ids gave.
+retag() {
+  local id
+  set -- APP_IMAGE WEB_IMAGE BACKUP_IMAGE
+  for id in $IDS; do
+    [ "$id" = none ] || docker tag "$id" "$(get "$1")"
+    shift
+  done
+}
+
 cmd_update() {
   check_docker
-  say "Backing up before the update..."
-  cmd_backup
+  local before after head="" IDS
+  before="$(image_ids)"
   if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+    head="$(git -C "$ROOT" rev-parse HEAD)"
     git -C "$ROOT" pull --ff-only || die "couldn't update the scripts with git pull. Undo local changes to this folder and try again"
   fi
   write_settings # adds any setting a newer version needs
   get_images
+  after="$(image_ids)"
+  # The version just downloaded, for the portal to say which one did or didn't install.
+  say "Version: $(docker image inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$(get APP_IMAGE)" 2>/dev/null | sed -n 's/^APP_VERSION=//p')"
+
+  if [ "$before" = "$after" ]; then
+    compose up -d --no-build --remove-orphans # picks up a changed compose file, if any
+    say "Already up to date."
+    return 0
+  fi
+  # A version that failed to start before isn't retried every night; a newer one is,
+  # and so is this one when you run update yourself or press "Update now" (PORTAL_RETRY).
+  if [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$after" = "$(cat "$ROOT/.update-skip" 2>/dev/null)" ]; then
+    IDS="$before" retag
+    say "Skipped: this version didn't start last time. Run ./portal update to try it again."
+    return 0
+  fi
+
+  say "Backing up before the update..."
+  if ! (cmd_backup); then
+    IDS="$before" retag
+    die "the backup failed, so nothing was updated"
+  fi
   compose up -d --no-build --remove-orphans
-  wait_ready
-  docker image prune -f >/dev/null
-  say "Up to date."
+  if wait_ready; then
+    rm -f "$ROOT/.update-skip"
+    docker image prune -f >/dev/null
+    say "Up to date."
+    return 0
+  fi
+
+  say "The new version didn't start. Going back to the one before..."
+  printf '%s' "$after" > "$ROOT/.update-skip"
+  IDS="$before" retag
+  [ -z "$head" ] || git -C "$ROOT" reset -q --keep "$head" || true
+  compose up -d --no-build --remove-orphans
+  wait_ready || true
+  die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(get BACKUP_DIR). See why with: ./portal logs app"
+}
+
+# Talks to the portal's update endpoint from inside the web container (so it needs no
+# curl here, and works however the port is published). Prints the reply.
+check_in() { # check_in [result] [detail] [version]
+  local body="{}" clean
+  # These go into JSON: keep them to characters that need no escaping.
+  clean() { printf '%s' "$1" | tr -d '"\\' | tr '\n\t' '  ' | cut -c1-400; }
+  [ -z "${1:-}" ] || body="{\"result\":\"$1\",\"detail\":\"$(clean "${2:-}")\",\"version\":\"$(clean "${3:-}")\"}"
+  compose exec -T web wget -q -O - -T 20 \
+    --header "Authorization: Bearer $(get UPDATE_TOKEN)" --header "Content-Type: application/json" \
+    --post-data "$body" http://app:3000/api/system/update </dev/null 2>/dev/null
+}
+
+# Every 5 minutes (autoupdate): update if someone pressed "Update now", or once a night
+# after UPDATE_HOUR, then tell the portal how it went.
+cmd_tick() {
+  exec </dev/null
+  local lock="$ROOT/.update.lock" result="$ROOT/.update-result" reply today requested out status detail version
+  # One at a time: an update can take longer than 5 minutes. A lock older than two hours
+  # is from a run that died.
+  if ! mkdir "$lock" 2>/dev/null; then
+    [ -n "$(find "$lock" -maxdepth 0 -mmin +120 2>/dev/null)" ] || return 0
+    rm -rf "$lock" && mkdir "$lock"
+  fi
+  trap "rm -rf '$lock'" EXIT # $lock expanded now: it's gone by the time the script exits
+
+  # A result the portal hasn't heard yet (it was restarting) goes with this check-in.
+  if [ -f "$result" ]; then
+    reply="$(check_in "$(sed -n 1p "$result")" "$(sed -n 2p "$result")" "$(sed -n 3p "$result")")" && rm -f "$result"
+  else
+    reply="$(check_in || true)"
+  fi
+
+  today="$(date +%F)" requested=""
+  case "$reply" in
+    *'"requested":true'*) requested=1 ;;
+    *)
+      [ "$(date +%H)" -ge "$(printf '%02d' "$(get UPDATE_HOUR)")" ] || return 0
+      [ "$(cat "$ROOT/.last-update" 2>/dev/null)" != "$today" ] || return 0
+      ;;
+  esac
+  printf '%s\n' "$today" > "$ROOT/.last-update"
+
+  say "--- $(date) update"
+  # Its own process, so a question it can't ask (PORTAL_UNATTENDED) ends only that.
+  out="$(PORTAL_UNATTENDED=1 PORTAL_RETRY="$requested" "$ROOT/portal" update 2>&1)" && status=ok || status=failed
+  printf '%s\n' "$out"
+  # Nothing new, or only the version that failed before: a nightly run that did nothing
+  # has nothing to report, and mustn't paper over how the last real update went.
+  if [ -z "$requested" ] && [ "$status" = ok ]; then
+    case "$out" in *"Already up to date."* | *"Skipped:"*) return 0 ;; esac
+  fi
+  case "$out" in *"rolled back:"*) status=rolled_back ;; esac
+  detail="$(printf '%s\n' "$out" | grep -v '^[[:space:]]*$' | tail -n 1 | sed 's/^Error: //')"
+  version="$(printf '%s\n' "$out" | sed -n 's/^Version: //p' | tail -n 1)"
+  printf '%s\n%s\n%s\n' "$status" "$detail" "$version" > "$result"
+  check_in "$status" "$detail" "$version" >/dev/null && rm -f "$result" || true
+}
+
+# The crontab line for this folder, marked so `off` finds exactly it.
+CRON_MARK="# society-portal $ROOT"
+
+cmd_autoupdate() {
+  command -v crontab >/dev/null 2>&1 || die "crontab isn't installed (on Debian or Ubuntu: sudo apt install cron)"
+  local others path
+  others="$(crontab -l 2>/dev/null | grep -vF "$CRON_MARK" || true)"
+  # cron's own PATH is tiny and misses Docker on a Mac (/usr/local/bin): add its folder.
+  path="$(dirname "$(command -v docker || echo /usr/bin/docker)"):/usr/local/bin:/usr/bin:/bin"
+  case "${1:-}" in
+    on)
+      printf '%s\n%s\n' "$others" "*/5 * * * * cd '$ROOT' && PATH='$path' ./portal tick >> '$ROOT/update.log' 2>&1 $CRON_MARK" \
+        | sed '/^$/d' | crontab -
+      say "Automatic updates are on: new releases install each night after $(get UPDATE_HOUR):00,"
+      say "after a backup, and \"Update now\" in Settings works within 5 minutes. Log: update.log"
+      ;;
+    off)
+      if [ -n "$others" ]; then printf '%s\n' "$others" | crontab -; else crontab -r 2>/dev/null || true; fi
+      say "Automatic updates are off. Update with ./portal update."
+      ;;
+    *) die "say on or off: ./portal autoupdate on" ;;
+  esac
 }
 
 case "${1:-}" in
@@ -258,9 +414,11 @@ case "${1:-}" in
   start) compose up -d --no-build && wait_ready ;;
   stop) compose stop ;;
   update) cmd_update ;;
+  tick) cmd_tick ;;
+  autoupdate) cmd_autoupdate "${2:-}" ;;
   backup) cmd_backup ;;
   restore) cmd_restore "${2:-}" ;;
   logs) compose logs -f --tail 200 ${2:+"$2"} ;;
   status) compose ps ;;
-  *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
