@@ -19,6 +19,7 @@
     "check:urgency": "npx tsx scripts/check-urgency.ts",
     "check:discord": "npx tsx scripts/check-discord.ts",
     "check:updates": "npx tsx scripts/check-updates.ts",
+    "check:security": "npx tsx scripts/check-security.ts",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push && node --env-file-if-exists=.env scripts/post-push.mjs",
     "db:seed": "npx tsx prisma/seed.ts",
