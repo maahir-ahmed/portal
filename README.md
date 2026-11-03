@@ -41,7 +41,7 @@ Next.js 16 (App Router) · React 19 · TypeScript · Prisma 7 + PostgreSQL · Ne
 
 ## Getting started
 
-Needs Node 20+ and Docker (for the local database).
+Needs Node 22+ and Docker (for the local database).
 
 ```bash
 npm install
