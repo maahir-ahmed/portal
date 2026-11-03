@@ -184,9 +184,33 @@ The differences are all settings in that stack's `portal.env`, written by `./por
   `TUNNEL_TOKEN`) or the `caddy` profile (`caddy reverse-proxy` for `DOMAIN`, ports 80
   and 443). The hosted stacks use neither, so neither starts there.
 
+### Releasing to self-hosted portals
+
+Pushing `main` deploys the hosted stacks, as before, and publishes `latest`. Self-hosted
+portals don't follow `latest`: they follow the `1` tag, which moves only when you tag a
+release. So check a change on SecSoc and PCSoc first, then:
+
+```bash
+git tag v1.4.0 && git push origin v1.4.0
+```
+
+The workflow publishes `1.4.0`, `1.4` and `1` for all three images. Every self-hosted
+portal sees it within the hour (a banner for its executives), installs it that night
+after a backup, and rolls itself back if it doesn't start
+([SELF_HOSTING.md](../docs/SELF_HOSTING.md#updates)).
+
+- **Schema changes must stay additive** (new tables, nullable columns, columns with
+  defaults). Self-hosted stacks run `db push` without `--accept-data-loss`, so anything
+  else fails the start there and rolls back. Data fixes go in `prisma/post-push/`.
+- **Something that needs a person** (a new required setting, a breaking change):
+  release it as `v2.0.0`. Nothing on `1` picks it up, and the release notes say how to
+  move to `2` (change the three `*_IMAGE` tags in `portal.env`).
+- **No v1.0.0 tag exists until you push one.** The installer writes `:1`, so tag
+  `v1.0.0` before anyone installs.
+
 [.github/workflows/images.yml](../.github/workflows/images.yml) publishes
 `ghcr.io/<owner>/<repo>-app`, `-web` and `-backup` for amd64 and arm64 on every push to
-`main` (`latest`) and on `v*` tags. **After its first run, check each of the three packages
+`main` (`latest`) and on `v*` tags (`1.4.0`, `1.4`, `1`). **After its first run, check each of the three packages
 is public** (GitHub, your profile, Packages, the package, Package settings, Change
 visibility): a new package can start private, and self-hosters then can't download it
 (the installer falls back to building from source, which works but is slow).
