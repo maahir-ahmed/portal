@@ -31,8 +31,14 @@ export function plain(v: unknown): unknown {
 // the file that ends it would commit half the file and run the rest outside it.
 // Checked with function bodies, strings and comments blanked out first: a DO block's
 // own BEGIN ... END is not transaction control.
-const TRANSACTION_CONTROL = /^\s*(BEGIN|COMMIT|ROLLBACK|END|START\s+TRANSACTION|SAVEPOINT|RELEASE|ABORT)\b/im;
-const QUOTED = /\$([A-Za-z_]*)\$[\s\S]*?\$\1\$|'(?:[^']|'')*'|--[^\n]*|\/\*[\s\S]*?\*\//g;
+// A statement starts at a line start or after a semicolon ("UPDATE ...; COMMIT;" on one
+// line counts). E'...' strings (backslash escapes) and "quoted identifiers" are blanked
+// as wholes, or an escaped quote inside them would throw the pairing off and hide a
+// COMMIT further down.
+const TRANSACTION_CONTROL =
+  /(?:^|;)\s*(BEGIN|COMMIT|ROLLBACK|END|START\s+TRANSACTION|SAVEPOINT|RELEASE|ABORT|PREPARE\s+TRANSACTION)\b/im;
+const QUOTED =
+  /\$([A-Za-z_]*)\$[\s\S]*?\$\1\$|[Ee]'(?:[^'\\]|\\[\s\S]|'')*'|'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|\/\*[\s\S]*?\*\//g;
 
 /** The first transaction-control statement in a SQL file, if any. */
 export function transactionControl(sql: string): { word: string; index: number } | null {

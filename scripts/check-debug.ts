@@ -30,5 +30,11 @@ assert.equal(line("\n\n  ROLLBACK;"), "ROLLBACK@3");
 assert.equal(line("DO $$\nBEGIN\n  UPDATE x SET y = 1;\nEND $$;"), null);
 assert.equal(line("DO $fix$ BEGIN PERFORM 1; END $fix$;"), null);
 assert.equal(line("UPDATE x SET note = 'COMMIT';\n-- COMMIT later\n/* ROLLBACK */ SELECT 1;"), null);
+// Ways around the guard that the audit found (docs/audit/AUDIT_REPORT.md, F56).
+assert.equal(line("UPDATE a SET b = 1; COMMIT; DELETE FROM a;"), "COMMIT@1", "a COMMIT after a semicolon on the same line");
+assert.equal(line("UPDATE a SET b = E'it\\'s';\nCOMMIT;"), "COMMIT@2", "an E'' string with an escaped quote must not hide what follows");
+assert.equal(line('UPDATE "it\'s" SET b = 1;\nCOMMIT;'), "COMMIT@2", "a quoted identifier with a quote in it must not hide what follows");
+assert.equal(line("PREPARE TRANSACTION 'x';"), "PREPARE TRANSACTION@1");
+assert.equal(line("UPDATE a SET note = 'x; COMMIT';"), null, "a semicolon inside a string is not a statement boundary");
 
 console.log("✅ debugging tab: sensitive columns masked, transaction control refused");

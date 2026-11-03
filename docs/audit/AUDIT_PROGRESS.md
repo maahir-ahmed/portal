@@ -83,7 +83,7 @@ for approval; **info** = noted only.
 | F53 | Medium | backup | upload count and tar taken separately: archive may never validate | fix (backup side) | done (this commit) |
 | F54 | Low | ahegs | PDF merge throws on emoji/CJK in titles | proposal | - |
 | F55 | Low | uploads | logoUrl accepts any upload, making it public | fix (validate new values); proposal (serving rule) | done (this commit) |
-| F56 | Low | debug | SQL runner transaction guard bypassable (one-line COMMIT, E'' strings) | fix (refuse more); proposal (accept $fn1$) | todo |
+| F56 | Low | debug | SQL runner transaction guard bypassable (one-line COMMIT, E'' strings) | fix (refuse more); proposal (accept $fn1$) | done (this commit) |
 | F57 | Low | debug | runner merges duplicate column names; results kept forever; no lock_timeout | proposal | - |
 | F58 | Low | ahegs | xlsx export corrupts on $& in names / control chars | proposal | - |
 | F59 | Low | backup | concurrent archives make one fail; leftover files never cleaned | proposal | - |
