@@ -9,15 +9,21 @@ on:
   push:
     branches: [main, demo]
 
+# The job only runs commands on the box; its token needs nothing beyond reading.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: self-hosted
     steps:
       - name: Deploy
+        # Through env, not interpolated into the script: a ref name is never shell code.
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           REPO="$HOME/containers/society-project"
-          BRANCH="${{ github.ref_name }}"
           cd "$REPO"
           git fetch origin "$BRANCH"
           git reset --hard "origin/$BRANCH"
