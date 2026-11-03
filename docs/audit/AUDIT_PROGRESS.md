@@ -45,7 +45,7 @@ for approval; **info** = noted only.
 | F15 | Low | treasury | draft submitted with amount 0 in the same PATCH | fix | done (this commit) |
 | F16 | Low | printing | refreshArcTier has no backoff, any member page load retries Rubric | fix | done (this commit) |
 | F17 | Low | tutorial | demo records appear in the real exec queue and allowance | proposal | - |
-| F18 | Low | years/budget | SocietyYear accepts 2026-02-30; category errors all reported as duplicate name | fix | todo |
+| F18 | Low | years/budget | SocietyYear accepts 2026-02-30; category errors all reported as duplicate name | fix | done (this commit) |
 | F19 | Medium | discord | /print accepts any guild; username linking | fix (optional DISCORD_GUILD_ID); proposal (require it, /link) | todo |
 | F20 | Medium | rubric | snapshot anonymiser misses phone/student keys, never scrubs credentials, re-implements postRubric | fix | todo |
 | F21 | Low | secrets | no key: plain text; wrong key: unhandled 500 in proxy; example envs omit key | fix (docs, try/catch); proposal (refuse plain text) | todo |

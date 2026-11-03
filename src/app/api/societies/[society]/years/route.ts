@@ -26,9 +26,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 // "YYYY-MM-DD" from a date input, or null to clear it and fall back to the default.
+// The round trip refuses days that don't exist: new Date("2026-02-30") quietly becomes
+// 2 March, which would move a term or the AGM without anyone noticing.
 const day = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((d) => !Number.isNaN(Date.parse(d)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d, "Not a real date")
   .nullable();
 
 const schema = z.object({
