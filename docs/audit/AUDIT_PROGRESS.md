@@ -52,7 +52,7 @@ for approval; **info** = noted only.
 | F22 | Low | discord | exec-queue embeds not truncated, Discord 400s silently | proposal | - |
 | F23 | Low | discord | webhook URL built by string join; ?thread_id= URLs break | proposal | - |
 | F24 | Low | demo | demo visitors can set Discord webhooks | proposal | - |
-| F25 | Low | rubric | link route accepts form bodies (CSRF shape), no zod | fix | todo |
+| F25 | Low | rubric | link route accepts form bodies (CSRF shape), no zod | fix | done (this commit) |
 | F26 | Low | email | SMTP opportunistic TLS, no timeouts, awaited in requests | proposal | - |
 | F27 | Low | discord | /print no replay window; reply outside try, no timeout | fix | done (this commit) |
 | F28 | Low | rubric | audit only after success, no target id; credentials 500 on bad input | fix (400); proposal (audit) | 400 done (this commit); audit-before-write and target ids are proposals |

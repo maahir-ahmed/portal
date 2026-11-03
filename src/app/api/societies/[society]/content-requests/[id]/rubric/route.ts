@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createNotification } from "@/lib/notifications";
@@ -6,6 +7,11 @@ import { syncEventToDiscord } from "@/lib/discordEvents";
 import { createAuditLog } from "@/lib/audit";
 
 type Params = { society: string; id: string };
+
+const schema = z.object({
+  rubricEventLink: z.string().max(2000).nullable().optional(),
+  rubricQrCodeUrl: z.string().max(2000).nullable().optional(),
+});
 
 export async function POST(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -15,14 +21,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
   const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
   if (memErr) return memErr;
 
-  const text = await req.text();
-  let body: { rubricEventLink?: string | null; rubricQrCodeUrl?: string | null };
-  try {
-    body = JSON.parse(text);
-  } catch {
-    const form = new URLSearchParams(text);
-    body = { rubricEventLink: form.get("rubricEventLink"), rubricQrCodeUrl: form.get("rubricQrCodeUrl") };
-  }
+  // JSON only (the one caller, RubricForm, sends JSON). A form-encoded body used to be
+  // accepted too, and that is the one shape another site can post here without the
+  // browser asking first.
+  const parsed = schema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  const body = parsed.data;
 
   const request = await prisma.contentRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership!.societyId) {
