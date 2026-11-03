@@ -80,8 +80,13 @@ expiry, one more command, and a box on the Account page.
   covers a valid signature, a changed body, a changed timestamp, the wrong key and a
   malformed signature, and the pickup-time parsing.
 - The command registered itself on start, with all eight options.
-- End to end with a real member running `/print` in a test server: _to fill in after
-  the live run._
+- End to end, on a production build behind a Cloudflare Tunnel, with a real member
+  running `/print` in a test server: the app was added with only the
+  `applications.commands` scope, the command appeared, and a PNG attachment came through
+  as a printing request (25 copies, A4, single sided, black and white, costed at
+  $2.50), awaiting approval, with the file saved through the upload checks, an audit
+  entry and an exec notification. The first use linked the account by username and
+  stored the Discord ID.
 
 ## Other request types
 
