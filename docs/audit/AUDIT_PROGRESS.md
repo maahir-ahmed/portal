@@ -5,14 +5,14 @@ Branch: `audit-sweep` (cut from `phase-5-updates` at a8d8bda). Report:
 
 ## Status
 
-- [ ] Step 1: baseline (checks, lint, types, build, layout sweep, npm audit)
+- [x] Step 1: baseline (checks, lint, types, build, layout sweep, npm audit)
 - [x] Step 2: research checklist (sources gathered; checklist goes in the report)
 - [ ] Step 3: sweep (five review areas, run in parallel)
-  - [ ] Auth, sessions, proxy, API authorisation
-  - [ ] Uploads, files, parsers, debugging tools
+  - [x] Auth, sessions, proxy, API authorisation (report in)
+  - [x] Uploads, files, parsers, debugging tools (report in)
   - [x] Treasury, money, requests, dates (report in)
   - [x] Discord, Rubric, updates, email, outbound calls (report in)
-  - [ ] Frontend rendering, infrastructure, dependencies, git history
+  - [x] Frontend rendering, infrastructure, dependencies, git history (report in)
 - [ ] Step 4: fixes, one commit each, baseline rerun per area
 - [ ] Step 5: report
 
@@ -30,7 +30,7 @@ for approval; **info** = noted only.
 |---|---|---|---|---|---|
 | F01 | Low | tests | bad96e8 weakened check:rubric's host check | fix | done 025c09d |
 | F02 | Medium | email | member text unescaped in exec notification email HTML | fix | done 3b7caa5 |
-| F03 | High | requests | internal (exec-only) comments sent to every viewer in the RSC payload; content-request GET API too | fix | done (this commit) |
+| F03 | High | requests | internal (exec-only) comments sent to every viewer in the RSC payload; content-request GET API too | fix | done 8d698fe |
 | F04 | Medium | treasury | owner amount edit not status-guarded at write (race with payout) | fix (guard); proposal (expectedAmount, audit before/after) | todo |
 | F05 | Medium | printing | allowance sums all-time spend, not per year | proposal | - |
 | F06 | Medium | printing | requester phone/email visible to every member (page + GET API) | fix API (unused by UI); proposal page | todo |
@@ -60,6 +60,48 @@ for approval; **info** = noted only.
 | F30 | Info | misc | RUBRIC_CALLS prototype lookup, exec-queue allowed_mentions, GHCR Link origin | fix | todo |
 | F31 | Info | discord | reminder retry loop for a dead webhook; role changes not audited | proposal | - |
 | F32 | Info | money | "$50" vs "$50.00" in notification; exec can self-reimburse | info | - |
+| F33 | Critical | auth | any signed-in member could found a society, become its exec (debug tools, takeover chain) | fix | done 10fb595 |
+| F34 | High | debug | debug tools (instance-wide) gated only by exec of the URL's society | fix | done 186d7b3 |
+| F35 | High | auth | exec of any society could attach an existing account and reset its password/phone | fix | done 0558858 |
+| F36 | Medium | auth | JWT sessions never revoked after reset/password change/removal | proposal | - |
+| F37 | Medium | auth | no login rate limit; email enumeration by timing | fix (timing); proposal (limiter) | todo |
+| F38 | Medium | members | last executive can demote themselves | proposal | - |
+| F39 | Medium | members | add-member doesn't lowercase email, account unusable | proposal | - |
+| F40 | Medium | demo | demo visitor can change the shared account's email | fix | todo |
+| F41 | Medium | ahegs | directors can edit their own AHEGS row; AHEGS writes unaudited | proposal | - |
+| F42 | Low | auth | open redirect via login callbackUrl | fix | todo |
+| F43 | Low | auth | session update copies client-supplied name/email into the JWT | fix | todo |
+| F44 | Low | titles | titles accept another society's portfolioId | fix | todo |
+| F45 | Low | titles | renaming a title orphans its members | proposal | - |
+| F46 | Low | requests | detail views open to all members while lists are scoped | proposal | - |
+| F47 | Low | csrf | CSRF rests on SameSite=Lax only (no Origin check) | proposal | - |
+| F48 | Low | uploads | upload/read need only a session, not a membership | fix | todo |
+| F49 | Low | api | assorted 500s on invalid input (notifications limit, submit-event, duplicates) | fix | todo |
+| F50 | Low | audit | state changes without audit logs (me, bank, titles, ahegs...) | proposal | - |
+| F51 | Medium | backup | restore archive may carry symlinks or psql meta-commands | fix | todo |
+| F52 | Medium | import | xlsx zip bomb / huge column index can OOM the server | fix | todo |
+| F53 | Medium | backup | upload count and tar taken separately: archive may never validate | fix (backup side) | todo |
+| F54 | Low | ahegs | PDF merge throws on emoji/CJK in titles | proposal | - |
+| F55 | Low | uploads | logoUrl accepts any upload, making it public | fix (validate new values); proposal (serving rule) | todo |
+| F56 | Low | debug | SQL runner transaction guard bypassable (one-line COMMIT, E'' strings) | fix (refuse more); proposal (accept $fn1$) | todo |
+| F57 | Low | debug | runner merges duplicate column names; results kept forever; no lock_timeout | proposal | - |
+| F58 | Low | ahegs | xlsx export corrupts on $& in names / control chars | proposal | - |
+| F59 | Low | backup | concurrent archives make one fail; leftover files never cleaned | proposal | - |
+| F60 | Low | uploads | malformed multipart 500; MAX_FILE_SIZE_MB NaN disables the cap | fix | todo |
+| F61 | High | ci | self-hosted runner on a public repo (fork PR workflows) | proposal (repo settings) + fix (deploy.yml permissions) | todo |
+| F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | todo |
+| F63 | Medium | updates | portal update pulls main, not the release tag | fix | todo |
+| F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | todo |
+| F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | todo |
+| F66 | Medium | db | app and SQL runner connect as Postgres superuser | proposal | - |
+| F67 | Low | headers | no security headers; X-Powered-By; server_tokens | fix (nosniff, referrer, tokens); proposal (frame-ancestors) | todo |
+| F68 | Low | export | CSV formula injection in Rubric exports | proposal | - |
+| F69 | Low | nginx | CF-Connecting-IP trusted on the Caddy profile | proposal | - |
+| F70 | Low | backup | backups world-readable (no umask) | proposal | - |
+| F71 | Low | next | wildcard images.remotePatterns, next/image unused | fix | todo |
+| F72 | Low | ui | stuck spinners on network errors; Rubric members race | proposal | - |
+| F73 | Low | windows | portal.ps1 doesn't restrict portal.env ACL | fix | todo |
+| F74 | Info | dead code | root docker-compose.yml, auto-deploy.sh, db:migrate/db:reset, unused adapter | proposal | - |
 
 ## Commits
 
@@ -79,6 +121,6 @@ the code before changing it. Triage the remaining review reports as they arrive.
 | 12 `check:*` scripts | all pass |
 | `npm run build` | passes |
 | `npm audit` | 16 moderate, all in the ESLint toolchain (minimatch ReDoS); `--omit=dev`: 0 |
-| `audit:layout` (scratch seed DB, 24 pages x 5 widths) | (running) |
+| `audit:layout` (scratch seed DB, 24 pages x 5 widths) | 7 sideways-scroll, all pre-existing (AHEGS table, Rubric tabs) |
 
 There is no unit-test framework: the `check:*` scripts are the suite (CLAUDE.md).
