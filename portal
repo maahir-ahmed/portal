@@ -195,6 +195,16 @@ wait_ready() {
 
 cmd_install() {
   check_docker
+  # A fresh clone is on main; run the install from the release the images belong to.
+  if [ -z "${PORTAL_REEXEC:-}" ] && [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+    local was
+    was="$(git -C "$ROOT" rev-parse HEAD)"
+    update_scripts
+    if [ "$(git -C "$ROOT" rev-parse HEAD)" != "$was" ]; then
+      say "Using the latest release, $(git -C "$ROOT" describe --tags)."
+      PORTAL_REEXEC=1 exec "$ROOT/portal" install
+    fi
+  fi
   write_settings
   get_images
   compose up -d --no-build --remove-orphans
@@ -260,6 +270,32 @@ cmd_restore() {
   wait_ready
 }
 
+# The newest release on this portal's channel (the APP_IMAGE tag: 1 means v1.x.y, 1.4
+# means v1.4.y), as a git tag, or nothing if there isn't one yet.
+channel() { local image; image="$(get APP_IMAGE)"; image="${image:-$IMAGES-app:1}"; printf '%s' "${image##*:}"; }
+
+newest_release() {
+  local channel
+  channel="$(channel)"
+  git -C "$ROOT" tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+    | awk -v c="v$channel" '$0 == c || index($0, c ".") == 1' | sort -V | tail -n 1
+}
+
+# Moves the scripts and compose file to the same release as the images: the newest tag
+# on the channel, not whatever is on main, so a change reaches self-hosted portals only
+# when it's released. The latest channel follows main on purpose.
+update_scripts() {
+  local tag
+  if [ "$(channel)" = latest ]; then
+    git -C "$ROOT" pull --ff-only || die "couldn't update the scripts with git pull. Undo local changes to this folder and try again"
+    return
+  fi
+  git -C "$ROOT" fetch -q --tags origin || die "couldn't check for new versions of the scripts (git fetch). Check the internet connection and try again"
+  tag="$(newest_release)"
+  [ -n "$tag" ] || return 0 # no release on this channel yet: stay where we are
+  git -C "$ROOT" checkout -q "$tag" || die "couldn't move the scripts to $tag. Undo local changes to this folder and try again"
+}
+
 # The image IDs the three portal images point at now, "none" for one not here.
 image_ids() {
   local v
@@ -284,7 +320,7 @@ cmd_update() {
   before="$(image_ids)"
   if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
     head="$(git -C "$ROOT" rev-parse HEAD)"
-    git -C "$ROOT" pull --ff-only || die "couldn't update the scripts with git pull. Undo local changes to this folder and try again"
+    update_scripts
   fi
   write_settings # adds any setting a newer version needs
   get_images

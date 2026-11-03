@@ -90,7 +90,7 @@ for approval; **info** = noted only.
 | F60 | Low | uploads | malformed multipart 500; MAX_FILE_SIZE_MB NaN disables the cap | fix | todo |
 | F61 | High | ci | self-hosted runner on a public repo (fork PR workflows) | proposal (repo settings) + fix (deploy.yml permissions) | todo |
 | F62 | Medium | secrets | tempenv.env (live Discord token) not in .dockerignore; printed into a review transcript | fix (.dockerignore); user must rotate | todo |
-| F63 | Medium | updates | portal update pulls main, not the release tag | fix | todo |
+| F63 | Medium | updates | portal update pulls main, not the release tag | fix | bash done (this commit); portal.ps1 mirror todo |
 | F64 | Medium | ci | workflow actions pinned to mutable tags while publishing auto-installed images | fix | todo |
 | F65 | Medium | dev | dev Postgres published on all interfaces with a known password | fix | todo |
 | F66 | Medium | db | app and SQL runner connect as Postgres superuser | proposal | - |
@@ -109,8 +109,33 @@ for approval; **info** = noted only.
 
 ## Next step
 
-Work down the todo rows by severity (F03 first), one commit each, verifying each in
-the code before changing it. Triage the remaining review reports as they arrive.
+1. Mirror F63 in portal.ps1: `Update` and `Install` should fetch tags and check out the
+   newest `v<channel>.*` tag (see `channel`, `newest_release`, `update_scripts` and the
+   re-exec at the top of `cmd_install` in `portal`), with `latest` still pulling main.
+   Parse-check with powershell.exe, then commit.
+2. Then work down the remaining `todo` rows, highest severity first: F62 (.dockerignore),
+   F61 (deploy.yml permissions), F64 (pin action SHAs), F51, F52, F53, F40, F42, F43,
+   F44, F48, F49, F55, F56, F60, F65, F67, F71, F73, and F04, F06-F09, F12-F16, F18-F21,
+   F25, F27, F28, F30, F37 (timing part only). One commit each, rerun the relevant
+   check, update this file.
+3. After each area: rerun the full baseline (lint, tsc, 13 checks incl. check:security,
+   build, audit:layout). Dev server for testing: scratch DB
+   `postgresql://society_user:sptest@127.0.0.1:55432/sp_p4l` (tunnel:
+   `ssh -fN -L 55432:127.0.0.1:55432 mini-new`), seed logins alice/bob/charlie
+   @example.com, password123. Never the local society_platform DB (real data).
+4. Write docs/audit/AUDIT_REPORT.md (severity counts, every finding with file/line,
+   fix or proposal, commit hash; proposals listed separately; refactors; baseline vs
+   final; research sources below).
+5. After the audit: the user asked to create release 1 (tag v1.0.0). That needs the
+   branches merged and pushed, which deploys prod: confirm with the user first.
+
+Research sources gathered (for the report): Vercel May 2026 Next.js security release;
+Next.js Oct 14 2026 security update (16.4.1); GitLab advisory CVE-2026-23870 (React RSC
+DoS, fixed 19.2.6; Next vendors 19.3 canary so not exposed); CVE-2026-73421 next-auth
+fail-open (fixed beta.32, installed); OWASP API Top 10 2023 (BOLA); OWASP SSRF cheat
+sheet; Prisma raw query docs; USENIX Security 2025 package hallucination study and
+Veracode 2025 GenAI code report; Discord interactions signature docs; OWASP Docker
+cheat sheet.
 
 ## Baseline (a8d8bda, before any audit change)
 
