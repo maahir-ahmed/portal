@@ -5,6 +5,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification, notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { isPlausibleDate } from "@/lib/utils";
 import type { TreasuryStatus } from "@prisma/client";
 
 type Params = { society: string; id: string };
@@ -22,7 +23,7 @@ const patchSchema = z.object({
   contactEmail: z.string().email().optional(),
   // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
   // new Date() would turn into an Invalid Date.
-  expenseDate: z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date").optional(),
+  expenseDate: z.string().refine(isPlausibleDate, "Enter a real date").optional(),
   locationSupplier: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   // .finite() matters: JSON.parse turns 1e999 into Infinity, which reaches Decimal as junk.

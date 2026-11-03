@@ -4,16 +4,17 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { isPlausibleDate } from "@/lib/utils";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import type { ContentRequestStatus } from "@prisma/client";
 
 const createSchema = z.object({
   eventName: z.string().min(1).max(200),
-  startDate: z.string().datetime({ offset: true }).or(z.string()),
-  endDate: z.string().nullable().optional(),
+  startDate: z.string().refine(isPlausibleDate, "Enter a real date"),
+  endDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable().optional(),
   location: z.string().min(1).max(200),
   keyPoints: z.string().min(1),
-  deadline: z.string().datetime({ offset: true }).or(z.string()),
+  deadline: z.string().refine(isPlausibleDate, "Enter a real date"),
   bannerRequired: z.boolean().default(false),
   blurbRequired: z.boolean().default(false),
   rubricRequired: z.boolean().default(false),

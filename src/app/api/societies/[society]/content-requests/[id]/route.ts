@@ -6,14 +6,14 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
-import { statusLabel } from "@/lib/utils";
+import { statusLabel, isPlausibleDate } from "@/lib/utils";
 
 
 // What the edit form, the status picker and the marketing panel send. Types only, with
 // limits far past any real form: anything the code already ignored ("" for a date, an
 // unknown key) is still ignored, but a wrong type or an impossible date is a 400 here
 // instead of a Prisma error and a 500 further down.
-const date = z.string().refine((s) => s === "" || !Number.isNaN(Date.parse(s)), "Invalid date");
+const date = z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date");
 const text = (max: number) => z.string().max(max).nullable();
 const patchSchema = z
   .object({

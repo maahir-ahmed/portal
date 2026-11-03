@@ -3,14 +3,14 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
-import { isLateArcSubmission } from "@/lib/utils";
+import { isLateArcSubmission, isPlausibleDate } from "@/lib/utils";
 import { EVENT_TYPES } from "@/lib/utils";
 import { z } from "zod";
 
 const schema = z.object({
   eventName: z.string().min(1).max(200),
   eventType: z.enum(EVENT_TYPES.map((t) => t.value)),
-  preferredDate: z.string(),
+  preferredDate: z.string().refine(isPlausibleDate, "Enter a real date"),
   startTime: z.string(),
   endTime: z.string(),
   description: z.string().min(1),

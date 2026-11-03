@@ -36,7 +36,7 @@ for approval; **info** = noted only.
 | F06 | Medium | printing | requester phone/email visible to every member (page + GET API) | fix API (unused by UI); proposal page | API done (this commit); detail page is a proposal |
 | F07 | Medium | content | PATCH logs/notifies/posts a status change it didn't make | fix | done (this commit) |
 | F08 | Medium | requests | room-booking and content-request PATCH have no zod, 500 on bad input | fix (validation); proposal (owner status gate) | validation done (this commit); owner status gate is a proposal |
-| F09 | Low | dates | far-future/invalid dates accepted (yearOptions blowup) | fix | todo |
+| F09 | Low | dates | far-future/invalid dates accepted (yearOptions blowup) | fix | done (this commit) |
 | F10 | Low | dates | seven-business-day rule uses UTC today | proposal | - |
 | F11 | Low | dates | other naive-vs-real now comparisons (queue grants, board, AHEGS default) | proposal | - |
 | F12 | Low | dates | typed datetimes parsed in server-local TZ; prod correct only because TZ unset | fix (pin TZ=UTC) | todo |

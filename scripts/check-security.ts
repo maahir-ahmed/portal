@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
-import { safeCallback } from "../src/lib/utils";
+import { isPlausibleDate, safeCallback } from "../src/lib/utils";
 
 // Member-typed text in an executive's notification email stays text.
 const evil = `<a href="https://evil/login">Sign in</a><img src=x onerror=alert(1)>"'&`;
@@ -32,5 +32,9 @@ for (const evil of ["https://evil.example/login", "//evil.example", "/\\evil.exa
   assert.equal(safeCallback(evil), "/", `callbackUrl ${evil} must not leave the site`);
 }
 assert.equal(safeCallback("/requests/treasury?x=1"), "/requests/treasury?x=1", "a path still works");
+
+// Typed-in dates: real ones between 2000 and 2100, nothing a year picker can't lay out.
+for (const ok of ["2026-11-04", "2026-11-04T18:00", "2026-11-04T07:00:00.000Z", "2100-12-31"]) assert.ok(isPlausibleDate(ok), ok);
+for (const bad of ["20255-01-01", "+275760-09-13", "1999-12-31", "not a date", ""]) assert.ok(!isPlausibleDate(bad), bad);
 
 console.log("✅ security: audit fixes still in place");

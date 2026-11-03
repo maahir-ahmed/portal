@@ -4,12 +4,13 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
+import { isPlausibleDate } from "@/lib/utils";
 
 // Fields are optional so a partial claim can be saved as a DRAFT; the full set
 // is enforced below only when the claim is actually submitted for approval.
 const schema = z.object({
   contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
-  expenseDate: z.string().optional(),
+  expenseDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").optional(),
   locationSupplier: z.string().optional(),
   description: z.string().optional(),
   amount: z.number().nonnegative().optional(),

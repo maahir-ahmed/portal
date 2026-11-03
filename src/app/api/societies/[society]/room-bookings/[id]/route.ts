@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { isPlausibleDate } from "@/lib/utils";
 import { EventType, PreferredLocation, RoomBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
@@ -18,7 +19,7 @@ const patchSchema = z
     status: z.enum(RoomBookingStatus),
     eventName: text(1000),
     eventType: z.union([z.enum(EventType), z.literal("")]).nullable(),
-    preferredDate: z.string().refine((s) => s === "" || !Number.isNaN(Date.parse(s)), "Invalid date").nullable(),
+    preferredDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable(),
     startTime: text(50),
     endTime: text(50),
     description: text(20000),
