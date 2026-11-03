@@ -188,6 +188,10 @@ model Society {
   // The Discord role pinged on each new request (the marketing director role). A role
   // ID, not a secret; Discord only pings a role by its numeric ID.
   eventsWebhookRoleId    String?
+  // Whether that webhook's channel is a forum, where each request is its own post.
+  // Learnt from Discord on the first post (src/lib/discordEvents.ts), and reset when the
+  // webhook is replaced.
+  eventsWebhookForum     Boolean      @default(false)
   secretarialTier      SecretarialTier @default(BRONZE)
   // The academic year AHEGS is being collated for. Set in Settings because it does
   // not follow the calendar: a submission is prepared over one year and lodged at its

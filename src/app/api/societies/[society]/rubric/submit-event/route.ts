@@ -38,7 +38,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         rubricEventLink: parsed.data.rubricEventLink,
       },
     });
-    await syncEventToDiscord(parsed.data.contentRequestId);
+    await syncEventToDiscord(
+      parsed.data.contentRequestId,
+      `${session!.user.name} ${parsed.data.markSubmitted ? "submitted the event to Rubric" : "linked the Rubric event"}.`
+    );
   }
 
   return NextResponse.json({ ok: true });

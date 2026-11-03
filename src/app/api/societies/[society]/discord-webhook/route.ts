@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { encryptSecret, decryptSecret } from "@/lib/secrets";
+import { postToWebhook } from "@/lib/discordEvents";
 import { z } from "zod";
 
 // The Discord webhook the exec queue posts to. Exec-only, and the URL never travels
@@ -87,7 +88,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     data: {
       // undefined leaves the URL alone, so the role can be changed without re-pasting it.
       ...(body.webhookUrl !== undefined
-        ? { [COLUMN[channel]]: body.webhookUrl ? encryptSecret(body.webhookUrl) : null }
+        ? {
+            [COLUMN[channel]]: body.webhookUrl ? encryptSecret(body.webhookUrl) : null,
+            // A new webhook may be a different kind of channel; the next post finds out.
+            ...(channel === "events" ? { eventsWebhookForum: false } : {}),
+          }
         : {}),
       ...(channel === "events" && body.roleId !== undefined ? { eventsWebhookRoleId: body.roleId || null } : {}),
     },
@@ -124,7 +129,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   const channel = channelOf(req);
   const soc = await prisma.society.findUnique({
     where: { id: membership!.societyId },
-    select: { discordWebhookUrl: true, eventsWebhookUrl: true, eventsWebhookRoleId: true, name: true },
+    select: { id: true, discordWebhookUrl: true, eventsWebhookUrl: true, eventsWebhookRoleId: true, name: true },
   });
   const stored = soc?.[COLUMN[channel]];
   if (!soc || !stored) {
@@ -139,11 +144,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   }
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(5000),
-      body: JSON.stringify({
+    const sent = await postToWebhook(
+      url,
+      {
         username: "Society Portal",
         // Shows the role tag so you can check it's the right role, without pinging it.
         ...(channel === "events" && soc.eventsWebhookRoleId
@@ -159,13 +162,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
             timestamp: new Date().toISOString(),
           },
         ],
-      }),
-    });
-    if (!res.ok) {
+      },
+      // In a forum the test becomes its own post, titled this.
+      { title: "Webhook connected" }
+    );
+    if (!sent.ok) {
       return NextResponse.json(
-        { error: `Discord rejected it (${res.status}). Check the webhook still exists.` },
+        { error: `Discord rejected it (${sent.status}). Check the webhook still exists.` },
         { status: 400 }
       );
+    }
+    if (channel === "events") {
+      await prisma.society.update({ where: { id: soc.id }, data: { eventsWebhookForum: sent.forum } });
     }
   } catch {
     return NextResponse.json({ error: "Could not reach Discord" }, { status: 502 });
