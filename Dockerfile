@@ -64,6 +64,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
+# The release this image is (1.4.0, or main-<sha> between releases), shown in Settings
+# and compared with the newest release there (src/lib/updates.ts). Last, so a new
+# version doesn't throw away the layers above.
+ARG APP_VERSION=source
+ENV APP_VERSION=$APP_VERSION
+
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"

@@ -1,6 +1,8 @@
 # Publishes the images a self-hosted portal runs (./portal, docs/SELF_HOSTING.md):
 #   ghcr.io/<owner>/<repo>-app, -web and -backup, each for amd64 and arm64 (a Raspberry
-#   Pi or an ARM server). `latest` follows main; a v1.2.3 tag also publishes 1.2.3 and 1.2.
+#   Pi or an ARM server). `latest` follows main; a v1.2.3 tag also publishes 1.2.3, 1.2 and 1. Self-hosted
+#   portals follow `1` (the installer's choice), so they get every 1.x release, and a
+#   v2.0.0 waits until someone moves them to `2` on purpose.
 # Each architecture builds on its own native runner, which takes minutes where emulating
 # arm64 takes most of an hour, and the two are then joined under one tag.
 # The hosted stacks don't use these: they build from source on the box (deploy.yml).
@@ -39,6 +41,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # 1.4.0 for a v1.4.0 tag, main-<sha> otherwise. Shown in Settings, and compared
+      # with the newest release to offer an update.
+      - name: Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="main-${GITHUB_SHA::7}"; fi
+          echo "APP_VERSION=$v" >> "$GITHUB_ENV"
       - id: build
         uses: docker/build-push-action@v6
         with:
@@ -46,6 +54,7 @@ jobs:
           file: ${{ matrix.file }}
           platforms: linux/${{ matrix.arch }}
           pull: true
+          build-args: APP_VERSION=${{ env.APP_VERSION }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
           outputs: type=image,name=ghcr.io/${{ github.repository }}-${{ matrix.image }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
@@ -86,6 +95,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=sha
       - name: Join both architectures under the tags
         working-directory: digests
