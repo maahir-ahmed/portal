@@ -83,6 +83,14 @@ services:
       # database, and does nothing once any account exists. ADMIN_EMAIL prefills it.
       SETUP_TOKEN: ${SETUP_TOKEN:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      # Discord deadline reminders (src/lib/reminders.ts) run whenever the events webhook
+      # is set in Settings; "off" stops them. The /print bot is a spike, off unless
+      # ENABLE_DISCORD_BOT=true: see docs/DISCORD_BOT_SPIKE.md.
+      DISCORD_REMINDERS: ${DISCORD_REMINDERS:-}
+      ENABLE_DISCORD_BOT: ${ENABLE_DISCORD_BOT:-false}
+      DISCORD_APP_ID: ${DISCORD_APP_ID:-}
+      DISCORD_PUBLIC_KEY: ${DISCORD_PUBLIC_KEY:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
       STACK: ${STACK}
       UPLOADS_DIR: /app/uploads
       BACKUP_OUT: /app/backups

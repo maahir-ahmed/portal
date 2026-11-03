@@ -286,6 +286,9 @@ model User {
   emailVerified    DateTime?
   // Discord handle, from a member import. Not verified.
   discordUsername  String?
+  // Their Discord account's ID, stored the first time they use the /print command
+  // (src/lib/discordBot.ts). Unique: one portal account per Discord account.
+  discordUserId    String?   @unique
   twoFactorEnabled Boolean   @default(false)
   twoFactorSecret  String?
   createdAt        DateTime  @default(now())

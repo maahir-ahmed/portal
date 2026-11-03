@@ -67,8 +67,10 @@ async function route(req: NextAuthRequest, origin: string) {
   // /setup checks for itself: on a fresh stack it is open to whoever holds the setup
   // token (src/lib/setup.ts), and from then on it sends anyone signed out to log in.
   const isSetup = pathname === "/setup" || pathname === "/api/setup";
+  // Discord's calls for the /print command: signed by Discord, checked in the route.
+  const isDiscord = pathname === "/api/discord/interactions";
   const isPublic =
-    isAuthPage || isApiAuth || isSetup || pathname.startsWith("/_next") || pathname.startsWith("/uploads");
+    isAuthPage || isApiAuth || isSetup || isDiscord || pathname.startsWith("/_next") || pathname.startsWith("/uploads");
 
   // Auth guard (runs regardless of society mode)
   if (!isPublic && !isAuth) {
