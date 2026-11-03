@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { YearPicker } from "@/components/shared/YearPicker";
 import { eventYearRange, parseYear, yearOptions } from "@/lib/years";
 import { formatDate, formatTimeRange, statusLabel, cn } from "@/lib/utils";
+import { urgency, STAGE_CLASSES } from "@/lib/urgency";
 import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, Clock, MapPin } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
@@ -28,26 +29,6 @@ const TABS: ContentRequestStatus[] = [
 
 const CLOSED = new Set(["COMPLETED", "CANCELLED"]);
 
-// Whole-card highlight (bg + border) based on how close the content is due.
-function proximityClasses(dueDate: Date, status: string): string {
-  if (CLOSED.has(status)) return "border-l-zinc-200";
-  const days = Math.ceil((dueDate.getTime() - Date.now()) / 86_400_000);
-  if (days < 0) return "border-l-red-600 border-red-200 bg-red-100";       // overdue
-  if (days <= 2) return "border-l-red-500 border-red-200 bg-red-50";        // imminent
-  if (days <= 6) return "border-l-amber-500 border-amber-200 bg-amber-50";   // this week
-  if (days <= 14) return "border-l-yellow-400 border-yellow-200 bg-yellow-50"; // soon
-  return "border-l-emerald-500 border-emerald-200 bg-emerald-50";           // plenty of time
-}
-
-function daysLabel(dueDate: Date, status: string): string | null {
-  if (CLOSED.has(status)) return null;
-  const days = Math.ceil((dueDate.getTime() - Date.now()) / 86_400_000);
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return "Due today";
-  if (days === 1) return "Due tomorrow";
-  return `Due in ${days}d`;
-}
-
 export default async function ContentRequestsPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
   const { status, year: yearParam } = await searchParams;
@@ -56,8 +37,10 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
+  const now = new Date();
 
   const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
   const owner = {
@@ -148,10 +131,13 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
       ) : (
         <div className="space-y-2.5">
           {requests.map((r, i) => {
-            const label = daysLabel(r.deadline, r.status);
+            const closed = CLOSED.has(r.status);
+            // Coloured by how close the content is due (src/lib/urgency.ts, shared with the Discord reminders).
+            const due = urgency(r.deadline, membership.society.timezone, now);
+            const label = closed ? null : due.label;
             return (
               <Link key={r.id} href={`/${societySlug}/requests/content/${r.id}`} data-tour={i === 0 ? "content-card" : undefined}>
-                <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", proximityClasses(r.deadline, r.status), CLOSED.has(r.status) && "opacity-70")}>
+                <Card className={cn("border-l-4 hover:shadow-[0_2px_8px_-2px_rgba(16,16,20,0.08)] transition-shadow cursor-pointer", closed ? "border-l-zinc-200 opacity-70" : STAGE_CLASSES[due.stage])}>
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:items-start min-[400px]:justify-between min-[400px]:gap-4">
                       <div className="flex items-start gap-3 min-w-0">
