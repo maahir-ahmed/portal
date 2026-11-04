@@ -53,6 +53,7 @@ const original = readZip(readFileSync(path(TEMPLATES.EXECUTIVE.file)));
 const filled = fillTemplate(path(TEMPLATES.EXECUTIVE.file), [
   ["Ada Lovelace", 5123456, "z5123456@unsw.edu.au", "President", new Date("2026-01-01T00:00:00Z"), new Date("2026-12-31T00:00:00Z")],
   ["Bee & Cee <test>", "5000001", "bee@example.com", "Treasurer", new Date("1900-01-01T00:00:00Z"), new Date("1899-12-31T00:00:00Z")],
+  ["Dollar $& Sign\u0007", "5000002", "d@example.com", "Secretary", new Date("2026-01-01T00:00:00Z"), new Date("2026-12-31T00:00:00Z")],
 ]);
 const rebuilt = readZip(filled);
 assert.deepEqual(
@@ -85,6 +86,7 @@ assert.ok(sheet.includes("<v>1</v>"), "1899-12-31 should be serial 1");
 
 // Unescaped user text is the one input here that can produce a corrupt workbook.
 assert.ok(sheet.includes("Bee &amp; Cee &lt;test&gt;"), "cell text was not XML-escaped");
+assert.ok(sheet.includes("<t>Dollar $&amp; Sign</t>"), "$& in a name must stay text, and control characters go");
 for (const [, text] of sheet.matchAll(/<t>([\s\S]*?)<\/t>/g)) {
   assert.ok(!text.includes("<"), `raw < leaked into a cell: ${text}`);
   assert.ok(!/&(?!amp;|lt;|gt;|quot;|apos;|#)/.test(text), `raw & leaked into a cell: ${text}`);
