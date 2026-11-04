@@ -85,8 +85,8 @@ could link the wrong account, which is why it was replaced.
   `applications.commands` scope, the command appeared, and a PNG attachment came through
   as a printing request (25 copies, A4, single sided, black and white, costed at
   $2.50), awaiting approval, with the file saved through the upload checks, an audit
-  entry and an exec notification. The first use linked the account by username and
-  stored the Discord ID.
+  entry and an exec notification. (That run linked the account by username, since
+  replaced by `/link` codes.)
 
 ## Other request types
 
@@ -100,13 +100,12 @@ could link the wrong account, which is why it was replaced.
 
 ## Recommendation
 
-Keep the endpoint and the signature check as they are. Before switching it on for a
-real society:
+Keep the endpoint and the signature check as they are. Accounts now link with `/link`
+codes, so the next steps are:
 
-1. Replace username matching with `/link` codes (above).
-2. Add approve and reject buttons to the exec-queue webhook posts, which would need the
+1. Add approve and reject buttons to the exec-queue webhook posts, which would need the
    queue to post through the bot rather than a webhook, so the buttons can call back.
-3. Consider letting the bot own the events forum: a bot can change a post's tags, which
+2. Consider letting the bot own the events forum: a bot can change a post's tags, which
    a webhook can't after the post is made, so each request's status could show as a
    forum tag.
 
