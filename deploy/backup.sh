@@ -60,9 +60,24 @@ seconds_until_hour() {
 archive() {
   [ "$(basename "$UPLOADS")" = uploads ] || die "UPLOADS_DIR must be a directory named uploads, not $UPLOADS"
   mkdir -p "$OUT"
+  # One backup of a stack at a time: a second (the daily run while an exec presses
+  # Create backup) would clear the first's work files below and fail it. A lock left
+  # by a killed run is taken over after two hours.
+  lock="$OUT/.lock-$STACK"
+  find "$OUT" -maxdepth 1 -name ".lock-$STACK" -mmin +120 -exec rm -rf {} +
+  waited=0
+  until mkdir "$lock" 2>/dev/null; do
+    waited=$((waited + 5))
+    [ "$waited" -ge 600 ] && die "another backup of $STACK has been running for 10 minutes"
+    sleep 5
+  done
+  trap "rm -rf '$lock'" EXIT
   # A run killed mid-way leaves a .part and a work directory behind; clear this
   # stack's before starting so they cannot pile up unnoticed.
   rm -rf "$OUT/${STACK}_"*.part "$OUT/.work-${STACK}-"*
+  # The Debugging tab's leftovers: half-uploaded restores, and job results (which can
+  # hold whatever a SQL run selected). A day is long enough to read them.
+  find "$OUT" -maxdepth 1 \( -name '.incoming-*' -o -name '.job-*.json' \) -mmin +1440 -exec rm -f {} +
 
   stamp=$(date +%F_%H%M%S)
   work="$OUT/.work-${STACK}-$stamp"
@@ -108,6 +123,9 @@ archive() {
 
   # -exec rm rather than -delete: busybox find does not always carry -delete.
   find "$OUT" -maxdepth 1 -name "${STACK}_*" -mtime "+$KEEP_DAYS" -exec rm -f {} +
+  # Released here too, not only on exit: the daily loop runs archive again and again.
+  rm -rf "$lock"
+  trap - EXIT
   echo "$dest"
 }
 
