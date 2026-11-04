@@ -6,6 +6,7 @@ import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
 import { isPlausibleDate, safeCallback } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
+import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
 // Member-typed text in an executive's notification email stays text.
 const evil = `<a href="https://evil/login">Sign in</a><img src=x onerror=alert(1)>"'&`;
@@ -44,5 +45,15 @@ assert.ok(freshInteraction(String(now / 1000 - 10), now), "a request from 10 sec
 assert.ok(!freshInteraction(String(now / 1000 - 3600), now), "an hour-old request is a replay");
 assert.ok(!freshInteraction("not a number", now));
 assert.ok(!freshInteraction(null, now));
+
+// Password guessing: ten wrong tries lock the account for the window, a right one resets it.
+const limits = passwordLimits("Jane@Example.com", new Headers({ "x-real-ip": "203.0.113.9" }));
+for (let i = 0; i < 9; i++) recordFailure(limits, now);
+assert.ok(!isLimited(limits, now), "nine wrong passwords are still allowed");
+clearFailures(limits);
+for (let i = 0; i < 10; i++) recordFailure(limits, now);
+assert.ok(isLimited(limits, now), "the tenth wrong password locks the account");
+assert.ok(isLimited(passwordLimits("jane@example.com", new Headers()), now), "case doesn't dodge the lock");
+assert.ok(!isLimited(limits, now + 16 * 60_000), "the lock lifts after the window");
 
 console.log("✅ security: audit fixes still in place");

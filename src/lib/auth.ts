@@ -1,13 +1,18 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { clearFailures, isLimited, passwordLimits, recordFailure } from "./rateLimit";
 
 // A hash at the same cost as real ones, made once on first use, for unknown accounts to
 // be checked against.
 let dummy: Promise<string> | null = null;
 const dummyHash = () => (dummy ??= bcrypt.hash(crypto.randomUUID(), 12));
+
+class TooManyAttempts extends CredentialsSignin {
+  code = "rate_limited";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -25,10 +30,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const email = (credentials.email as string).trim().toLowerCase();
+        // Guessing passwords: a few tries per account, more per address (a shared
+        // network), then wait out the window.
+        const limits = passwordLimits(email, request.headers);
+        if (isLimited(limits)) throw new TooManyAttempts();
         // Only the fields the UI reads. Whole Society rows used to travel from here
         // into the JWT and back out of /api/auth/session, which handed every logged-in
         // member the society's Rubric session ID.
@@ -55,6 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // have accounts here.
         if (!user || !user.passwordHash) {
           await bcrypt.compare(credentials.password as string, await dummyHash());
+          recordFailure(limits);
           return null;
         }
 
@@ -62,7 +72,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           credentials.password as string,
           user.passwordHash
         );
-        if (!valid) return null;
+        if (!valid) {
+          recordFailure(limits);
+          return null;
+        }
+        clearFailures(limits);
 
         await prisma.user.update({
           where: { id: user.id },

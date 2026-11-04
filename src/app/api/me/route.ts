@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import bcrypt from "bcryptjs";
+import { isLimited, passwordLimits, recordFailure } from "@/lib/rateLimit";
 import { z } from "zod";
 
 export async function GET() {
@@ -53,8 +54,14 @@ export async function PATCH(req: NextRequest) {
         if (!data.currentPassword) {
           return NextResponse.json({ error: "Current password is required to change your email" }, { status: 400 });
         }
+        // A stolen session must not become unlimited guesses at the password.
+        const limits = passwordLimits(user.email, req.headers);
+        if (isLimited(limits)) {
+          return NextResponse.json({ error: "Too many attempts. Try again in 15 minutes." }, { status: 429 });
+        }
         const valid = await bcrypt.compare(data.currentPassword, user.passwordHash);
         if (!valid) {
+          recordFailure(limits);
           return NextResponse.json({ error: "Current password is incorrect" }, { status: 403 });
         }
 

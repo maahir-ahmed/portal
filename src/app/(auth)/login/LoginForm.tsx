@@ -57,7 +57,9 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
     });
 
     setLoading(false);
-    if (result?.error) {
+    if (result?.code === "rate_limited") {
+      toast.error("Too many attempts. Try again in 15 minutes.");
+    } else if (result?.error) {
       toast.error("Invalid email or password");
     } else {
       router.push(callbackUrl);

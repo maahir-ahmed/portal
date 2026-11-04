@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import { isLimited, passwordLimits, recordFailure } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const schema = z.object({
@@ -25,8 +26,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Password not set on this account" }, { status: 400 });
     }
 
+    // A stolen session must not become unlimited guesses at the password.
+    const limits = passwordLimits(user.email, req.headers);
+    if (isLimited(limits)) {
+      return NextResponse.json({ error: "Too many attempts. Try again in 15 minutes." }, { status: 429 });
+    }
     const valid = await bcrypt.compare(data.currentPassword, user.passwordHash);
     if (!valid) {
+      recordFailure(limits);
       return NextResponse.json({ error: "Current password is incorrect" }, { status: 403 });
     }
 
