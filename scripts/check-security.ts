@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
-import { isPlausibleDate, safeCallback } from "../src/lib/utils";
+import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
@@ -61,5 +61,11 @@ assert.ok(!isLimited(limits, now + 16 * 60_000), "the lock lifts after the windo
 assert.equal(csvCell('=HYPERLINK("http://evil","x")'), `"'=HYPERLINK(""http://evil"",""x"")"`);
 assert.equal(csvCell("@SUM(A1)"), `"'@SUM(A1)"`);
 assert.equal(csvCell("Ada Lovelace"), `"Ada Lovelace"`, "ordinary text is unchanged");
+
+// The Origin check on API writes: this host (whatever the port), never a sibling.
+assert.ok(sameHost("https://secsoc.maahir.dev", "secsoc.maahir.dev"));
+assert.ok(sameHost("http://localhost:8080", "localhost"), "nginx drops the port from Host");
+assert.ok(!sameHost("https://evil.maahir.dev", "secsoc.maahir.dev"), "a sibling subdomain is another site");
+assert.ok(!sameHost("null", "secsoc.maahir.dev"));
 
 console.log("✅ security: audit fixes still in place");

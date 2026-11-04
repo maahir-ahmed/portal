@@ -14,6 +14,17 @@ export const offline = () =>
     headers: { "Content-Type": "application/json" },
   });
 
+// Hostnames only: nginx passes Host without the port ($host), while a browser's Origin
+// keeps it, so on a portal opened at :8080 the two would never match. A sibling
+// subdomain still differs.
+export function sameHost(origin: string, host: string | null) {
+  try {
+    return !!host && new URL(origin).hostname === new URL(`http://${host}`).hostname;
+  } catch {
+    return false; // "null" (a sandboxed frame or a file) is never us
+  }
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

@@ -4,6 +4,7 @@ import type { NextAuthRequest } from "next-auth";
 import { apiEnabled, pageEnabled } from "@/lib/modules";
 import { modulesForSlug } from "@/lib/modulesServer";
 import { maintenanceActive, maintenancePage } from "@/lib/maintenance";
+import { sameHost } from "@/lib/utils";
 
 // Single-society mode: set SOCIETY_SLUG env var for per-domain deployments.
 // Middleware rewrites clean paths (/dashboard) → /slug/dashboard internally,
@@ -40,17 +41,6 @@ function societyPath(pathname: string): { slug: string; sub: string; api: boolea
 // the public address, so the real origin is taken here, before it does. Built on
 // req.url, every slug-free page went out to the public URL and back in through the
 // tunnel, and failed outright where the box cannot reach its own public address.
-// Hostnames only: nginx passes Host without the port ($host), while a browser's Origin
-// keeps it, so on a portal opened at :8080 the two would never match. A sibling
-// subdomain still differs.
-function sameHost(origin: string, host: string | null) {
-  try {
-    return !!host && new URL(origin).hostname === new URL(`http://${host}`).hostname;
-  } catch {
-    return false; // "null" (a sandboxed frame or a file) is never us
-  }
-}
-
 export default function proxy(req: NextRequest, ev: NextFetchEvent) {
   const origin = req.nextUrl.origin;
   // auth()'s overloads return a union; with a callback it is this middleware.
