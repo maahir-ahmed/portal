@@ -29,6 +29,8 @@ assert.equal(line("\n\n  ROLLBACK;"), "ROLLBACK@3");
 // A PL/pgSQL block's BEGIN/END, and the words inside strings and comments, are not.
 assert.equal(line("DO $$\nBEGIN\n  UPDATE x SET y = 1;\nEND $$;"), null);
 assert.equal(line("DO $fix$ BEGIN PERFORM 1; END $fix$;"), null);
+assert.equal(line("DO $fn1$ BEGIN PERFORM 1; END $fn1$;"), null, "a dollar tag with a digit in it is a quote too");
+assert.equal(line("SELECT $1;\nCOMMIT;"), "COMMIT@2", "a $1 parameter is not a dollar quote");
 assert.equal(line("UPDATE x SET note = 'COMMIT';\n-- COMMIT later\n/* ROLLBACK */ SELECT 1;"), null);
 // Ways around the guard that the audit found (docs/audit/AUDIT_REPORT.md, F56).
 assert.equal(line("UPDATE a SET b = 1; COMMIT; DELETE FROM a;"), "COMMIT@1", "a COMMIT after a semicolon on the same line");
