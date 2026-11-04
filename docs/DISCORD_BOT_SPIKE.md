@@ -39,20 +39,17 @@ member types /print in Discord
   (`src/lib/uploads.ts`), the Printing module must be on, the member must be active,
   and the request goes to the exec queue for approval like any other.
 
-## Linking accounts (why it's still a spike)
+## Linking accounts
 
-Discord tells the portal the member's Discord ID and username. The portal has to map that
-to a portal account. The prototype matches the **Discord username** an exec entered in
-the member import (Phase 2's `discord_username` column), once, then pins the account to
-the Discord ID (`User.discordUserId`, unique) so later commands match by ID.
+Discord tells the portal the member's Discord ID. To map it to a portal account, the
+member opens their **Account** page, presses **Get a link code**, and runs `/link <code>`
+in the society's server. The portal stores their Discord ID (`User.discordUserId`,
+unique), and later commands match by it. A code works once, for 15 minutes, and only
+its sha256 is stored.
 
-That is good enough to test, but not to rely on: the username is typed by an exec and
-never confirmed by the member, so a mistake (or a member who later changes their
-username to someone else's old one, before the first use) links the wrong account.
-**Before turning this on for real members, replace it with a one-time code:** the
-Account page shows a short code, the member runs `/link <code>` in Discord, and the
-portal stores their Discord ID. That's a small change: one column for the code and its
-expiry, one more command, and a box on the Account page.
+The prototype matched the Discord username from the member import instead. That was
+never confirmed by the member, so a typo, or a username someone else used to have,
+could link the wrong account, which is why it was replaced.
 
 ## Setting it up (for the spike)
 
@@ -62,8 +59,8 @@ expiry, one more command, and a box on the Account page.
    only you can add it to servers.
 2. In the portal's env file: `ENABLE_DISCORD_BOT=true`, `DISCORD_APP_ID`,
    `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` (your server's ID:
-   enable Developer Mode in Discord, right-click the server, Copy Server ID), so `/print`
-   only works there even if someone adds the app to another server. Restart
+   enable Developer Mode in Discord, right-click the server, Copy Server ID). The bot
+   stays off without it, so the commands only ever work in your own server. Restart
    (`./portal start`, or `up -d`).
 3. Back in the developer portal, set **Interactions Endpoint URL** to
    `https://<your portal>/api/discord/interactions` and save. Discord tests it straight
@@ -72,8 +69,8 @@ expiry, one more command, and a box on the Account page.
    `https://discord.com/oauth2/authorize?client_id=<Application ID>&scope=applications.commands`
    and pick the server. It needs no bot permissions: the command and its reply are all
    it uses.
-5. Make sure each member's Discord username is on their portal account (the member
-   import's `discord_username` column).
+5. Each member links their account once: Account page, **Get a link code**, then
+   `/link <code>` in the server.
 
 ## What was tested
 

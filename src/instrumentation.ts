@@ -11,4 +11,5 @@ export async function register() {
   }
   const { botEnabled, registerCommands } = await import("./lib/discordBot");
   if (botEnabled()) void registerCommands(); // not awaited: Discord being slow mustn't hold up the start
+  else if (process.env.ENABLE_DISCORD_BOT === "true") console.warn("ENABLE_DISCORD_BOT is on, but DISCORD_GUILD_ID is missing, so the bot stays off");
 }

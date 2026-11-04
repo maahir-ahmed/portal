@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { isLimited, passwordLimits, recordFailure } from "@/lib/rateLimit";
+import { botEnabled } from "@/lib/discordBot";
 import { z } from "zod";
 
 export async function GET() {
@@ -11,10 +12,12 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session!.user.id },
-    select: { id: true, name: true, email: true, zId: true, phone: true, mustChangePassword: true },
+    select: { id: true, name: true, email: true, zId: true, phone: true, mustChangePassword: true, discordUserId: true },
   });
+  if (!user) return NextResponse.json(null);
 
-  return NextResponse.json(user);
+  const { discordUserId, ...rest } = user;
+  return NextResponse.json({ ...rest, discordBot: botEnabled(), discordLinked: !!discordUserId });
 }
 
 const schema = z.object({

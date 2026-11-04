@@ -1,4 +1,4 @@
-import { createPublicKey, verify } from "node:crypto";
+import { createHash, createPublicKey, randomInt, verify } from "node:crypto";
 import { prisma } from "./db";
 import { modulesForSociety } from "./modulesServer";
 import { createPrintingRequest } from "./printingServer";
@@ -8,9 +8,11 @@ import { SIDED_LABELS, type Colour, type PaperSize, type Sided } from "./printin
 // SPIKE (docs/DISCORD_BOT_SPIKE.md): a /print slash command that files a printing
 // request from Discord. Discord POSTs each use to /api/discord/interactions (an HTTP
 // interactions endpoint, so no bot process or gateway connection), signed with the
-// app's Ed25519 key. Off unless ENABLE_DISCORD_BOT=true.
+// app's Ed25519 key. Off unless ENABLE_DISCORD_BOT=true and DISCORD_GUILD_ID names the
+// society's server: the commands are registered for the app, so without it they would
+// work in any server the app has been added to.
 
-export const botEnabled = () => process.env.ENABLE_DISCORD_BOT === "true";
+export const botEnabled = () => process.env.ENABLE_DISCORD_BOT === "true" && !!process.env.DISCORD_GUILD_ID;
 
 // Ed25519 public keys arrive as 32 raw bytes in hex; node wants them wrapped as SPKI.
 const SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
@@ -52,6 +54,13 @@ export const PRINT_COMMAND = {
   ],
 };
 
+export const LINK_COMMAND = {
+  name: "link",
+  description: "Connect your Discord account to the portal",
+  dm_permission: false,
+  options: [{ type: 3, name: "code", description: "The code from your Account page on the portal", required: true }],
+};
+
 /**
  * Tells Discord the app's commands. Run on every start (src/instrumentation.ts): it
  * replaces the whole list, so it's safe to repeat, and a changed option reaches
@@ -64,7 +73,7 @@ export async function registerCommands() {
   const res = await fetch(`https://discord.com/api/v10/applications/${app}/commands`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", Authorization: `Bot ${token}` },
-    body: JSON.stringify([PRINT_COMMAND]),
+    body: JSON.stringify([PRINT_COMMAND, LINK_COMMAND]),
     signal: AbortSignal.timeout(10_000),
   }).catch((err: Error) => err);
   if (res instanceof Error || !res.ok) {
@@ -97,34 +106,51 @@ interface DiscordUser {
   username: string;
 }
 
-/**
- * The portal account behind a Discord user. Once linked, by the stored ID. The first
- * time, by the Discord username an exec imported for them (Phase 2's member import),
- * which is then pinned to the ID. ponytail: username matching is the spike's shortcut;
- * the write-up recommends a one-time /link code before this goes to real members.
- */
-async function linkedUser(u: DiscordUser) {
-  const byId = await prisma.user.findUnique({ where: { discordUserId: u.id }, select: { id: true } });
-  if (byId) return byId;
-  const byName = await prisma.user.findFirst({
-    where: { discordUserId: null, discordUsername: { in: [u.username, `@${u.username}`], mode: "insensitive" } },
-    select: { id: true },
+// Unambiguous letters and digits (no 0/O, 1/I/L), so a code read off a phone types right.
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const hashCode = (code: string) => createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
+
+/** A fresh link code for the Account page. Replaces any earlier one. */
+export async function newLinkCode(userId: string) {
+  const code = Array.from({ length: 8 }, () => CODE_CHARS[randomInt(CODE_CHARS.length)]).join("");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { discordLinkCode: hashCode(code), discordLinkExpires: new Date(Date.now() + 15 * 60_000) },
   });
-  if (byName) await prisma.user.update({ where: { id: byName.id }, data: { discordUserId: u.id } });
-  return byName;
+  return code;
+}
+
+/** /link: pins the Discord account to whoever was shown this code. */
+export async function handleLink(i: Interaction): Promise<string> {
+  const discordUser = i.member?.user ?? i.user;
+  if (!discordUser || i.guild_id !== process.env.DISCORD_GUILD_ID) return "Use /link in your society's server.";
+  const code = String(i.data.options?.find((o) => o.name === "code")?.value ?? "");
+  const user = await prisma.user.findUnique({
+    where: { discordLinkCode: hashCode(code) },
+    select: { id: true, name: true, discordLinkExpires: true },
+  });
+  if (!user || !user.discordLinkExpires || user.discordLinkExpires < new Date()) {
+    return "That code didn't work. Get a new one from your Account page on the portal.";
+  }
+  // One portal account per Discord account: linking here unlinks it anywhere else.
+  await prisma.$transaction([
+    prisma.user.updateMany({ where: { discordUserId: discordUser.id, id: { not: user.id } }, data: { discordUserId: null } }),
+    prisma.user.update({
+      where: { id: user.id },
+      data: { discordUserId: discordUser.id, discordLinkCode: null, discordLinkExpires: null },
+    }),
+  ]);
+  return `Linked to ${user.name} on the portal. You can use /print now.`;
 }
 
 /** Files the request and returns the reply to show (only to the person who ran it). */
 export async function handlePrint(i: Interaction): Promise<string> {
   const discordUser = i.member?.user ?? i.user;
   if (!discordUser) return "Use /print in your society's server.";
-  // The command is registered for the app, so it works in any server the app is added
-  // to. With DISCORD_GUILD_ID set, only the society's own server is listened to.
-  const guild = process.env.DISCORD_GUILD_ID;
-  if (guild && i.guild_id !== guild) return "Use /print in your society's server.";
-  const user = await linkedUser(discordUser);
+  if (i.guild_id !== process.env.DISCORD_GUILD_ID) return "Use /print in your society's server.";
+  const user = await prisma.user.findUnique({ where: { discordUserId: discordUser.id }, select: { id: true } });
   if (!user) {
-    return "I don't know who you are on the portal yet. Ask an executive to add your Discord username to your portal account, then try again.";
+    return "I don't know who you are on the portal yet. Get a code from your Account page on the portal, run /link with it, then try again.";
   }
   const slug = process.env.SOCIETY_SLUG;
   const membership = await prisma.societyMembership.findFirst({

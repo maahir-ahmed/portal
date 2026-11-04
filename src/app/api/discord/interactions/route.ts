@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { botEnabled, freshInteraction, handlePrint, replyToInteraction, verifyDiscordRequest, type Interaction } from "@/lib/discordBot";
+import { botEnabled, freshInteraction, handleLink, handlePrint, replyToInteraction, verifyDiscordRequest, type Interaction } from "@/lib/discordBot";
 
 // Discord's interactions endpoint for the /print spike (src/lib/discordBot.ts). Public,
 // like /api/auth: Discord's signature is the authentication. Set this URL as the app's
@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
 
   const i = JSON.parse(body) as Interaction & { type: number };
   if (i.type === PING) return NextResponse.json({ type: 1 });
+  if (i.type === COMMAND && i.data.name === "link") {
+    return NextResponse.json({ type: 4, data: { content: await handleLink(i), flags: 64 } });
+  }
   if (i.type !== COMMAND || i.data.name !== "print") {
     return NextResponse.json({ type: 4, data: { content: "I don't know that command.", flags: 64 } });
   }

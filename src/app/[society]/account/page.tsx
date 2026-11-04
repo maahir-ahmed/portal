@@ -12,6 +12,8 @@ interface Me {
   id: string;
   name: string;
   email: string;
+  discordBot: boolean;
+  discordLinked: boolean;
 }
 
 interface BankAccount {
@@ -28,6 +30,7 @@ export default function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingBank, setSavingBank] = useState(false);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/me")
@@ -99,6 +102,13 @@ export default function AccountPage() {
       const data = await res.json();
       toast.error(data.error ?? "Failed to change password");
     }
+  }
+
+  async function getLinkCode() {
+    const res = await fetch("/api/me/discord-link", { method: "POST" }).catch(() => null);
+    const data = await res?.json().catch(() => ({}));
+    if (res?.ok) setLinkCode(data.code);
+    else toast.error(data?.error ?? "Couldn't get a code");
   }
 
   async function handleBank(e: React.FormEvent<HTMLFormElement>) {
@@ -227,6 +237,29 @@ export default function AccountPage() {
           </CardContent>
         </Card>
       </form>
+
+      {me.discordBot && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Discord</CardTitle>
+            <CardDescription>
+              {me.discordLinked
+                ? "Your Discord account is linked, so /print works for you. Link again to switch accounts."
+                : "Link your Discord account to send printing requests with /print."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {linkCode ? (
+              <p className="text-sm">
+                In the society&apos;s Discord server, run <code className="rounded bg-muted px-1.5 py-0.5 font-mono">/link {linkCode}</code>.
+                The code works once, for 15 minutes.
+              </p>
+            ) : (
+              <Button type="button" variant="outline" onClick={getLinkCode}>Get a link code</Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
