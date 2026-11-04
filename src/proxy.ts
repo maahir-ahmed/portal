@@ -40,6 +40,14 @@ function societyPath(pathname: string): { slug: string; sub: string; api: boolea
 // the public address, so the real origin is taken here, before it does. Built on
 // req.url, every slug-free page went out to the public URL and back in through the
 // tunnel, and failed outright where the box cannot reach its own public address.
+function sameHost(origin: string, host: string | null) {
+  try {
+    return !!host && new URL(origin).host === host;
+  } catch {
+    return false; // "null" (a sandboxed frame or a file) is never us
+  }
+}
+
 export default function proxy(req: NextRequest, ev: NextFetchEvent) {
   const origin = req.nextUrl.origin;
   // auth()'s overloads return a union; with a callback it is this middleware.
@@ -74,6 +82,17 @@ async function route(req: NextAuthRequest, origin: string) {
   const isPublic =
     isAuthPage || isApiAuth || isSetup || isDiscord || isUpdater ||
     pathname.startsWith("/_next") || pathname.startsWith("/uploads");
+
+  // CSRF: the session cookie is SameSite=Lax, which still sends it from a sibling
+  // subdomain (any *.maahir.dev page is "same site"). A browser names the page a write
+  // came from in Origin, so a write from anywhere but here is refused. No Origin means
+  // not a browser (curl, the updater), which carries no cookie to abuse.
+  if (pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(req.method) && !isDiscord && !isUpdater) {
+    const from = req.headers.get("origin");
+    if (from && !sameHost(from, req.headers.get("x-forwarded-host") ?? req.headers.get("host"))) {
+      return NextResponse.json({ error: "Cross-site request refused" }, { status: 403 });
+    }
+  }
 
   // Auth guard (runs regardless of society mode)
   if (!isPublic && !isAuth) {
