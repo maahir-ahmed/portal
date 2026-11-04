@@ -215,6 +215,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (body.status && body.status !== request.status && request.submittedById !== session!.user.id) {
     await createNotification({
       userId: request.submittedById,
+      societyId: request.societyId,
       type: "STATUS_CHANGE",
       title: "Reimbursement Status Updated",
       body: `Your claim for $${Number(request.amount).toFixed(2)} has been updated to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
@@ -288,6 +289,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   if (!isOwner) {
     await createNotification({
       userId: request.submittedById,
+      societyId: request.societyId,
       type: "STATUS_CHANGE",
       title: "Reimbursement Claim Deleted",
       body: `Your claim for $${Number(request.amount).toFixed(2)} (${request.locationSupplier}) was deleted by an executive.`,

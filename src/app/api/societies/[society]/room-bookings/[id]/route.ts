@@ -145,6 +145,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (newStatus && booking.submittedById !== session!.user.id) {
     await createNotification({
       userId: booking.submittedById,
+      societyId: booking.societyId,
       type: "STATUS_CHANGE",
       title: `Room Booking Updated: ${booking.eventName}`,
       body: autoComplete && !body.status
@@ -206,6 +207,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   if (!isOwner) {
     await createNotification({
       userId: booking.submittedById,
+      societyId: booking.societyId,
       type: "STATUS_CHANGE",
       title: "Room Booking Deleted",
       body: `Your room booking "${booking.eventName}" was deleted by an executive.`,

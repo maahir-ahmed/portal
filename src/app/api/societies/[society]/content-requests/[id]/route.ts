@@ -157,6 +157,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (statusChanged) {
     await createNotification({
       userId: request.submittedById,
+      societyId: request.societyId,
       type: "STATUS_CHANGE",
       title: `Content Request Updated: ${request.eventName}`,
       body: `Status changed to ${statusSent!.replace(/_/g, " ").toLowerCase()}.`,

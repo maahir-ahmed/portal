@@ -81,6 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
   };
   await createNotification({
     userId: request.submittedById,
+    societyId: request.societyId,
     type: "STATUS_CHANGE",
     ...NOTIFICATIONS[action],
     link: `/requests/printing/${id}`,
@@ -138,6 +139,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   if (!isOwner) {
     await createNotification({
       userId: request.submittedById,
+      societyId: request.societyId,
       type: "STATUS_CHANGE",
       title: "Printing Request Deleted",
       body: `Your printing request ($${Number(request.cost).toFixed(2)}) was deleted by an executive.`,
