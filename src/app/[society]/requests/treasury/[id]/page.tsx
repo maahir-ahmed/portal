@@ -14,7 +14,7 @@ import { ClaimCategoryCard } from "@/components/requests/ClaimCategoryCard";
 import { SubmitClaimButton } from "@/components/requests/SubmitClaimButton";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { MarkReimbursedButton } from "@/components/requests/MarkReimbursedButton";
-import { formatDate, formatCurrency, formatTimestamp } from "@/lib/utils";
+import { formatDate, formatCurrency, formatTimestamp, canViewRequest } from "@/lib/utils";
 import { ArrowLeft, Receipt, FileText, MessagesSquare, CalendarDays } from "lucide-react";
 import type { TreasuryStatus } from "@prisma/client";
 
@@ -45,7 +45,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
         receipts: true,
         bankAccount: true,
         budgetCategory: { select: { id: true, name: true } },
-        contentRequest: { select: { id: true, eventName: true, startDate: true } },
+        contentRequest: { select: { id: true, eventName: true, startDate: true, submittedById: true, assignedToId: true } },
         thread: {
           include: {
             comments: {
@@ -158,13 +158,20 @@ export default async function TreasuryDetailPage({ params }: Props) {
               {request.contentRequest && (
                 <div>
                   <p className="text-sm text-muted-foreground">Event</p>
-                  <Link
-                    href={`/${societySlug}/requests/content/${request.contentRequest.id}`}
-                    className="text-sm mt-0.5 inline-flex items-center gap-1.5 text-blue-600 hover:underline"
-                  >
-                    <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" />
-                    {request.contentRequest.eventName}, {formatDate(request.contentRequest.startDate)}
-                  </Link>
+                  {canViewRequest(membership, session.user.id, request.contentRequest) ? (
+                    <Link
+                      href={`/${societySlug}/requests/content/${request.contentRequest.id}`}
+                      className="text-sm mt-0.5 inline-flex items-center gap-1.5 text-blue-600 hover:underline"
+                    >
+                      <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" />
+                      {request.contentRequest.eventName}, {formatDate(request.contentRequest.startDate)}
+                    </Link>
+                  ) : (
+                    <p className="text-sm mt-0.5 inline-flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" />
+                      {request.contentRequest.eventName}, {formatDate(request.contentRequest.startDate)}
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>

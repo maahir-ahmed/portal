@@ -15,7 +15,7 @@ import { RubricQrCode } from "@/components/requests/RubricQrCode";
 import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog";
 import { AssignRubricEvent } from "@/components/requests/AssignRubricEvent";
 import { EventPhotos } from "@/components/requests/EventPhotos";
-import { formatCurrency, formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
+import { canViewRequest, formatCurrency, formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
 import { ArrowLeft, Calendar, MapPin, Clock, Hourglass, QrCode, ExternalLink, Send, Pencil, Receipt } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
 
@@ -55,6 +55,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
   });
 
   if (!request || request.societyId !== membership.societyId) notFound();
+  if (!canViewRequest(membership, session.user.id, request)) notFound();
 
   const isExec = membership.role === "EXECUTIVE";
   const modules = await modulesForSociety(membership.societyId);

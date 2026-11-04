@@ -10,7 +10,7 @@ import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
 import { BookedRoomCard } from "@/components/requests/BookedRoomCard";
-import { bookingDecided, formatDate, isLateArcSubmission, EVENT_TYPE_LABELS, formatTimestamp } from "@/lib/utils";
+import { bookingDecided, canViewRequest, formatDate, isLateArcSubmission, EVENT_TYPE_LABELS, formatTimestamp } from "@/lib/utils";
 import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil, Tag, DoorOpen } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
@@ -62,6 +62,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
   });
 
   if (!booking || booking.societyId !== membership.societyId) notFound();
+  if (!canViewRequest(membership, session.user.id, booking)) notFound();
 
   const isExec = membership.role === "EXECUTIVE";
   const isLate = isLateArcSubmission(booking.preferredDate, booking.status, membership.society.timezone);

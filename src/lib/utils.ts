@@ -91,6 +91,25 @@ export function businessDaysUntil(date: Date | string, today: number): number {
 // these, nothing is outstanding and a deadline warning is just noise.
 const REACHED_ARC = ["SUBMITTED_TO_ARC", "APPROVED", "REJECTED", "COMPLETED"];
 
+/**
+ * Who may open an event request or room booking: the people its list shows it to
+ * (executives, directors, the submitter), plus whoever it's assigned to and marketing,
+ * who do the content work. Bookings carry safety-officer phone numbers and zIDs.
+ */
+export function canViewRequest(
+  m: { role: string; title: string | null },
+  userId: string,
+  r: { submittedById: string; assignedToId?: string | null }
+): boolean {
+  return (
+    m.role === "EXECUTIVE" ||
+    m.role === "DIRECTOR" ||
+    r.submittedById === userId ||
+    r.assignedToId === userId ||
+    (m.title?.toLowerCase().includes("marketing") ?? false)
+  );
+}
+
 /** Arc has approved or refused it: from here the submitter may only record the room. */
 export const bookingDecided = (status: string) => ["APPROVED", "REJECTED", "COMPLETED"].includes(status);
 
