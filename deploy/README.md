@@ -170,6 +170,12 @@ there is no login step. Consequences, all deliberate:
   `host.docker.internal`.
 - The prisma CLI that runs `db push` on start is baked into the app image at the
   lockfile's version, so a start needs no network. Bump it with `package.json`.
+- The app connects to Postgres as `portal_app`, which owns the schema and is not a
+  superuser, so a query (the Debugging tab's SQL runner included) can't reach outside
+  the database. `society_user`, the superuser the db container was made with, is used
+  only by the backup container, the seed, and the first step of the app's start
+  (`prisma/app-role.sql`), which creates `portal_app` and hands it ownership of
+  everything, including whatever a restore run as the superuser created.
 
 ## Self-hosting and the published images
 
