@@ -271,6 +271,8 @@ async function checkMerge() {
 
   // A single document still gets its contents page, so the output shape never varies.
   assert.equal((await mergeMinutes("One", [source("Only", twoPage)])).pages, 3);
+  // Titles outside the built-in font (emoji, Chinese) used to throw and fail the merge.
+  assert.equal((await mergeMinutes("Meeting 会议 🎉", [source("Notes 😀", twoPage)])).pages, 3, "non-Latin titles still merge");
 
   // 8. Splitting the minutes. Page 1 of a set of minutes is the attendance sheet and
   //    the rest is the meeting itself, so one document builds both of Arc's files.

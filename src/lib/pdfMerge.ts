@@ -48,6 +48,10 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
   const out = await PDFDocument.create();
   const font = await out.embedFont(StandardFonts.Helvetica);
   const bold = await out.embedFont(StandardFonts.HelveticaBold);
+  // The built-in fonts only cover Latin text, and pdf-lib throws on anything else (an
+  // emoji or a Chinese name in a title). Swap those characters for "?" instead.
+  const known = new Set([...font.getCharacterSet(), ...bold.getCharacterSet()]);
+  const safe = (s: string) => Array.from(s, (c) => (known.has(c.codePointAt(0)!) ? c : "?")).join("");
 
   const failed: string[] = [];
   const merged: MergeSource[] = [];
@@ -69,7 +73,7 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
   const { height } = cover.getSize();
   let y = height - 70;
 
-  cover.drawText(heading, { x: 55, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
+  cover.drawText(safe(heading), { x: 55, y, size: 16, font: bold, color: rgb(0.1, 0.1, 0.1) });
   y -= 22;
   cover.drawText(`${merged.length} document${merged.length === 1 ? "" : "s"}, combined for submission`, {
     x: 55, y, size: 10, font, color: rgb(0.4, 0.4, 0.4),
@@ -78,9 +82,9 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
 
   for (const source of merged) {
     if (y < 60) break; // one page of contents is enough; the documents follow regardless
-    cover.drawText(source.title.slice(0, 70), { x: 55, y, size: 10, font: bold, color: rgb(0.1, 0.1, 0.1) });
+    cover.drawText(safe(source.title).slice(0, 70), { x: 55, y, size: 10, font: bold, color: rgb(0.1, 0.1, 0.1) });
     y -= 13;
-    cover.drawText(source.subtitle.slice(0, 90), {
+    cover.drawText(safe(source.subtitle).slice(0, 90), {
       x: 55, y, size: 9, font, color: rgb(0.45, 0.45, 0.45),
     });
     y -= 18;
