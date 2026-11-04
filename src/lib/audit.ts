@@ -20,7 +20,8 @@ export async function createAuditLog({
   ipAddress?: string;
   userAgent?: string;
 }) {
-  await prisma.auditLog.create({
+  return prisma.auditLog.create({
+    select: { id: true },
     data: {
       societyId,
       userId,
