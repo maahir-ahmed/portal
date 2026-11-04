@@ -84,6 +84,9 @@ const REACHED_ARC = ["SUBMITTED_TO_ARC", "APPROVED", "REJECTED", "COMPLETED"];
  * `businessDaysUntil`: that only goes negative a business day later, so viewed on
  * a weekend or Monday, Friday's event reads as 0 days away and would warn.
  */
+/** Arc has approved or refused it: from here the submitter may only record the room. */
+export const bookingDecided = (status: string) => ["APPROVED", "REJECTED", "COMPLETED"].includes(status);
+
 export function isLateArcSubmission(eventDate: Date | string, status?: string): boolean {
   if (status && REACHED_ARC.includes(status)) return false;
   if (new Date(eventDate) < startOfDay(new Date())) return false;

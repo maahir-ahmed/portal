@@ -65,8 +65,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // Marketing directors (or execs) may fill in the finished content.
   const isMarketing =
     membership!.role === "EXECUTIVE" || (membership!.title?.toLowerCase().includes("marketing") ?? false);
-  // Owner or manager may edit the request's own details.
-  const canEditCore = isOwner || canManage;
+  // Owner or manager may edit the request's own details, the owner only until it's finished.
+  const canEditCore = canManage || (isOwner && !["COMPLETED", "CANCELLED"].includes(request.status));
 
   if (!canEditCore && !canManage && !isMarketing) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

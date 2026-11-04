@@ -10,7 +10,7 @@ import { ThreadView } from "@/components/requests/ThreadView";
 import { StatusUpdater } from "@/components/requests/StatusUpdater";
 import { ConfirmDelete } from "@/components/requests/ConfirmDelete";
 import { BookedRoomCard } from "@/components/requests/BookedRoomCard";
-import { formatDate, isLateArcSubmission, EVENT_TYPE_LABELS, formatTimestamp } from "@/lib/utils";
+import { bookingDecided, formatDate, isLateArcSubmission, EVENT_TYPE_LABELS, formatTimestamp } from "@/lib/utils";
 import { ArrowLeft, AlertTriangle, Users, MapPin, Calendar, Clock, Pencil, Tag, DoorOpen } from "lucide-react";
 import type { RoomBookingStatus } from "@prisma/client";
 
@@ -87,7 +87,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
             Submitted by {booking.submittedBy.name} · {formatTimestamp(booking.createdAt, membership.society.timezone)}
           </p>
         </div>
-        {canEdit && (
+        {canEdit && (isExec || !bookingDecided(booking.status)) && (
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button asChild variant="outline" size="sm">
               <Link href={`/${societySlug}/requests/room-booking/${booking.id}/edit`}>
