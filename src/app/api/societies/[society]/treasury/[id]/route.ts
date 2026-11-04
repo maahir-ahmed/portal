@@ -49,6 +49,9 @@ function changes(before: Record<string, unknown>, after: Record<string, unknown>
   );
 }
 
+const otherExecs = (m: { societyId: string; userId: string }) =>
+  prisma.societyMembership.count({ where: { societyId: m.societyId, role: "EXECUTIVE", isActive: true, userId: { not: m.userId } } });
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
@@ -80,6 +83,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     isOwner && !isExec && request.status === "DRAFT" && body.status === "REIMBURSEMENT_PENDING";
   if (body.status !== undefined && !isExec && !isOwnerSubmit) {
     return NextResponse.json({ error: "Only executives can change status" }, { status: 403 });
+  }
+
+  // Paying yourself out takes a second pair of eyes, when the committee has one.
+  if (body.status === "REIMBURSED" && isOwner && request.status !== "REIMBURSED" && (await otherExecs(membership!)) > 0) {
+    return NextResponse.json({ error: "Another executive marks your own claim as paid" }, { status: 403 });
   }
 
   // A draft can only be submitted once it's a complete claim. Checks the claim as it
@@ -209,7 +217,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       userId: request.submittedById,
       type: "STATUS_CHANGE",
       title: "Reimbursement Status Updated",
-      body: `Your claim for $${request.amount} has been updated to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
+      body: `Your claim for $${Number(request.amount).toFixed(2)} has been updated to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
       link: `/requests/treasury/${id}`,
     });
   }
