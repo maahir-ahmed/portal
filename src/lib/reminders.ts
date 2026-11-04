@@ -65,24 +65,30 @@ export async function sendReminders(now = new Date()): Promise<number> {
       allowed_mentions: { roles: roleId ? [roleId] : [] },
     };
 
-    let ok = false;
+    // No webhook, or one Discord says is gone (deleted, or its token revoked): the stage
+    // stays claimed rather than being retried every 10 minutes for good. Only a failure
+    // that may pass (Discord down, rate limited, no connection) is tried again.
+    if (!url) continue;
+    let retry = true;
     try {
-      if (url) {
-        // Under the post: its forum thread, or the thread someone opened on the message.
-        // A text-channel message with no thread refuses that, so post in the channel.
-        const opts = { title: r.eventName, forum: r.society.eventsWebhookForum };
-        ok = (await postToWebhook(url, payload, { ...opts, threadId: r.discordMessageId })).ok;
-        if (!ok && !r.society.eventsWebhookForum) ok = (await postToWebhook(url, payload, opts)).ok;
-      }
+      // Under the post: its forum thread, or the thread someone opened on the message.
+      // A text-channel message with no thread refuses that, so post in the channel.
+      const opts = { title: r.eventName, forum: r.society.eventsWebhookForum };
+      let res = await postToWebhook(url, payload, { ...opts, threadId: r.discordMessageId });
+      if (!res.ok && !r.society.eventsWebhookForum) res = await postToWebhook(url, payload, opts);
+      if (res.ok) sent++;
+      else if (GONE.includes(res.status)) console.warn(`Events webhook answered ${res.status}: replace it in Settings to get reminders again`);
+      retry = !res.ok && !GONE.includes(res.status);
     } catch (err) {
       console.warn("Reminder post failed:", err instanceof Error ? err.message : err);
     }
-    if (ok) sent++;
-    // Not sent: free the stage so the next pass tries again.
-    else await prisma.eventReminder.deleteMany({ where: { contentRequestId: r.id, stage } });
+    if (retry) await prisma.eventReminder.deleteMany({ where: { contentRequestId: r.id, stage } });
   }
   return sent;
 }
+
+// Discord's answers for a webhook that no longer exists or no longer works.
+const GONE = [401, 403, 404];
 
 let started = false;
 

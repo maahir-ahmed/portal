@@ -114,7 +114,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     action: "UPDATE",
     entityType: "DiscordWebhook",
     entityId: membership!.societyId,
-    metadata: { channel, configured: !!body.webhookUrl },
+    metadata: {
+      channel,
+      webhook: body.webhookUrl === undefined ? "unchanged" : body.webhookUrl ? "set" : "removed",
+      ...(body.roleId !== undefined ? { roleId: body.roleId || null } : {}),
+    },
   });
 
   const soc = await prisma.society.findUnique({
