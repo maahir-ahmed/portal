@@ -25,6 +25,8 @@
 # UPLOADS_DIR (default /uploads; must be a directory named "uploads"), BACKUP_OUT
 # (default /backups), STACK, BACKUP_KEEP_DAYS, BACKUP_HOUR.
 set -eu
+# Archives hold every member's details and bank accounts: not for other users on the box.
+umask 027
 
 OUT="${BACKUP_OUT:-/backups}"
 UPLOADS="${UPLOADS_DIR:-/uploads}"
@@ -119,6 +121,9 @@ archive() {
   done
   rm -rf "$work"
   mv "$dest.part" "$dest"
+  # Owned by whoever owns the backups folder (on the host, the account that set the
+  # stack up), so they can still copy it off the box; nobody else can read it.
+  chown "$(stat -c %u:%g "$OUT")" "$dest" 2>/dev/null || true
   log "wrote $dest ($(wc -c < "$dest" | tr -d ' ') bytes, $count uploads)"
 
   # -exec rm rather than -delete: busybox find does not always carry -delete.
