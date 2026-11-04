@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { isPlausibleDate } from "@/lib/utils";
+import { bookingDecided, isPlausibleDate } from "@/lib/utils";
 import { EventType, PreferredLocation, RoomBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
@@ -61,6 +61,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // Submitter or exec may edit the request details; only execs move the status.
   const canEdit = isExec || booking.submittedById === session!.user.id;
   if (!canEdit) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Once Arc has decided, the details are what Arc approved: the submitter may still
+  // record the room, and anything else goes through an executive.
+  if (!isExec && bookingDecided(booking.status) && Object.keys(body).some((k) => k !== "assignedRoom")) {
+    return NextResponse.json({ error: "Arc has decided on this booking. Ask an executive to change it." }, { status: 403 });
+  }
 
   const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : undefined);
 

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { wallClockNow } from "@/lib/urgency";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { EXTRA_PORTFOLIOS, memberPortfolioIds } from "@/lib/titles";
@@ -26,7 +27,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
     include: {
-      society: { select: { name: true } },
+      society: { select: { name: true, timezone: true } },
       user: { select: { name: true, email: true, zId: true, phone: true } },
       ...EXTRA_PORTFOLIOS,
     },
@@ -37,7 +38,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
   // AHEGS years end with Term 3 (src/lib/years.ts), so the page rolls over to the next
   // year only once this year's Term 3 is over, not on 1 January.
   const calendar = await prisma.societyYear.findMany({ where: { societyId: membership.societyId } });
-  const defaultYear = ahegsYearOf(calendar, new Date());
+  const defaultYear = ahegsYearOf(calendar, new Date(wallClockNow(membership.society.timezone)));
   const year = parseYear(yearParam) ?? defaultYear;
 
   const [memberships, entries, evidence, allMeetings, portfolios] = await Promise.all([
@@ -140,6 +141,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
         year={year}
         years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2].filter((y) => y >= FIRST_YEAR)}
         scope={scope}
+        ownMembershipId={membership.id}
         rows={rows}
         meetings={meetings}
         portfolios={portfolios}

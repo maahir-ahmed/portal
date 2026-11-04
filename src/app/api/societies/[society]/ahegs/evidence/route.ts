@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 // Training resources / attendance records / proof of commitment, one per category
@@ -24,6 +25,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
 
   try {
     const body = schema.parse(await req.json());
+    // Only our own uploads or an http(s) link; anything else (javascript:, data:)
+    // would become a clickable link in the exec UI.
+    if (body.url && !/^(\/uploads\/|https?:\/\/)/.test(body.url)) {
+      return NextResponse.json({ error: "Must be an uploaded file or an http(s) link" }, { status: 400 });
+    }
+
+    await createAuditLog({
+      societyId: membership!.societyId, userId: session!.user.id, action: body.url ? "UPDATE" : "DELETE",
+      entityType: "AhegsEvidence", entityId: `${body.year}:${body.category}:${body.kind}`, metadata: { url: body.url },
+    });
     const key = {
       societyId_year_category_kind: {
         societyId: membership!.societyId,
@@ -39,12 +50,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
         where: { societyId: membership!.societyId, year: body.year, category: body.category, kind: body.kind },
       });
       return NextResponse.json({ ok: true });
-    }
-
-    // Only our own uploads or an http(s) link; anything else (javascript:, data:)
-    // would become a clickable link in the exec UI.
-    if (!/^(\/uploads\/|https?:\/\/)/.test(body.url)) {
-      return NextResponse.json({ error: "Must be an uploaded file or an http(s) link" }, { status: 400 });
     }
 
     await prisma.ahegsEvidence.upsert({

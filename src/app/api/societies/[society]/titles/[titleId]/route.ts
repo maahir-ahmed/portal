@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 type Params = { society: string; titleId: string };
@@ -31,14 +32,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     if (body.portfolioId && !(await prisma.portfolio.count({ where: { id: body.portfolioId, societyId: membership!.societyId } }))) {
       return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
     }
-    const updated = await prisma.societyTitle.update({
-      where: { id: titleId },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.portfolioId !== undefined && {
-          portfolioId: title.roleLevel === "EXECUTIVE" ? null : body.portfolioId,
-        }),
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const t = await tx.societyTitle.update({
+        where: { id: titleId },
+        data: {
+          ...(body.name !== undefined && { name: body.name }),
+          ...(body.portfolioId !== undefined && {
+            portfolioId: title.roleLevel === "EXECUTIVE" ? null : body.portfolioId,
+          }),
+        },
+      });
+      // Memberships hold the title by name, so a rename carries its holders with it
+      // rather than leaving them on a title that no longer exists.
+      if (t.name !== title.name) {
+        await tx.societyMembership.updateMany({
+          where: { societyId: membership!.societyId, title: title.name },
+          data: { title: t.name },
+        });
+      }
+      return t;
     });
 
     // Members holding this title follow it to its new portfolio.
@@ -47,6 +59,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       data: { portfolioId: updated.portfolioId },
     });
 
+    await createAuditLog({
+      societyId: membership!.societyId, userId: session!.user.id, action: "UPDATE", entityType: "SocietyTitle",
+      entityId: titleId, metadata: { from: title.name, to: updated.name, portfolioId: updated.portfolioId },
+    });
     return NextResponse.json(updated);
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -73,5 +89,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<Par
   }
 
   await prisma.societyTitle.delete({ where: { id: titleId } });
+  await createAuditLog({
+    societyId: membership!.societyId, userId: session!.user.id, action: "DELETE", entityType: "SocietyTitle",
+    entityId: titleId, metadata: { name: title.name },
+  });
   return NextResponse.json({ ok: true });
 }

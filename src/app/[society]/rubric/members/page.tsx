@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Users, Download } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
+import { csvCell } from "@/lib/csv";
 
 type Filter = "active" | "expired" | "pending";
 
@@ -31,19 +32,27 @@ export default function RubricMembersPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Switching filters quickly can have an older list arrive after a newer one; only
+  // the latest request may set the table.
+  const latest = useRef(0);
   const load = useCallback((f: Filter) => {
+    const mine = ++latest.current;
     setLoading(true);
     Promise.all([
       rubric.call({ type: "getSocietyPortalMembershipHomePage" }),
       rubric.call({ type: "getSocietyPortalMembershipList", viewFilter: f }),
     ]).then(([home, list]) => {
+      if (mine !== latest.current) return;
       const memberships = (list.allMemberships ?? []) as RubricMember[];
       setMembers(memberships);
       setHomeData(home as Record<string, unknown>);
     }).catch((err: unknown) => {
+      if (mine !== latest.current) return;
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg === "not_configured" ? "not_configured" : msg);
-    }).finally(() => setLoading(false));
+    }).finally(() => {
+      if (mine === latest.current) setLoading(false);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.society]);
 
@@ -53,7 +62,7 @@ export default function RubricMembersPage() {
   function exportCsv() {
     if (members.length === 0) return;
     const header = "Name,Email,Student Number,Degree,Study Year,Membership,Joined,Phone";
-    const cell = (v?: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+    const cell = (v?: string) => csvCell(v ?? "");
     const rows = members.map((m) =>
       [
         cell(m.fullname), cell(m.email), cell(m.responses?.["Student Number"]),

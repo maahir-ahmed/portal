@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
 
   try {
     const body = schema.parse(await req.json());
-    const isLate = isLateArcSubmission(body.preferredDate);
+    const isLate = isLateArcSubmission(body.preferredDate, undefined, membership!.society.timezone);
 
     const booking = await prisma.roomBooking.create({
       data: {

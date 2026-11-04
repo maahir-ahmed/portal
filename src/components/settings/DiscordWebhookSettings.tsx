@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Loader2, MessageSquare, Send, Trash2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 const COPY = {
   queue: {
@@ -68,7 +69,7 @@ export function DiscordWebhookSettings({
       ...(body !== undefined
         ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
         : {}),
-    });
+    }).catch(offline);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "Something went wrong");
     return data;

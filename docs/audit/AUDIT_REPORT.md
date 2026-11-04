@@ -11,10 +11,13 @@ containers, all removed afterwards.
 |---|---|---|---|
 | Critical | 1 | 1 | 0 |
 | High | 4 | 4 | 0 |
-| Medium | 22 | 16 | 6 |
-| Low | 43 | 23 | 20 |
-| Info | 4 | 2 | 2 (1 note only) |
-| **Total** | **74** | **46** | **28** |
+| Medium | 22 | 22 | 0 |
+| Low | 43 | 43 | 0 |
+| Info | 4 | 4 | 0 |
+| **Total** | **74** | **74** | **0** |
+
+The "proposal" column was 28 before the proposals were approved; all are now applied
+(see below).
 
 The most serious problem was a chain that let **any signed-in member make themselves an
 executive** (F33), which then opened the whole-database debugging tools and, on a
@@ -24,7 +27,7 @@ screen (F03). All of these are fixed and were tested end to end.
 
 What was applied follows the ground rules: security fixes that only block unauthorised
 or invalid use, and changes with no visible effect. Anything a legitimate user would
-notice, even a bug fix, is a **proposal** in its own section below and is not applied.
+notice, even a bug fix, was a **proposal**, applied only once approved (all now are).
 
 ### Needs you, outside the code
 
@@ -116,76 +119,62 @@ Lines are as they were when found; most files have moved since.
 | F30 | `RUBRIC_CALLS[type]` found `__proto__`; exec-queue embeds lacked an explicit `allowed_mentions`; GHCR's `Link` header could send the pull token elsewhere. | `Object.hasOwn`, `allowed_mentions: { parse: [] }`, origin pinned. | c4c93a7 |
 | F74 | Dead files: applied data fixes, starter images, legacy root compose file, `auto-deploy.sh`, `db:migrate`/`db:reset` (which would wipe a database). | Removed at your request. | 642928e, cb0b99e, d45ff83, fc54d76 |
 
-## Proposals awaiting your approval
+## Proposals, approved and applied
 
-Each would change what a legitimate user sees or can do, so none is applied.
+All the proposals below were approved and are applied on branch `audit-proposals`, one
+commit each (F10 and F11 share a theme across three). Each was tested against the dev
+server on the scratch database (26 checks: sign-in limits, session revocation, the
+Origin check, request scoping, the treasury guards, AHEGS scoping and the page loads
+for every role). F66 was tested as a real upgrade on a throwaway stack: built from the
+previous code on a copy of the seed data, then upgraded, restored both ways, and
+installed fresh.
 
-**Medium**
-- **F05 Printing allowance counts all-time spend.** The sum has no date bound, so last
-  year's printing eats this year's allowance. Bound it to the current year (confirm
-  Arc's allowance is per year).
-- **F36 Sessions are never revoked.** A JWT survives a password reset, a password change
-  and removal for up to 30 days. Add `User.sessionVersion`, checked in the `jwt`
-  callback. Other devices would sign out after a password change.
-- **F38 The last executive can demote themselves**, locking everyone out of Members and
-  Settings. Refuse when no other active exec would remain.
-- **F39 Adding a member keeps the email's case**, but sign-in lowercases it: a member
-  added as `Jane.Doe@…` can never sign in. Lowercase it, plus a one-off fix for existing
-  rows.
-- **F41 Directors can edit their own AHEGS row** (category, hours); AHEGS writes aren't
-  audit logged.
-- **F66 The app and SQL runner connect as a Postgres superuser**, so the runner can
-  `COPY ... TO PROGRAM` (a shell in the db container). Use a role that owns the schema
-  only.
-- **F04 (rest)**: send the amount the exec confirmed with "Mark reimbursed" and refuse if
-  it changed; put before and after values in the audit entry.
-- **F06 (rest)**: hide other requesters' phone and email on the printing detail page.
-- **F08 (rest)**: refuse owner edits to bookings Arc has approved and to finished
-  content requests (the UI already hides the buttons).
-- **F37 (rest)**: rate limit sign-in and password checks per IP and email.
-- **F19 (rest)**: require `DISCORD_GUILD_ID`, and replace username linking with one-time
-  `/link` codes before switching `/print` on for real members.
+| Finding | What changed | Commit |
+|---|---|---|
+| F05 | The printing allowance counts this calendar year only | 9f29dee |
+| F36 | `User.sessionVersion`: a password change, a reset or removal ends older sessions; the device that changed it signs back in | 0e6c2d2 |
+| F38 | The last executive can't demote themselves | 2079bc7 |
+| F39 | Emails are lowercased when added; a post-push fix lowercases stored ones | a3bf86c |
+| F41 | A director's own AHEGS row is read-only to them; AHEGS changes are audited | 2db1124 |
+| F04 | Mark reimbursed sends the amount shown and refuses if it changed; claim edits log before and after | 443f3eb |
+| F06 | Printing contact details only for the requester and executives | cf3bd60 |
+| F08 | Owners can't edit bookings Arc has decided (bar the room) or finished event requests | be3ce4a |
+| F37 | Wrong passwords: 10 per account and 50 per address per 15 minutes | b44a4e5 |
+| F69 | Caddy overwrites `CF-Connecting-IP` | fab1420, 4d453f5 |
+| F19 | `/link` codes from the Account page; the bot stays off without `DISCORD_GUILD_ID` | 66c7b5f, c651a2f, 2990f60 |
+| F10, F11 | The booking warning, exec queue, board, AHEGS, budget and claims use the society's date | 86cac79, 1c89401, 4a42240 |
+| F12 | `npm run dev` runs in UTC | 732eae3 |
+| F14 | A claim and everything it creates is one transaction | b6b417a |
+| F17 | Other people's tour records stay out of the exec queue and the allowance | 9e59d1b |
+| F21 | A production stack without `RUBRIC_SECRET_KEY` refuses to save a new Rubric session or webhook | 1d6b14f |
+| F22, F23 | Exec-queue posts fit Discord's limits; webhook URLs are built with `URL` | 0afaacc |
+| F24 | Demo visitors can't change webhooks | eccbbdb |
+| F26 | SMTP requires TLS, has timeouts, and sends without holding the request | 0365a37 |
+| F28 | Rubric writes are audited before they're sent, with their target | 1046b92 |
+| F29 | Event syncs to Discord run one at a time per request | 6ad974f |
+| F45 | Renaming a title carries its holders; title changes are audited | 413c194 |
+| F46 | Event and booking pages open only to the people their lists show them to | 18ef844 |
+| F47 | API writes with another site's Origin are refused | 5805c4c, a3a7f0e, 45da2bd |
+| F50 | Password, profile, bank, title and portfolio changes are audited | 53c9857 |
+| F54 | The AHEGS merge copes with emoji and non-Latin titles | 766ed50 |
+| F55 | Only an image can be served publicly as a logo | a246dec |
+| F56 | Dollar-quote tags with digits are accepted | c5b3734 |
+| F57 | SQL results keep duplicate column names; a 10 second lock timeout; results expire after a day | bf4cec3, 6a4f079 |
+| F58 | `$&` and control characters can't corrupt the AHEGS export | b75715f |
+| F59 | One backup per stack at a time; leftover upload files are cleared | 6a4f079 |
+| F66 | The app connects as `portal_app`, a schema owner that isn't a superuser (`prisma/app-role.sql`) | 067b464 |
+| F67 | `X-Frame-Options: DENY` and `frame-ancestors 'none'` | f2eac03 |
+| F68 | Formula-looking cells in the Rubric exports get a leading `'` | af9d16d |
+| F70 | `umask 027`, and each archive is owned by the backups folder's owner | 3ddf8c4 |
+| F72 | A failed connection brings a form's button back with a message; the Rubric members list keeps the latest filter | 7c787aa |
+| F31 | A webhook Discord says is gone isn't retried; role ID changes are audited | 5f7839d |
+| F32 | Another executive pays out an executive's own claim; amounts show to the cent | 6dac70d |
+| F74 | `@auth/prisma-adapter` removed | 819058c |
 
-**Low**
-- **F10, F11 Naive dates compared with the server's clock**: the seven-business-day
-  warning, exec-queue grants, the board and the AHEGS default date use UTC "today", so
-  they are wrong for 10 to 11 hours a day in Sydney. Use `wallClockNow`.
-- **F12 (rest)**: run the dev server with `TZ=UTC` too.
-- **F14 (rest)**: wrap claim creation in one transaction.
-- **F17 Tutorial demo records appear in the real exec queue and allowance.**
-- **F21 (rest)**: refuse to store a secret in plain text when the key is missing.
-- **F22 Exec-queue posts aren't truncated** and silently fail past Discord's limits
-  (most likely for urgent room bookings).
-- **F23 Webhook URLs with `?thread_id=`** break because the URL is built by joining strings.
-- **F24 Demo visitors can set the demo's Discord webhooks.**
-- **F26 SMTP** uses opportunistic TLS, has no timeouts, and is awaited inside requests.
-- **F28 (rest)**: audit Rubric writes before the call, and record the event id.
-- **F29 Two syncs at once can post an event twice.**
-- **F45 Renaming a title orphans the members who hold it.**
-- **F46 Request detail pages are open to every member**, while lists are scoped (may be
-  intended for events; less clear for bookings with safety-officer details).
-- **F47 CSRF rests on SameSite=Lax only**: add an Origin check for non-GET API calls.
-- **F50 State changes with no audit entry**: password, email and bank changes, titles,
-  portfolios, AHEGS.
-- **F54 The AHEGS PDF merge fails** on emoji or CJK text in a title.
-- **F55 (rest)**: only treat image extensions as public logos when serving.
-- **F56 (rest)**: accept dollar-quote tags with digits (`$fn1$`), refused today.
-- **F57 The SQL runner** merges duplicate column names, keeps results forever, and has
-  no `lock_timeout`.
-- **F58 The AHEGS export corrupts** on `$&` in a name, or on control characters.
-- **F59 Two backups at once** make one fail; leftover incoming files are never cleaned.
-- **F67 (rest)**: `frame-ancestors`/`X-Frame-Options` (check nothing embeds the demo).
-- **F68 CSV formula injection** in the Rubric exports (ticket-holder names are public input).
-- **F69** nginx trusts `CF-Connecting-IP` from the Caddy container.
-- **F70 Backups are world-readable** (`umask 027` in backup.sh).
-- **F72 Spinners stick** on network errors in about 40 forms; a Rubric members filter race.
-
-**Info**
-- **F31** A dead webhook makes reminders retry every 10 minutes forever; role ID changes
-  aren't audited.
-- **F32 (note only)** "$50" rather than "$50.00" in one notification; an exec can mark
-  their own claim reimbursed.
-- **F74 (rest)** `@auth/prisma-adapter` does nothing with JWT sessions.
+Testing caught two mistakes of my own before anything was pushed. F69's first version put
+an unquoted `": "` in the compose file, which stops compose parsing it at all (4d453f5).
+And F47's first version compared `Host` with the port included, which nginx strips,
+so every save on a portal opened at a port would have been refused (a3a7f0e).
 
 ## Refactors
 

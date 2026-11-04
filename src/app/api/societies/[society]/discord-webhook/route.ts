@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { encryptSecret, decryptSecret } from "@/lib/secrets";
+import { encryptSecret, decryptSecret, NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
+import { demoEnabled } from "@/lib/rubricDemo";
 import { postToWebhook } from "@/lib/discordEvents";
 import { z } from "zod";
 
@@ -72,6 +73,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
   const { membership, error } = await requireExec(session!.user.id, society);
   if (error) return error;
 
+  // Every demo visitor is an executive: one could point the demo's posts at their own
+  // server, or at someone else's webhook to spam it.
+  if (demoEnabled()) {
+    return NextResponse.json({ error: "Webhooks can't be changed on the public demo" }, { status: 403 });
+  }
+
   let body;
   try {
     body = schema.parse(await req.json());
@@ -82,6 +89,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  if (body.webhookUrl && !secretStorageReady()) {
+    return NextResponse.json({ error: NO_SECRET_KEY }, { status: 400 });
+  }
   const channel = channelOf(req);
   await prisma.society.update({
     where: { id: membership!.societyId },
@@ -104,7 +114,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     action: "UPDATE",
     entityType: "DiscordWebhook",
     entityId: membership!.societyId,
-    metadata: { channel, configured: !!body.webhookUrl },
+    metadata: {
+      channel,
+      webhook: body.webhookUrl === undefined ? "unchanged" : body.webhookUrl ? "set" : "removed",
+      ...(body.roleId !== undefined ? { roleId: body.roleId || null } : {}),
+    },
   });
 
   const soc = await prisma.society.findUnique({

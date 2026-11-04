@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
+import { allowanceSpendWhere, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { PrintingRates } from "@/components/requests/PrintingRates";
 import { refreshArcTier } from "@/lib/rubric";
 import { Plus, FileText, Info } from "lucide-react";
@@ -40,7 +40,7 @@ export default async function PrintingRequestsPage({ params }: Props) {
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.printingRequest.aggregate({ where: { societyId, status: { in: PRINTING_COUNTS_TOWARD_BUDGET } }, _sum: { cost: true } }),
+    prisma.printingRequest.aggregate({ where: allowanceSpendWhere(societyId), _sum: { cost: true } }),
   ]);
 
   const allowance = SECRETARIAL_ALLOWANCE[tier];

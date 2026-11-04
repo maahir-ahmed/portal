@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface Props {
   societySlug: string;
@@ -22,7 +23,7 @@ export function PrintingDecisionButtons({ societySlug, requestId }: Props) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
-    });
+    }).catch(offline);
     setBusy(null);
     if (res.ok) {
       toast.success(action === "approve" ? "Approved, awaiting Arc submission (budget deducted)" : "Request rejected");

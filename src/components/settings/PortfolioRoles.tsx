@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { offline } from "@/lib/utils";
 
 interface Portfolio {
   id: string;
@@ -35,7 +36,7 @@ export function PortfolioRoles({ societySlug }: { societySlug: string }) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ discordRoleId: roles[p.id].trim() || null }),
-    });
+    }).catch(offline);
     setBusy(null);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return toast.error(data.error ?? "Could not save the role");

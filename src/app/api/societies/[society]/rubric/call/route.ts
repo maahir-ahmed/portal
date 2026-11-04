@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
+import { prisma } from "@/lib/db";
 import { getRubricCredentials, postRubric } from "@/lib/rubric";
 import { RUBRIC_CALLS, canCall, scrubResponse } from "@/lib/rubricCalls";
 import { demoEnabled, demoResponse } from "@/lib/rubricDemo";
@@ -98,36 +99,61 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   }
   if (!creds) return NextResponse.json({ error: "not_configured" }, { status: 400 });
 
+  // Writes are logged before they're sent, so one that changed Rubric is on record even
+  // if the answer never comes back, then updated with how it went.
+  const p = callParams.data as Record<string, unknown>;
+  const raw = p.eventid ?? p.form_id ?? p.eventName;
+  const target = raw == null ? null : String(raw).slice(0, 200);
+  const attempt = spec.write
+    ? await createAuditLog({
+        societyId: membership!.societyId,
+        userId: session!.user.id,
+        action: parsed.data.type === "archiveEvent" ? "DELETE" : "CREATE",
+        entityType: "RubricCall",
+        entityId: parsed.data.type,
+        metadata: { outcome: "sent", target },
+      })
+    : null;
+  const finish = async (outcome: string) => {
+    if (attempt) await prisma.auditLog.update({ where: { id: attempt.id }, data: { metadata: { outcome, target } } });
+  };
+
   let r: Awaited<ReturnType<typeof postRubric>>;
   try {
     r = await postRubric(membership!.societyId, creds, parsed.data.type, callParams.data, {
       societyIdKey: spec.societyIdKey,
     });
   } catch {
+    await finish("unreachable");
     return NextResponse.json({ error: "Could not reach Rubric" }, { status: 504 });
   }
 
   if (!r.ok) {
+    await finish(`http ${r.status}`);
     return NextResponse.json({ error: `Rubric HTTP ${r.status}` }, { status: 502 });
   }
 
   // A replacement session Rubric hands back is persisted by postRubric; it must not
   // reach the browser either, which is what scrubResponse guarantees below.
   const data = r.data;
-  if (!data) return NextResponse.json({ error: "Unreadable Rubric response" }, { status: 502 });
+  if (!data) {
+    await finish("unreadable reply");
+    return NextResponse.json({ error: "Unreadable Rubric response" }, { status: 502 });
+  }
 
-  // Writes, and reads that return personal data. The impact of the old design was
-  // bulk PII exfiltration, so who read what has to be answerable after the fact.
-  if (spec.write || spec.pii) {
+  // Reads that return personal data. The impact of the old design was bulk PII
+  // exfiltration, so who read what has to be answerable after the fact.
+  if ((spec.write || spec.pii) && !attempt) {
     await createAuditLog({
       societyId: membership!.societyId,
       userId: session!.user.id,
-      action: !spec.write ? "READ" : parsed.data.type === "archiveEvent" ? "DELETE" : "CREATE",
+      action: "READ",
       entityType: "RubricCall",
       entityId: parsed.data.type,
-      metadata: { succeeded: data.success !== false, ...(spec.pii ? { pii: true } : {}) },
+      metadata: { succeeded: data.success !== false, pii: true },
     });
   }
+  await finish(data.success === false ? "rejected" : "succeeded");
 
   if (data.success === false) {
     const message =

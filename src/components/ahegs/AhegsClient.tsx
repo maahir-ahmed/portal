@@ -14,6 +14,7 @@ import {
   groupLabel, rowProblems, type AhegsScope, type RosterRow,
 } from "@/lib/ahegs";
 import type { AhegsCategory, AhegsEvidenceKind } from "@prisma/client";
+import { offline } from "@/lib/utils";
 
 interface Evidence { category: AhegsCategory; kind: AhegsEvidenceKind; url: string; label: string | null }
 interface Meeting {
@@ -23,12 +24,16 @@ interface Meeting {
 interface Portfolio { id: string; name: string }
 interface Submitter { name: string; zid: string; email: string; phone: string; position: string; club: string }
 
+// Today's date on this browser's clock, for a date input (toISOString alone is UTC's).
+const localToday = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+
 const cell = "w-full rounded border bg-background px-2 py-1 text-sm";
 
 export function AhegsClient({
   societySlug, year, years, scope, rows: initialRows, meetings,
-  portfolios, evidence, submitter,
+  portfolios, evidence, submitter, ownMembershipId,
 }: {
+  ownMembershipId: string;
   societySlug: string; year: number; years: number[]; scope: AhegsScope;
   rows: RosterRow[]; meetings: Meeting[]; portfolios: Portfolio[];
   evidence: Evidence[]; submitter: Submitter;
@@ -88,7 +93,7 @@ export function AhegsClient({
       method,
       headers: { "Content-Type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    }).catch(offline);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Request failed");
     return res.json().catch(() => ({}));
   }
@@ -123,7 +128,7 @@ export function AhegsClient({
     // Minutes are PDF-only: they get split and merged into the files Arc asks for.
     // Evidence an exec uploads by hand is whatever Arc will take.
     if (accept) body.append("accept", accept);
-    const res = await fetch("/api/upload", { method: "POST", body });
+    const res = await fetch("/api/upload", { method: "POST", body }).catch(offline);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Upload failed");
     return res.json();
   }
@@ -399,7 +404,7 @@ export function AhegsClient({
                 <div className="space-y-1">
                   <label htmlFor="meeting-date" className="text-xs font-medium">Date</label>
                   <input id="meeting-date" name="date" type="date" required
-                         defaultValue={new Date().toISOString().slice(0, 10)} className={cell} />
+                         defaultValue={localToday()} className={cell} />
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="meeting-hours" className="text-xs font-medium">Hours</label>
@@ -655,7 +660,10 @@ export function AhegsClient({
             {tabRows.map((row) => {
               const problems = row.included ? rowProblems(row) : [];
               return (
-                <tr key={row.membershipId} className={cn(!row.included && "opacity-45")}>
+                // A director's own hours are for an executive to set, not themselves.
+                <tr key={row.membershipId} className={cn(!row.included && "opacity-45")}
+                    inert={!scope.isExec && row.membershipId === ownMembershipId}
+                    title={!scope.isExec && row.membershipId === ownMembershipId ? "An executive edits your own row" : undefined}>
                   <td className="p-2 align-top">
                     <input type="checkbox" checked={row.included}
                            onChange={(e) => edit(row.membershipId, { included: e.target.checked })}

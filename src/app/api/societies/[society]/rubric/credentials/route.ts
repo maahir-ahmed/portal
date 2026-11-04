@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { refreshArcTier, setRubricSession, SESSION_MAX_AGE_DAYS } from "@/lib/rubric";
+import { NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
 import { z } from "zod";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -70,6 +71,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
 
   // The session goes through setRubricSession so it is encrypted and timestamped;
   // the society ID is not a secret and is written directly.
+  if (body.rubricSessionId && !secretStorageReady()) {
+    return NextResponse.json({ error: NO_SECRET_KEY }, { status: 400 });
+  }
   if (body.rubricSessionId !== undefined) {
     await setRubricSession(membership!.societyId, body.rubricSessionId);
   }

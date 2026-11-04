@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auditAccountChange } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/api";
 import { z } from "zod";
@@ -35,6 +36,8 @@ export async function PUT(req: NextRequest) {
     await prisma.bankAccount.updateMany({ where: { userId }, data: { isDefault: false } });
     const account = await prisma.bankAccount.create({ data: { userId, ...body, isDefault: true } });
 
+    // Which account a reimbursement is paid into: worth knowing it changed, and when.
+    await auditAccountChange(userId, "BankAccount", { accountName: body.accountName });
     return NextResponse.json(account);
   } catch (err) {
     if (err instanceof z.ZodError) {

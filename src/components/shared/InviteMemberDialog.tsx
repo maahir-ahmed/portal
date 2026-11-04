@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface SocietyTitle {
   id: string;
@@ -59,7 +60,7 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
         role,
         title: title === "__none__" ? null : title,
       }),
-    });
+    }).catch(offline);
 
     setLoading(false);
     const data = await res.json();

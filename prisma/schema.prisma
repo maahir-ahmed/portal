@@ -284,15 +284,22 @@ model User {
   // Set when an executive issues a temporary passphrase (new member, or a reset).
   // The app blocks on a change-password dialog until the user picks their own.
   mustChangePassword Boolean @default(false)
+  // Bumped on a password change or reset and on removal. Sessions carry the value
+  // they were issued with, and stop working once it no longer matches.
+  sessionVersion   Int       @default(0)
   avatarUrl        String?
   phone            String?
   zId              String?
   emailVerified    DateTime?
   // Discord handle, from a member import. Not verified.
   discordUsername  String?
-  // Their Discord account's ID, stored the first time they use the /print command
-  // (src/lib/discordBot.ts). Unique: one portal account per Discord account.
+  // Their Discord account's ID, set when they run /link with a code from the Account
+  // page (src/lib/discordBot.ts). Unique: one portal account per Discord account.
   discordUserId    String?   @unique
+  // A one-time code from the Account page, redeemed with /link in Discord to set
+  // discordUserId. Stored as its sha256; good for 15 minutes.
+  discordLinkCode    String?
+  discordLinkExpires DateTime?
   twoFactorEnabled Boolean   @default(false)
   twoFactorSecret  String?
   createdAt        DateTime  @default(now())

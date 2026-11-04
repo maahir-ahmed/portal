@@ -14,6 +14,7 @@ import { SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { useModules } from "@/hooks/useModules";
 import { TIMEZONES, formatDate } from "@/lib/utils";
 import type { Society } from "@prisma/client";
+import { offline } from "@/lib/utils";
 
 const SELECT_CLASS =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -56,7 +57,7 @@ export function GeneralForm({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }).catch(offline);
 
     setSaving(false);
     if (res.ok) {

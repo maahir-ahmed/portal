@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { sendEmail, notificationEmail } from "./email";
 import { decryptSecret } from "./secrets";
+import { cut } from "./discordEvents";
 import type { NotificationType } from "@prisma/client";
 
 export async function createNotification({
@@ -25,12 +26,15 @@ export async function createNotification({
   if (sendEmailNotification) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user?.email) {
-      await sendEmail({
+      // Not awaited: the in-app notification is written, and the person who triggered
+      // it shouldn't wait on (or fail with) the mail server. The server process keeps
+      // running, so the send finishes after the response.
+      void sendEmail({
         to: user.email,
         subject: title,
         html: notificationEmail(title, body, link),
         text: body,
-      }).catch(() => {}); // don't fail the request if email fails
+      }).catch((err) => console.warn("Email failed:", err instanceof Error ? err.message : err));
     }
   }
 
@@ -58,7 +62,10 @@ async function postToDiscord(societyId: string, title: string, body: string, lin
   }
 
   const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
-  const description = link && base ? `${body}\n\n[Open in the portal](${base}${link})` : body;
+  // Discord refuses an embed past 256 characters of title or 4096 of description,
+  // and an urgent room booking's details can run that long. Cut, keeping the link.
+  const tail = link && base ? `\n\n[Open in the portal](${base}${link})` : "";
+  const description = cut(body, 4096 - tail.length) + tail;
 
   try {
     // 5s ceiling: Discord occasionally hangs, and an exec-queue post is not worth
@@ -69,7 +76,7 @@ async function postToDiscord(societyId: string, title: string, body: string, lin
       signal: AbortSignal.timeout(5000),
       body: JSON.stringify({
         username: "Society Portal",
-        embeds: [{ title, description, color: 0x00ffd1, timestamp: new Date().toISOString() }],
+        embeds: [{ title: cut(title, 256), description, color: 0x00ffd1, timestamp: new Date().toISOString() }],
         // Embeds never ping, but say so: member-typed text is in them.
         allowed_mentions: { parse: [] },
       }),

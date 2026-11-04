@@ -4,20 +4,56 @@ A self-hosted portal for running a university society's committee. Event and con
 requests, room bookings, reimbursements, printing, the member list and your Rubric
 ticketing all live in one place, on a server you control.
 
-It started as the internal tool for UNSW Security Society, and UNSW PC Society runs it
-too. Anything Arc-specific (room bookings, printing, activity grants, AHEGS) can
-be switched off, so it works for other clubs too.
+The features tied to Arc, the UNSW student organisation (room bookings, printing,
+activity grants and AHEGS), can be switched off, so it suits any club.
 
 - **Self-hosted:** one install script for a cloud server, a Raspberry Pi, or a Windows or Mac computer
 - **Updates itself:** new releases install overnight after a backup, and roll back if they don't start
 - **Private by default:** no sign-up page, and executives create every account
 - **Your data:** one Postgres database and an uploads folder, backed up nightly into a single file
 
+## Install
+
+On a Linux server, a Raspberry Pi or a Mac:
+
+```bash
+git clone https://github.com/maahir-ahmed/portal.git
+cd portal
+./portal install
+```
+
+On Windows, in PowerShell:
+
+```powershell
+git clone https://github.com/maahir-ahmed/portal.git
+cd portal
+powershell -ExecutionPolicy Bypass -File portal.ps1 install
+```
+
+The installer asks for your society's name, your email, and how people will reach the
+portal: through a Cloudflare Tunnel (recommended, no ports to open), through Caddy on a
+server with a public IP, or only on this computer to try it out. Then it downloads
+everything, starts it, and prints a setup link. Open that link to create your account
+and run the setup wizard.
+
+The full walkthrough, written for people who don't do this for a living, is in
+**[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
+
+### Requirements
+
+| | Minimum |
+|---|---|
+| Machine | 2 GB of memory and 3 GB of disk. A $5 VPS, a Raspberry Pi 4 or 5, or a spare PC |
+| System | Linux (amd64 or arm64), Windows 10 or 11, or macOS, with Docker |
+| Raspberry Pi | The 64-bit Raspberry Pi OS |
+| Domain | Optional, but you'll want one for anyone else to use it |
+
+If Docker isn't installed, the installer offers to install it.
+
 ## Contents
 
+- [Install](#install)
 - [Features](#features)
-- [Quick start](#quick-start)
-- [Requirements](#requirements)
 - [Updating](#updating)
 - [Backups](#backups)
 - [Configuration](#configuration)
@@ -34,7 +70,7 @@ be switched off, so it works for other clubs too.
   list is sorted by date and coloured by how close each deadline is. Marketing uploads
   the finished graphics, pastes the blurb and ticks items off. Rubric links get a QR
   code automatically.
-- **Room bookings.** Arc booking requests, with a warning when external guests need
+- **Room bookings.** Arc booking requests, with a warning when one is inside Arc's
   seven business days' notice.
 - **Reimbursements.** Members submit claims with receipts and an exec marks them paid.
   A claim is visible only to the person who submitted it and to executives. Bank
@@ -69,44 +105,6 @@ be switched off, so it works for other clubs too.
   you're on.
 - **Feature switches.** Turn off the sections your society doesn't use, and they
   disappear from the menu.
-
-## Quick start
-
-On a Linux server, a Raspberry Pi or a Mac:
-
-```bash
-git clone https://github.com/maahir-ahmed/portal.git
-cd portal
-./portal install
-```
-
-On Windows, in PowerShell:
-
-```powershell
-git clone https://github.com/maahir-ahmed/portal.git
-cd portal
-powershell -ExecutionPolicy Bypass -File portal.ps1 install
-```
-
-The installer asks for your society's name, your email, and how people will reach the
-portal: through a Cloudflare Tunnel (recommended, no ports to open), through Caddy on a
-server with a public IP, or only on this computer to try it out. Then it downloads
-everything, starts it, and prints a setup link. Open that link to create your account
-and run the setup wizard.
-
-The full walkthrough, written for people who don't do this for a living, is in
-**[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)**.
-
-## Requirements
-
-| | Minimum |
-|---|---|
-| Machine | 2 GB of memory and 3 GB of disk. A $5 VPS, a Raspberry Pi 4 or 5, or a spare PC |
-| System | Linux (amd64 or arm64), Windows 10 or 11, or macOS, with Docker |
-| Raspberry Pi | The 64-bit Raspberry Pi OS |
-| Domain | Optional, but you'll want one for anyone else to use it |
-
-If Docker isn't installed, the installer offers to install it.
 
 ## Updating
 
@@ -211,9 +209,8 @@ must not break:
 `npm run audit:layout` loads every page at widths from 320 to 1440px and reports
 anything that scrolls sideways.
 
-Hosting it the way UNSW societies do (several stacks on one box, deployed from GitHub
-Actions) is covered in [deploy/README.md](deploy/README.md), along with how releases
-reach self-hosted portals.
+Running several portals on one machine, deployed from GitHub Actions, is covered in
+[deploy/README.md](deploy/README.md), along with how releases reach self-hosted portals.
 
 ## Security
 
@@ -226,6 +223,10 @@ reach self-hosted portals.
   are encrypted at rest (with `RUBRIC_SECRET_KEY`, which the installer sets).
 - Reimbursement claims and bank details are visible only to their owner and to
   executives.
+- Wrong passwords are limited per account and per address, and changing or resetting a
+  password signs that account out everywhere else.
+- The portal talks to its database as a role that owns its tables but isn't a
+  database superuser, and refuses form posts from other sites.
 - The portal can't reach the server's Docker. It can only ask the server's updater to
   run, so a compromised portal can't take over the machine.
 
@@ -234,8 +235,8 @@ in touch.
 
 ## Contributing
 
-Issues and pull requests are welcome. This is maintained by one person for a couple of
-societies, so there's no support commitment, but bug reports with steps to reproduce
+Issues and pull requests are welcome. This is maintained by one person, so there's no
+support commitment, but bug reports with steps to reproduce
 are always appreciated.
 
 The Rubric integration uses Rubric's undocumented API, so it can break without warning.

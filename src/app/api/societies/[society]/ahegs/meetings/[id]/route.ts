@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
+import { createAuditLog } from "@/lib/audit";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
 import { ahegsYearOf } from "@/lib/years";
@@ -25,7 +26,7 @@ async function loadInScope(societyId: string, id: string, scope: Awaited<ReturnT
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { society, id } = await params;
-  const { membership, scope, error } = await requireAhegsAccess(society);
+  const { session, membership, scope, error } = await requireAhegsAccess(society);
   if (error) return error;
 
   try {
@@ -73,6 +74,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       }
     });
 
+    await createAuditLog({
+      societyId: membership.societyId, userId: session.user.id, action: "UPDATE", entityType: "AhegsMeeting",
+      entityId: id, metadata: { hours: body.hours ?? null, attendees: attendees?.length ?? null },
+    });
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -84,7 +89,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
   const { society, id } = await params;
-  const { membership, scope, error } = await requireAhegsAccess(society);
+  const { session, membership, scope, error } = await requireAhegsAccess(society);
   if (error) return error;
 
   const meeting = await loadInScope(membership.societyId, id, scope);
@@ -92,5 +97,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
 
   // Attendance rows cascade, so everyone's hours drop by this meeting's duration.
   await prisma.ahegsMeeting.delete({ where: { id } });
+  await createAuditLog({
+    societyId: membership.societyId, userId: session.user.id, action: "DELETE", entityType: "AhegsMeeting",
+    entityId: id, metadata: { title: meeting.title, hours: meeting.hours },
+  });
   return NextResponse.json({ ok: true });
 }

@@ -102,8 +102,12 @@ export function writeZip(entries: ZipEntries): Buffer {
 export type Cell = string | number | Date | null;
 
 const COLUMNS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+// Control characters (bar tab and newlines) aren't allowed in XML at all, and Excel
+// calls the whole file corrupt over one pasted into a name, so they're dropped.
 const escapeXml = (s: string) =>
-  s.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
+  s
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "")
+    .replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
 
 // Excel counts days from 1899-12-30. Built from the UTC parts so a date stored as
 // midnight UTC doesn't slide a day backwards for anyone west of Greenwich.
@@ -151,7 +155,7 @@ export function fillTemplate(templatePath: string, rows: Cell[][]): Buffer {
 
   entries.set(
     sheetPath,
-    Buffer.from(sheet.replace(/<sheetData>[\s\S]*?<\/sheetData>/, `<sheetData>${rowXml(1)}${rowXml(2)}${body}</sheetData>`))
+    Buffer.from(sheet.replace(/<sheetData>[\s\S]*?<\/sheetData>/, () => `<sheetData>${rowXml(1)}${rowXml(2)}${body}</sheetData>`))
   );
   return writeZip(entries);
 }

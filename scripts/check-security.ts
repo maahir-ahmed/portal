@@ -4,8 +4,10 @@
 import assert from "node:assert/strict";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
-import { isPlausibleDate, safeCallback } from "../src/lib/utils";
+import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
+import { csvCell } from "../src/lib/csv";
+import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
 // Member-typed text in an executive's notification email stays text.
 const evil = `<a href="https://evil/login">Sign in</a><img src=x onerror=alert(1)>"'&`;
@@ -44,5 +46,26 @@ assert.ok(freshInteraction(String(now / 1000 - 10), now), "a request from 10 sec
 assert.ok(!freshInteraction(String(now / 1000 - 3600), now), "an hour-old request is a replay");
 assert.ok(!freshInteraction("not a number", now));
 assert.ok(!freshInteraction(null, now));
+
+// Password guessing: ten wrong tries lock the account for the window, a right one resets it.
+const limits = passwordLimits("Jane@Example.com", new Headers({ "x-real-ip": "203.0.113.9" }));
+for (let i = 0; i < 9; i++) recordFailure(limits, now);
+assert.ok(!isLimited(limits, now), "nine wrong passwords are still allowed");
+clearFailures(limits);
+for (let i = 0; i < 10; i++) recordFailure(limits, now);
+assert.ok(isLimited(limits, now), "the tenth wrong password locks the account");
+assert.ok(isLimited(passwordLimits("jane@example.com", new Headers()), now), "case doesn't dodge the lock");
+assert.ok(!isLimited(limits, now + 16 * 60_000), "the lock lifts after the window");
+
+// Spreadsheet exports: a ticket holder named "=HYPERLINK(...)" stays text.
+assert.equal(csvCell('=HYPERLINK("http://evil","x")'), `"'=HYPERLINK(""http://evil"",""x"")"`);
+assert.equal(csvCell("@SUM(A1)"), `"'@SUM(A1)"`);
+assert.equal(csvCell("Ada Lovelace"), `"Ada Lovelace"`, "ordinary text is unchanged");
+
+// The Origin check on API writes: this host (whatever the port), never a sibling.
+assert.ok(sameHost("https://secsoc.maahir.dev", "secsoc.maahir.dev"));
+assert.ok(sameHost("http://localhost:8080", "localhost"), "nginx drops the port from Host");
+assert.ok(!sameHost("https://evil.maahir.dev", "secsoc.maahir.dev"), "a sibling subdomain is another site");
+assert.ok(!sameHost("null", "secsoc.maahir.dev"));
 
 console.log("✅ security: audit fixes still in place");

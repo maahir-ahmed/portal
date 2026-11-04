@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2, Loader2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface Props {
   endpoint: string; // DELETE target
@@ -27,7 +28,7 @@ export function ConfirmDelete({ endpoint, redirect, title, description, successM
   async function remove() {
     setDeleting(true);
     try {
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await fetch(endpoint, { method: "DELETE" }).catch(offline);
       if (res.ok) {
         toast.success(successMessage);
         setOpen(false);

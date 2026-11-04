@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { offline } from "@/lib/utils";
 
 export interface ContentRequestInitial {
   id: string;
@@ -82,7 +83,7 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
       method: editing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }).catch(offline);
 
     setLoading(false);
     if (res.ok) {

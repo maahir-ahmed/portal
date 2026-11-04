@@ -31,6 +31,16 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
+/**
+ * One quoted cell for a spreadsheet export. Text starting with = + - @ (or a tab or
+ * return) is a formula to Excel, and ticket-holder names are typed by the public on
+ * Rubric, so such cells get a leading ' to stay text.
+ */
+export function csvCell(v: string): string {
+  const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+  return `"${safe.replaceAll('"', '""')}"`;
+}
+
 /** One CSV line, quoting only where needed. */
 export function csvLine(values: string[]): string {
   return values.map((v) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)).join(",");

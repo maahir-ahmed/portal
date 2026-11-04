@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface Portfolio {
   id: string;
@@ -24,7 +25,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   const [busy, setBusy] = useState(false);
 
   async function load() {
-    const res = await fetch(base);
+    const res = await fetch(base).catch(offline);
     if (res.ok) setPortfolios(await res.json());
   }
 
@@ -33,7 +34,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
 
   async function send(url: string, init: RequestInit, failure: string) {
     setBusy(true);
-    const res = await fetch(url, init);
+    const res = await fetch(url, init).catch(offline);
     setBusy(false);
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));

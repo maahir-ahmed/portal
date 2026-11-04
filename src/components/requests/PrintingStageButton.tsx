@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Loader2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 const STAGES = {
   mark_submitted: { label: "Mark submitted", success: "Marked as submitted to Arc" },
@@ -29,7 +30,7 @@ export function PrintingStageButton({ societySlug, requestId, action }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
-      });
+      }).catch(offline);
       if (res.ok) {
         toast.success(STAGES[action].success);
         router.refresh();

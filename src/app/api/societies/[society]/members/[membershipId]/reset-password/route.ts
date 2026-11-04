@@ -32,7 +32,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
   const tempPassword = generatePassphrase();
   await prisma.user.update({
     where: { id: target.userId },
-    data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true },
+    data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true, sessionVersion: { increment: 1 } },
   });
   // An imported member's first passphrase is their invitation.
   if (target.inviteStatus === "NOT_INVITED") {

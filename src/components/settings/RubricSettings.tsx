@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { CheckCircle, XCircle, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
+import { offline } from "@/lib/utils";
 
 interface RubricStatus {
   configured: boolean;
@@ -54,7 +55,7 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rubricSessionId: sessionId, rubricSocietyId: societyId }),
-    });
+    }).catch(offline);
     setSaving(false);
     if (res.ok) {
       toast.success("Rubric credentials saved");
@@ -75,7 +76,7 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rubricSessionId: null }),
-    });
+    }).catch(offline);
     setDisconnecting(false);
     if (res.ok) {
       toast.success("Rubric disconnected. The stored session has been deleted.");

@@ -11,6 +11,7 @@ type Memberships = SessionMembership[];
 declare module "next-auth" {
   interface User {
     memberships?: Memberships;
+    sessionVersion?: number;
   }
   interface Session {
     user: DefaultSession["user"] & { id: string; memberships?: Memberships };
@@ -21,6 +22,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     memberships?: Memberships;
+    sv?: number;
   }
 }
 
@@ -28,5 +30,6 @@ declare module "@auth/core/jwt" {
   interface JWT {
     id?: string;
     memberships?: Memberships;
+    sv?: number;
   }
 }

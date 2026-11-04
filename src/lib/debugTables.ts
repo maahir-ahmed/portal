@@ -38,7 +38,7 @@ export function plain(v: unknown): unknown {
 const TRANSACTION_CONTROL =
   /(?:^|;)\s*(BEGIN|COMMIT|ROLLBACK|END|START\s+TRANSACTION|SAVEPOINT|RELEASE|ABORT|PREPARE\s+TRANSACTION)\b/im;
 const QUOTED =
-  /\$([A-Za-z_]*)\$[\s\S]*?\$\1\$|[Ee]'(?:[^'\\]|\\[\s\S]|'')*'|'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|\/\*[\s\S]*?\*\//g;
+  /\$((?:[A-Za-z_][A-Za-z0-9_]*)?)\$[\s\S]*?\$\1\$|[Ee]'(?:[^'\\]|\\[\s\S]|'')*'|'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|\/\*[\s\S]*?\*\//g;
 
 /** The first transaction-control statement in a SQL file, if any. */
 export function transactionControl(sql: string): { word: string; index: number } | null {

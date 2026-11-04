@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 type Params = { society: string; portfolioId: string };
@@ -29,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   if (authErr) return authErr;
 
   const { society, portfolioId } = await params;
-  const { error } = await load(session!.user.id, society, portfolioId);
+  const { portfolio, error } = await load(session!.user.id, society, portfolioId);
   if (error) return error;
 
   try {
@@ -37,6 +38,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     const updated = await prisma.portfolio.update({
       where: { id: portfolioId },
       data: { name, ...(discordRoleId !== undefined ? { discordRoleId: discordRoleId || null } : {}) },
+    });
+    await createAuditLog({
+      societyId: portfolio.societyId, userId: session!.user.id, action: "UPDATE", entityType: "Portfolio",
+      entityId: portfolioId, metadata: { from: portfolio.name, to: updated.name, discordRoleId: updated.discordRoleId },
     });
     return NextResponse.json(updated);
   } catch (err) {
@@ -54,12 +59,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   if (authErr) return authErr;
 
   const { society, portfolioId } = await params;
-  const { error } = await load(session!.user.id, society, portfolioId);
+  const { portfolio, error } = await load(session!.user.id, society, portfolioId);
   if (error) return error;
 
   await prisma.$transaction([
     prisma.societyMembership.updateMany({ where: { portfolioId }, data: { portfolioId: null } }),
     prisma.portfolio.delete({ where: { id: portfolioId } }),
   ]);
+  await createAuditLog({
+    societyId: portfolio.societyId, userId: session!.user.id, action: "DELETE", entityType: "Portfolio",
+    entityId: portfolioId, metadata: { name: portfolio.name },
+  });
   return NextResponse.json({ ok: true });
 }

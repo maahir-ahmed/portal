@@ -16,6 +16,7 @@ import { useRubricClient } from "@/hooks/useRubricClient";
 import { RubricFormQuestions } from "@/components/requests/RubricFormQuestions";
 import { buildQuestionsPayload, validateAnswers } from "@/lib/rubricForm";
 import type { RubricEventForm, RubricAnswers, RubricFormQuestion } from "@/types/rubric";
+import { offline } from "@/lib/utils";
 
 interface SubmitToRubricDialogProps {
   societySlug: string;
@@ -165,7 +166,7 @@ export function SubmitToRubricDialog({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...(contentRequestId ? { contentRequestId } : {}), rubricEventId, rubricEventLink }),
-      });
+      }).catch(offline);
 
       toast.success(
         isDraft

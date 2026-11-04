@@ -4,6 +4,7 @@ import type { NextAuthRequest } from "next-auth";
 import { apiEnabled, pageEnabled } from "@/lib/modules";
 import { modulesForSlug } from "@/lib/modulesServer";
 import { maintenanceActive, maintenancePage } from "@/lib/maintenance";
+import { sameHost } from "@/lib/utils";
 
 // Single-society mode: set SOCIETY_SLUG env var for per-domain deployments.
 // Middleware rewrites clean paths (/dashboard) → /slug/dashboard internally,
@@ -74,6 +75,17 @@ async function route(req: NextAuthRequest, origin: string) {
   const isPublic =
     isAuthPage || isApiAuth || isSetup || isDiscord || isUpdater ||
     pathname.startsWith("/_next") || pathname.startsWith("/uploads");
+
+  // CSRF: the session cookie is SameSite=Lax, which still sends it from a sibling
+  // subdomain (any *.example.com page is "same site" with portal.example.com). A browser names the page a write
+  // came from in Origin, so a write from anywhere but here is refused. No Origin means
+  // not a browser (curl, the updater), which carries no cookie to abuse.
+  if (pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(req.method) && !isDiscord && !isUpdater) {
+    const from = req.headers.get("origin");
+    if (from && !sameHost(from, req.headers.get("x-forwarded-host") ?? req.headers.get("host"))) {
+      return NextResponse.json({ error: "Cross-site request refused" }, { status: 403 });
+    }
+  }
 
   // Auth guard (runs regardless of society mode)
   if (!isPublic && !isAuth) {

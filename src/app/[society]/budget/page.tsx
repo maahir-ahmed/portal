@@ -1,3 +1,4 @@
+import { wallClockNow } from "@/lib/urgency";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -20,6 +21,7 @@ export default async function BudgetPage({ params, searchParams }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
   // All members can see the budget totals; only execs get the individual claims
@@ -46,7 +48,7 @@ export default async function BudgetPage({ params, searchParams }: Props) {
     }),
   ]);
 
-  const currentYear = financialYearOf(yearRows, new Date());
+  const currentYear = financialYearOf(yearRows, new Date(wallClockNow(membership.society.timezone)));
   const year = parseYear((await searchParams).year) ?? currentYear;
   const { start, end } = financialYearRange(yearRows, year);
 

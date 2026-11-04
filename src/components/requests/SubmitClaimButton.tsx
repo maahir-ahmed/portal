@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Send, Loader2 } from "lucide-react";
 import { usePolicy } from "@/hooks/usePolicy";
+import { offline } from "@/lib/utils";
 
 // Moves a DRAFT claim into the payout queue. The owner may submit their own draft;
 // the API enforces that transition (and alerts the execs). A draft saved without the
@@ -32,7 +33,7 @@ export function SubmitClaimButton({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "REIMBURSEMENT_PENDING", ...(acknowledged ? {} : { acknowledgedRules: true }) }),
-    });
+    }).catch(offline);
     setLoading(false);
     if (res.ok) {
       toast.success("Submitted for reimbursement");

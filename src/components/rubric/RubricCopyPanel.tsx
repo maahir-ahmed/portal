@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Check, Copy, ClipboardList, ExternalLink, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RoomBookingStatus } from "@prisma/client";
+import { offline } from "@/lib/utils";
 
 export interface CopyRecord {
   id: string;
@@ -112,7 +113,7 @@ export function RubricCopyPanel({
     setSavingStatus(true);
     try {
       const [url, init] = spec.request(record.id);
-      const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" } });
+      const res = await fetch(url, { ...init, headers: { "Content-Type": "application/json" } }).catch(offline);
       if (res.ok) {
         toast.success(spec.done);
         router.refresh();

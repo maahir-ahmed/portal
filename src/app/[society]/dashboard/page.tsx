@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, canViewRequest } from "@/lib/utils";
 import {
   FileText, Building2, Wallet, AlertCircle, Plus
 } from "lucide-react";
@@ -33,6 +33,9 @@ export default async function DashboardPage({ params }: Props) {
   // Executives finish first-run setup before anything else (src/app/setup).
   if (isExec && !membership.society.setupCompletedAt) redirect("/setup");
   const modules = flagsFrom(membership.society);
+  // Recent events and bookings, limited to what this member could open (canViewRequest).
+  const me = session.user.id;
+  const visible = canViewRequest(membership, me, { submittedById: "" }) ? {} : { OR: [{ submittedById: me }, { assignedToId: me }] };
 
   const [
     contentPending,
@@ -53,13 +56,13 @@ export default async function DashboardPage({ params }: Props) {
       where: { societyId, status: { notIn: ["REIMBURSED", "REJECTED"] }, ...(isExec ? {} : { submittedById: session.user.id }) },
     }),
     prisma.contentRequest.findMany({
-      where: { societyId },
+      where: { societyId, ...visible },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5,
     }),
     prisma.roomBooking.findMany({
-      where: { societyId },
+      where: { societyId, ...visible },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5,

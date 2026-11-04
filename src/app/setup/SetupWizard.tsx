@@ -11,6 +11,7 @@ import { FeaturesForm } from "@/components/settings/FeaturesForm";
 import { PoliciesForm } from "@/components/settings/PoliciesForm";
 import { DiscordWebhookSettings } from "@/components/settings/DiscordWebhookSettings";
 import { MemberImport } from "@/components/settings/MemberImport";
+import { offline } from "@/lib/utils";
 
 // First-run setup, after the first account exists. Every step is the same component
 // as its Settings tab, so anything skipped or got wrong here is fixed there later.
@@ -84,7 +85,7 @@ export function SetupWizard({ societySlug, initialStep }: { societySlug: string;
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }).catch(offline);
     if (!res.ok) toast.error("Couldn't save your progress. Check your connection and try again.");
     return res.ok;
   }

@@ -6,7 +6,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
-import { statusLabel, isPlausibleDate } from "@/lib/utils";
+import { canViewRequest, statusLabel, isPlausibleDate } from "@/lib/utils";
 
 
 // What the edit form, the status picker and the marketing panel send. Types only, with
@@ -65,8 +65,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // Marketing directors (or execs) may fill in the finished content.
   const isMarketing =
     membership!.role === "EXECUTIVE" || (membership!.title?.toLowerCase().includes("marketing") ?? false);
-  // Owner or manager may edit the request's own details.
-  const canEditCore = isOwner || canManage;
+  // Owner or manager may edit the request's own details, the owner only until it's finished.
+  const canEditCore = canManage || (isOwner && !["COMPLETED", "CANCELLED"].includes(request.status));
 
   if (!canEditCore && !canManage && !isMarketing) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -201,7 +201,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<Params
     },
   });
 
-  if (!request || request.societyId !== membership!.societyId) {
+  if (!request || request.societyId !== membership!.societyId || !canViewRequest(membership!, session!.user.id, request)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

@@ -1,16 +1,19 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { clearFailures, isLimited, passwordLimits, recordFailure } from "./rateLimit";
 
 // A hash at the same cost as real ones, made once on first use, for unknown accounts to
 // be checked against.
 let dummy: Promise<string> | null = null;
 const dummyHash = () => (dummy ??= bcrypt.hash(crypto.randomUUID(), 12));
 
+class TooManyAttempts extends CredentialsSignin {
+  code = "rate_limited";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   // Behind a reverse proxy (cloudflared) the Host header is external; trust it.
   trustHost: true,
   session: { strategy: "jwt" },
@@ -25,10 +28,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const email = (credentials.email as string).trim().toLowerCase();
+        // Guessing passwords: a few tries per account, more per address (a shared
+        // network), then wait out the window.
+        const limits = passwordLimits(email, request.headers);
+        if (isLimited(limits)) throw new TooManyAttempts();
         // Only the fields the UI reads. Whole Society rows used to travel from here
         // into the JWT and back out of /api/auth/session, which handed every logged-in
         // member the society's Rubric session ID.
@@ -55,6 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // have accounts here.
         if (!user || !user.passwordHash) {
           await bcrypt.compare(credentials.password as string, await dummyHash());
+          recordFailure(limits);
           return null;
         }
 
@@ -62,7 +70,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           credentials.password as string,
           user.passwordHash
         );
-        if (!valid) return null;
+        if (!valid) {
+          recordFailure(limits);
+          return null;
+        }
+        clearFailures(limits);
 
         await prisma.user.update({
           where: { id: user.id },
@@ -79,6 +91,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.avatarUrl,
           memberships: user.memberships,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -88,6 +101,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.memberships = user.memberships;
+        token.sv = user.sessionVersion ?? 0;
+      }
+      // A password change, reset or removal bumps the version, which ends every session
+      // issued before it. Tokens from before this check have no sv and count as 0.
+      // ponytail: one indexed lookup per auth() call; cache it if that ever shows up.
+      if (token.id) {
+        const current = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { sessionVersion: true },
+        });
+        if (!current || current.sessionVersion !== (token.sv ?? 0)) return null;
       }
       // Reflect profile edits (name/email) made via the account page without re-login.
       // Read from the database, not the update payload: anyone can call update() with

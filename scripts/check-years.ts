@@ -54,4 +54,15 @@ assert.equal(financialYearRange(rows, 2025).start.getTime(), 0);
 assert.deepEqual(yearOptions(2024, 2026), [2026, 2025]);
 assert.deepEqual(yearOptions(null, 2026), [2026]);
 
+// Every year rolls over by itself around Term 3, with no dates set: the financial year
+// on the default AGM (15 Oct), AHEGS the day after the default Term 3 end (30 Nov).
+const on = (y: number, m: number, day: number) => new Date(Date.UTC(y, m - 1, day));
+for (let y = 2026; y <= 2040; y++) {
+  assert.equal(financialYearOf([], on(y, 10, 14)), y, `14 Oct ${y} is still financial ${y}`);
+  assert.equal(financialYearOf([], on(y, 10, 15)), y + 1, `15 Oct ${y} opens financial ${y + 1}`);
+  assert.equal(ahegsYearOf([], on(y, 11, 30)), y, `30 Nov ${y} is still AHEGS ${y}`);
+  assert.equal(ahegsYearOf([], on(y, 12, 1)), y + 1, `1 Dec ${y} opens AHEGS ${y + 1}`);
+  assert.equal(yearOptions(2025, financialYearOf([], on(y, 10, 15)))[0], y + 1, "the picker offers the new year");
+}
+
 console.log("✅ years: financial (AGM to AGM), AHEGS (Term 3 end to Term 3 end) and events (calendar) bucket every day of 2024-2027 into exactly one year, none before 2025");

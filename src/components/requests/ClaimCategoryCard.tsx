@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { offline } from "@/lib/utils";
 
 const UNCLASSIFIED = "__none__";
 
@@ -30,7 +31,7 @@ export function ClaimCategoryCard({ societySlug, requestId, categoryId, category
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ budgetCategoryId: value === UNCLASSIFIED ? null : value }),
-      });
+      }).catch(offline);
       if (res.ok) {
         toast.success("Category updated");
         router.refresh();

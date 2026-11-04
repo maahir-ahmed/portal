@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { agmDate, FIRST_YEAR, term3End, type YearDates } from "@/lib/years";
+import { offline } from "@/lib/utils";
 
 interface Row {
   year: number;
@@ -62,7 +63,7 @@ export function YearCalendarSettings({ societySlug }: { societySlug: string }) {
       body: JSON.stringify({
         years: rows.map((r) => ({ year: r.year, agmDate: r.agmDate || null, term3End: r.term3End || null })),
       }),
-    });
+    }).catch(offline);
     setSaving(false);
     if (res.ok) {
       const { meetingsMoved } = await res.json();

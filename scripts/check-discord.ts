@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { parsePickup, verifyDiscordRequest } from "../src/lib/discordBot";
+import { cut, webhookUrl } from "../src/lib/discordEvents";
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519");
 const raw = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("hex");
@@ -24,5 +25,12 @@ assert.equal(parsePickup(" 2026-11-20T9:05 ")?.toISOString(), "2026-11-20T09:05:
 assert.equal(parsePickup("2026-02-30 10:00"), null, "no such day");
 assert.equal(parsePickup("2026-11-20 24:00"), null);
 assert.equal(parsePickup("tomorrow"), null);
+
+// Webhook URLs: a pasted ?thread_id= survives, and ours are added, not glued on.
+const hook = "https://discord.com/api/webhooks/1/abc";
+assert.equal(webhookUrl(`${hook}?thread_id=9`, "", { wait: "true" }), `${hook}?thread_id=9&wait=true`);
+assert.equal(webhookUrl(hook, "/messages/5", { thread_id: "5" }), `${hook}/messages/5?thread_id=5`);
+assert.equal(webhookUrl(hook, "", { wait: "true", thread_id: null }), `${hook}?wait=true`);
+assert.equal(cut("x".repeat(5000), 4096).length, 4096, "embed text fits Discord's limit");
 
 console.log("discord: all checks passed");

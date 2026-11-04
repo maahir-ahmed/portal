@@ -25,6 +25,8 @@
 # UPLOADS_DIR (default /uploads; must be a directory named "uploads"), BACKUP_OUT
 # (default /backups), STACK, BACKUP_KEEP_DAYS, BACKUP_HOUR.
 set -eu
+# Archives hold every member's details and bank accounts: not for other users on the box.
+umask 027
 
 OUT="${BACKUP_OUT:-/backups}"
 UPLOADS="${UPLOADS_DIR:-/uploads}"
@@ -60,9 +62,24 @@ seconds_until_hour() {
 archive() {
   [ "$(basename "$UPLOADS")" = uploads ] || die "UPLOADS_DIR must be a directory named uploads, not $UPLOADS"
   mkdir -p "$OUT"
+  # One backup of a stack at a time: a second (the daily run while an exec presses
+  # Create backup) would clear the first's work files below and fail it. A lock left
+  # by a killed run is taken over after two hours.
+  lock="$OUT/.lock-$STACK"
+  find "$OUT" -maxdepth 1 -name ".lock-$STACK" -mmin +120 -exec rm -rf {} +
+  waited=0
+  until mkdir "$lock" 2>/dev/null; do
+    waited=$((waited + 5))
+    [ "$waited" -ge 600 ] && die "another backup of $STACK has been running for 10 minutes"
+    sleep 5
+  done
+  trap "rm -rf '$lock'" EXIT
   # A run killed mid-way leaves a .part and a work directory behind; clear this
   # stack's before starting so they cannot pile up unnoticed.
   rm -rf "$OUT/${STACK}_"*.part "$OUT/.work-${STACK}-"*
+  # The Debugging tab's leftovers: half-uploaded restores, and job results (which can
+  # hold whatever a SQL run selected). A day is long enough to read them.
+  find "$OUT" -maxdepth 1 \( -name '.incoming-*' -o -name '.job-*.json' \) -mmin +1440 -exec rm -f {} +
 
   stamp=$(date +%F_%H%M%S)
   work="$OUT/.work-${STACK}-$stamp"
@@ -104,10 +121,16 @@ archive() {
   done
   rm -rf "$work"
   mv "$dest.part" "$dest"
+  # Owned by whoever owns the backups folder (on the host, the account that set the
+  # stack up), so they can still copy it off the box; nobody else can read it.
+  chown "$(stat -c %u:%g "$OUT")" "$dest" 2>/dev/null || true
   log "wrote $dest ($(wc -c < "$dest" | tr -d ' ') bytes, $count uploads)"
 
   # -exec rm rather than -delete: busybox find does not always carry -delete.
   find "$OUT" -maxdepth 1 -name "${STACK}_*" -mtime "+$KEEP_DAYS" -exec rm -f {} +
+  # Released here too, not only on exit: the daily loop runs archive again and again.
+  rm -rf "$lock"
+  trap - EXIT
   echo "$dest"
 }
 

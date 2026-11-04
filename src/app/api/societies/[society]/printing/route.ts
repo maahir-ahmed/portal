@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
-import { PRINTING_COUNTS_TOWARD_BUDGET, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
+import { allowanceSpendWhere, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { createPrintingRequest } from "@/lib/printingServer";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { refreshArcTier } from "@/lib/rubric";
@@ -23,10 +23,10 @@ const schema = z.object({
   additionalDetails: z.string().optional(),
 });
 
-// Budget left = tier allowance − sum of approved-and-beyond request costs.
+// Budget left = tier allowance − sum of this year's approved-and-beyond request costs.
 async function budgetFor(societyId: string, tier: keyof typeof SECRETARIAL_ALLOWANCE) {
   const approved = await prisma.printingRequest.aggregate({
-    where: { societyId, status: { in: PRINTING_COUNTS_TOWARD_BUDGET } },
+    where: allowanceSpendWhere(societyId),
     _sum: { cost: true },
   });
   const allowance = SECRETARIAL_ALLOWANCE[tier];

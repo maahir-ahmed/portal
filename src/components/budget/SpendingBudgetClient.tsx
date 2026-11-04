@@ -18,6 +18,7 @@ import {
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 /** One category's figures for one financial year. */
 export interface YearFigures {
@@ -83,7 +84,7 @@ export function SpendingBudgetClient({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ budgetCategoryId: categoryId }),
-    });
+    }).catch(offline);
     if (res.ok) router.refresh();
     else toast.error("Could not update category");
   }
@@ -268,7 +269,7 @@ function SetBudgetForm({ base, year, pastYears, categories, onSaved }: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ allocations: filled.map((c) => ({ categoryId: c.id, amount: Number(amounts[c.id]) || 0 })) }),
-    });
+    }).catch(offline);
     setBusy(false);
     if (res.ok) { toast.success(`${year} budget saved`); onSaved(); }
     else toast.error((await res.json().catch(() => ({}))).error ?? "Could not save the budget");
@@ -650,7 +651,7 @@ function CategoryDialog({ base, category, year, yearSet, pastYear, onClose, onSa
       method: editing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
+    }).catch(offline);
     setBusy(false);
     if (res.ok) onSaved();
     else toast.error((await res.json().catch(() => ({}))).error ?? "Could not save category");
@@ -659,7 +660,7 @@ function CategoryDialog({ base, category, year, yearSet, pastYear, onClose, onSa
   async function remove() {
     if (!editing) return;
     setBusy(true);
-    const res = await fetch(`${base}/${category!.id}`, { method: "DELETE" });
+    const res = await fetch(`${base}/${category!.id}`, { method: "DELETE" }).catch(offline);
     setBusy(false);
     if (res.ok) onSaved();
     else toast.error("Could not delete category");

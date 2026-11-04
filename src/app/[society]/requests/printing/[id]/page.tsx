@@ -112,8 +112,8 @@ export default async function PrintingRequestDetailPage({ params }: Props) {
         <CardHeader className="pb-2"><CardTitle className="text-base">Contact &amp; file</CardTitle></CardHeader>
         <CardContent>
           {detail("Name", request.contactName)}
-          {detail("Email", request.contactEmail)}
-          {detail("Phone", request.contactPhone)}
+          {(isExec || isOwner) && detail("Email", request.contactEmail)}
+          {(isExec || isOwner) && detail("Phone", request.contactPhone)}
           {detail("Document", (
             <a href={request.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">
               <FileText className="h-3.5 w-3.5" /> {request.fileName}

@@ -21,6 +21,19 @@ function secretKey(): Buffer | null {
   return key;
 }
 
+/**
+ * Whether a new secret may be saved. A production stack without the key would keep it
+ * in plain text in the database and every backup, so saving one is refused there
+ * (secrets saved before stay readable, and the Rubric session still rotates). Dev
+ * servers keep working without a key.
+ */
+export function secretStorageReady(): boolean {
+  return !!process.env.RUBRIC_SECRET_KEY || process.env.NODE_ENV !== "production";
+}
+
+export const NO_SECRET_KEY =
+  "This portal has no RUBRIC_SECRET_KEY set, so it can't store this safely. Add one to the env file (openssl rand -base64 32) and restart.";
+
 export function encryptSecret(plain: string): string {
   const key = secretKey();
   if (!key) {

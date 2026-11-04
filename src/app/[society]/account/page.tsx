@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { offline } from "@/lib/utils";
 
 interface Me {
   id: string;
   name: string;
   email: string;
+  discordBot: boolean;
+  discordLinked: boolean;
 }
 
 interface BankAccount {
@@ -28,6 +31,7 @@ export default function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingBank, setSavingBank] = useState(false);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/me")
@@ -54,7 +58,7 @@ export default function AccountPage() {
         email,
         currentPassword: form.get("currentPassword"),
       }),
-    });
+    }).catch(offline);
 
     setSavingProfile(false);
     if (res.ok) {
@@ -87,16 +91,25 @@ export default function AccountPage() {
         currentPassword: form.get("currentPassword"),
         newPassword: form.get("newPassword"),
       }),
-    });
+    }).catch(offline);
 
     setSavingPassword(false);
     if (res.ok) {
+      // The change signed out every session, this one included, so sign back in.
+      if (me) await signIn("credentials", { email: me.email, password: String(form.get("newPassword")), redirect: false });
       toast.success("Password changed");
       (e.target as HTMLFormElement).reset();
     } else {
       const data = await res.json();
       toast.error(data.error ?? "Failed to change password");
     }
+  }
+
+  async function getLinkCode() {
+    const res = await fetch("/api/me/discord-link", { method: "POST" }).catch(() => null);
+    const data = await res?.json().catch(() => ({}));
+    if (res?.ok) setLinkCode(data.code);
+    else toast.error(data?.error ?? "Couldn't get a code");
   }
 
   async function handleBank(e: React.FormEvent<HTMLFormElement>) {
@@ -112,7 +125,7 @@ export default function AccountPage() {
         bsb: form.get("bsb"),
         accountNumber: form.get("accountNumber"),
       }),
-    });
+    }).catch(offline);
 
     setSavingBank(false);
     if (res.ok) {
@@ -225,6 +238,29 @@ export default function AccountPage() {
           </CardContent>
         </Card>
       </form>
+
+      {me.discordBot && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Discord</CardTitle>
+            <CardDescription>
+              {me.discordLinked
+                ? "Your Discord account is linked, so /print works for you. Link again to switch accounts."
+                : "Link your Discord account to send printing requests with /print."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {linkCode ? (
+              <p className="text-sm">
+                In the society&apos;s Discord server, run <code className="rounded bg-muted px-1.5 py-0.5 font-mono">/link {linkCode}</code>.
+                The code works once, for 15 minutes.
+              </p>
+            ) : (
+              <Button type="button" variant="outline" onClick={getLinkCode}>Get a link code</Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

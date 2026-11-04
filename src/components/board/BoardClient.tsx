@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { cn, formatDate } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 export type Lane = "TODO" | "DOING" | "DONE";
 
@@ -27,10 +28,13 @@ const LANES: { id: Lane; label: string }[] = [
   { id: "DONE", label: "Done" },
 ];
 
-// Whether a due date wants attention: red once it's past, amber inside a week.
+// Whether a due date wants attention: red once the day is over, amber inside a week.
+// Due dates are stored as UTC midnight of the typed date, so compare with today's date
+// on this browser's clock, stored the same way.
 function dueTone(due: string | null, lane: Lane): string {
   if (!due || lane === "DONE") return "text-muted-foreground";
-  const days = (new Date(due).getTime() - Date.now()) / 86_400_000;
+  const n = new Date();
+  const days = (new Date(due).getTime() - Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())) / 86_400_000;
   if (days < 0) return "text-red-600 font-medium";
   if (days < 7) return "text-amber-600 font-medium";
   return "text-muted-foreground";
@@ -58,7 +62,7 @@ export function BoardClient({
       method,
       headers: { "Content-Type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    }).catch(offline);
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error ?? "Request failed");

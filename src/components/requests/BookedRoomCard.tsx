@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DoorOpen } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 /**
  * The room Arc actually gave us. Only rendered once the booking is approved — the
@@ -36,7 +37,7 @@ export function BookedRoomCard({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assignedRoom: value.trim() }),
-    });
+    }).catch(offline);
     setSaving(false);
     if (res.ok) {
       // Recording the room closes the booking, so say so rather than letting the

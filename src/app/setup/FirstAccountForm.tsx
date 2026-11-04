@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { offline } from "@/lib/utils";
 
 // The first account on a fresh stack, and the society it runs. See src/lib/setup.ts.
 export function FirstAccountForm({ token, defaultEmail }: { token: string; defaultEmail: string }) {
@@ -32,7 +33,7 @@ export function FirstAccountForm({ token, defaultEmail }: { token: string; defau
         email: form.get("email"),
         password: form.get("password"),
       }),
-    });
+    }).catch(offline);
     if (!res.ok) {
       setLoading(false);
       toast.error((await res.json().catch(() => ({}))).error ?? "Something went wrong. Try again.");

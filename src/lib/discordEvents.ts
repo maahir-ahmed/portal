@@ -14,7 +14,19 @@ import { formatDateTime, formatTimeRange, statusLabel } from "./utils";
 // discordMessageId is also where a request's updates and reminders go.
 
 const TIMEOUT = 5000; // a Discord post is never worth holding a submission open for
-const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+export const cut = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/**
+ * The webhook URL with `path` added and `params` set. Built with URL rather than by
+ * joining strings, because a pasted webhook may already carry a query (?thread_id=…
+ * to post into a thread) that a second "?" would break.
+ */
+export function webhookUrl(base: string, path = "", params: Record<string, string | null | undefined> = {}) {
+  const u = new URL(base);
+  u.pathname = u.pathname.replace(/\/$/, "") + path;
+  for (const [k, v] of Object.entries(params)) if (v) u.searchParams.set(k, v);
+  return u.toString();
+}
 const FORUM_NEEDS_TITLE = 220001; // Discord's error code for a forum post without thread_name
 
 type Sent = { ok: true; id: string; forum: boolean } | { ok: false; status: number };
@@ -30,7 +42,7 @@ export async function postToWebhook(
   opts: { title: string; forum?: boolean; threadId?: string | null }
 ): Promise<Sent> {
   const send = (forum: boolean) =>
-    fetch(`${url}?wait=true${opts.threadId ? `&thread_id=${opts.threadId}` : ""}`, {
+    fetch(webhookUrl(url, "", { wait: "true", thread_id: opts.threadId }), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(TIMEOUT),
@@ -65,7 +77,22 @@ export function eventsWebhook(stored: string | null): string | null {
  * posts `note` (say, "Status changed to Completed by Sam") into its thread. Never
  * throws: a broken webhook must not fail the request that triggered it.
  */
-export async function syncEventToDiscord(contentRequestId: string, note?: string): Promise<void> {
+export function syncEventToDiscord(contentRequestId: string, note?: string): Promise<void> {
+  // One at a time per request: two syncs at once (an edit and a status change landing
+  // together) would both see no message yet and post the event twice.
+  // ponytail: in-process queue, enough for the single app container; a second replica
+  // would need a database lock instead.
+  const next = (syncing.get(contentRequestId) ?? Promise.resolve()).then(() => syncNow(contentRequestId, note));
+  syncing.set(contentRequestId, next);
+  void next.finally(() => {
+    if (syncing.get(contentRequestId) === next) syncing.delete(contentRequestId);
+  });
+  return next;
+}
+
+const syncing = new Map<string, Promise<void>>();
+
+async function syncNow(contentRequestId: string, note?: string): Promise<void> {
   try {
     const r = await prisma.contentRequest.findUnique({
       where: { id: contentRequestId },
@@ -123,7 +150,7 @@ export async function syncEventToDiscord(contentRequestId: string, note?: string
     let messageId = r.discordMessageId;
     if (messageId) {
       // A forum post's starter message lives in its thread, so the edit has to say so.
-      const res = await fetch(`${url}/messages/${messageId}${forum ? `?thread_id=${messageId}` : ""}`, {
+      const res = await fetch(webhookUrl(url, `/messages/${messageId}`, { thread_id: forum ? messageId : null }), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(TIMEOUT),

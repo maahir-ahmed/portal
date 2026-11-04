@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { timeAgo } from "@/lib/utils";
 import { normalisePage, stepsForPage } from "@/lib/tutorial";
+import { offline } from "@/lib/utils";
 
 interface Notification {
   id: string;
@@ -48,7 +49,7 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications?limit=10");
+      const res = await fetch("/api/notifications?limit=10").catch(offline);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data.notifications);
@@ -65,7 +66,7 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
   }, [fetchNotifications]);
 
   async function markAllRead() {
-    await fetch("/api/notifications/read-all", { method: "POST" });
+    await fetch("/api/notifications/read-all", { method: "POST" }).catch(offline);
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
   }
