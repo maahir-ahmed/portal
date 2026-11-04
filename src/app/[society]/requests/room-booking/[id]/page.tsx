@@ -64,7 +64,7 @@ export default async function RoomBookingDetailPage({ params }: Props) {
   if (!booking || booking.societyId !== membership.societyId) notFound();
 
   const isExec = membership.role === "EXECUTIVE";
-  const isLate = isLateArcSubmission(booking.preferredDate, booking.status);
+  const isLate = isLateArcSubmission(booking.preferredDate, booking.status, membership.society.timezone);
 
   const canEdit = isExec || booking.submittedById === session.user.id;
   // Arc names the room when it approves, so the field appears at that point.

@@ -23,6 +23,7 @@ export default async function RoomBookingsPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
 
@@ -84,7 +85,7 @@ export default async function RoomBookingsPage({ params }: Props) {
       ) : (
         <div className="space-y-3">
           {bookings.map((b, i) => {
-            const isLate = isLateArcSubmission(b.preferredDate, b.status);
+            const isLate = isLateArcSubmission(b.preferredDate, b.status, membership.society.timezone);
             return (
               <Link key={b.id} href={`/${societySlug}/requests/room-booking/${b.id}`} data-tour={i === 0 ? "room-card" : undefined}>
                 <Card className={cn("hover:border-foreground/20 transition-colors cursor-pointer", CLOSED.has(b.status) && "opacity-70")}>

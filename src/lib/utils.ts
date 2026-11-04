@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, formatDistanceToNow, differenceInBusinessDays, isSameDay, startOfDay } from "date-fns";
+import { format, formatDistanceToNow, isSameDay } from "date-fns";
+import { wallClockNow } from "./urgency";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -68,8 +69,22 @@ export function timeAgo(date: Date | string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 }
 
-export function businessDaysUntil(date: Date | string): number {
-  return differenceInBusinessDays(new Date(date), new Date());
+const DAY = 86_400_000;
+
+/**
+ * Weekdays from `today` up to and including `date`, both naive dates (a typed-in date
+ * stored as UTC midnight). Counted in UTC so the server's and a browser's own timezone
+ * never shift the day.
+ */
+export function businessDaysUntil(date: Date | string, today: number): number {
+  const from = Math.floor(today / DAY);
+  const to = Math.floor(new Date(date).getTime() / DAY);
+  let n = 0;
+  for (let d = from + 1; d <= to; d++) {
+    const wd = new Date(d * DAY).getUTCDay();
+    if (wd !== 0 && wd !== 6) n++;
+  }
+  return n;
 }
 
 // Statuses where the booking has already reached Arc (or is finished with). Past
@@ -87,10 +102,13 @@ export const bookingDecided = (status: string) => ["APPROVED", "REJECTED", "COMP
  * `businessDaysUntil`: that only goes negative a business day later, so viewed on
  * a weekend or Monday, Friday's event reads as 0 days away and would warn.
  */
-export function isLateArcSubmission(eventDate: Date | string, status?: string): boolean {
+export function isLateArcSubmission(eventDate: Date | string, status: string | undefined, timeZone: string, now = new Date()): boolean {
   if (status && REACHED_ARC.includes(status)) return false;
-  if (new Date(eventDate) < startOfDay(new Date())) return false;
-  return businessDaysUntil(eventDate) < 7;
+  // "Today" on the society's clock: the server runs in UTC, which is still yesterday
+  // for Sydney until 10 or 11 in the morning.
+  const today = Math.floor(wallClockNow(timeZone, now) / DAY) * DAY;
+  if (new Date(eventDate).getTime() < today) return false;
+  return businessDaysUntil(eventDate, today) < 7;
 }
 
 export function formatCurrency(amount: number | string): string {
