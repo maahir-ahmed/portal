@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,8 @@ export default function AccountPage() {
 
     setSavingPassword(false);
     if (res.ok) {
+      // The change signed out every session, this one included, so sign back in.
+      if (me) await signIn("credentials", { email: me.email, password: String(form.get("newPassword")), redirect: false });
       toast.success("Password changed");
       (e.target as HTMLFormElement).reset();
     } else {

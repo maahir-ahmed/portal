@@ -79,6 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           image: user.avatarUrl,
           memberships: user.memberships,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -88,6 +89,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.memberships = user.memberships;
+        token.sv = user.sessionVersion ?? 0;
+      }
+      // A password change, reset or removal bumps the version, which ends every session
+      // issued before it. Tokens from before this check have no sv and count as 0.
+      // ponytail: one indexed lookup per auth() call; cache it if that ever shows up.
+      if (token.id) {
+        const current = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { sessionVersion: true },
+        });
+        if (!current || current.sessionVersion !== (token.sv ?? 0)) return null;
       }
       // Reflect profile edits (name/email) made via the account page without re-login.
       // Read from the database, not the update payload: anyone can call update() with

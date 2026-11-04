@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,13 +28,17 @@ const MIN_LENGTH = 8;
 export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((me: { mustChangePassword?: boolean } | null) => {
-        if (!cancelled && me?.mustChangePassword) setOpen(true);
+      .then((me: { mustChangePassword?: boolean; email?: string } | null) => {
+        if (!cancelled && me?.mustChangePassword) {
+          setEmail(me.email ?? "");
+          setOpen(true);
+        }
       })
       .catch(() => {});
     return () => {
@@ -66,12 +71,15 @@ export function ChangePasswordDialog() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
     });
-    setSaving(false);
 
     if (res.ok) {
+      // The change signed out every session, this one included, so sign back in.
+      await signIn("credentials", { email, password: newPassword, redirect: false });
+      setSaving(false);
       toast.success("Password set. You're all set.");
       setOpen(false);
     } else {
+      setSaving(false);
       const data = await res.json().catch(() => ({}));
       toast.error(data.error ?? "Could not change your password");
     }

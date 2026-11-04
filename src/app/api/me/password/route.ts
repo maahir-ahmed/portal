@@ -36,10 +36,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Your new password must be different" }, { status: 400 });
     }
 
+    // Signs out every other device. The caller signs in again with the new password.
     const passwordHash = await hashPassword(data.newPassword);
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, mustChangePassword: false },
+      data: { passwordHash, mustChangePassword: false, sessionVersion: { increment: 1 } },
     });
 
     return NextResponse.json({ ok: true });

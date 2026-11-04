@@ -114,6 +114,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<Par
     where: { id: membershipId },
     data: { isActive: false },
   });
+  // Their session still lists this society; end it so the next sign-in drops it.
+  await prisma.user.update({ where: { id: target.userId }, data: { sessionVersion: { increment: 1 } } });
 
   await createAuditLog({
     societyId: membership!.societyId,
