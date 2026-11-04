@@ -1,3 +1,4 @@
+import { wallClockNow } from "@/lib/urgency";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -41,6 +42,7 @@ export default async function TreasuryPage({ params, searchParams }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership) redirect("/");
 
@@ -57,7 +59,7 @@ export default async function TreasuryPage({ params, searchParams }: Props) {
     prisma.societyYear.findMany({ where: { societyId: membership.societyId } }),
     prisma.treasuryRequest.aggregate({ where: owner, _min: { expenseDate: true }, _max: { expenseDate: true } }),
   ]);
-  const thisYear = financialYearOf(calendar, new Date());
+  const thisYear = financialYearOf(calendar, new Date(wallClockNow(membership.society.timezone)));
   const year = sp.year === "all" ? null : parseYear(sp.year) ?? thisYear;
   const range = year === null ? null : financialYearRange(calendar, year);
   const years = yearOptions(
