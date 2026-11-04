@@ -32,7 +32,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   const { session, error } = await requireAuth();
   const denied = error ?? (await requireActiveMember(session!.user.id));
   if (denied) {
-    const isLogo = await prisma.society.findFirst({ where: { logoUrl: `/uploads/${safe}` }, select: { id: true } });
+    // Only an image can be a logo: a logoUrl set to a receipt's PDF before new values
+    // were checked must not keep that receipt public.
+    const isImage = /\.(png|jpe?g|gif|webp)$/i.test(safe);
+    const isLogo = isImage && (await prisma.society.findFirst({ where: { logoUrl: `/uploads/${safe}` }, select: { id: true } }));
     if (!isLogo) return denied;
   }
 
