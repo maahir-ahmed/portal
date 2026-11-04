@@ -20,6 +20,8 @@ const schema = z.object({
   accountName: z.string().trim().min(1).max(100),
   bsb: z.string().trim().min(3).max(20),
   accountNumber: z.string().trim().min(3).max(30),
+  // Optional: an email, phone number or ABN registered for PayID.
+  payId: z.string().trim().max(100).optional(),
 });
 
 // Saves the user's bank details as a fresh default row. Old rows are left
@@ -34,7 +36,7 @@ export async function PUT(req: NextRequest) {
     const body = schema.parse(await req.json());
 
     await prisma.bankAccount.updateMany({ where: { userId }, data: { isDefault: false } });
-    const account = await prisma.bankAccount.create({ data: { userId, ...body, isDefault: true } });
+    const account = await prisma.bankAccount.create({ data: { userId, ...body, payId: body.payId || null, isDefault: true } });
 
     // Which account a reimbursement is paid into: worth knowing it changed, and when.
     await auditAccountChange(userId, "BankAccount", { accountName: body.accountName });

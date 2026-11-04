@@ -16,6 +16,7 @@ import {
   UserCog,
   PiggyBank,
   GraduationCap,
+  BookOpen,
   SquareKanban,
   Award,
   ScrollText,
@@ -213,6 +214,16 @@ export function Sidebar({ user, societyName, societySlug, userRole, primaryColor
           <GraduationCap className="h-[18px] w-[18px] flex-shrink-0 text-zinc-500 transition-colors group-hover:text-zinc-300" />
           Take the tour
         </button>
+        <Link
+          href={`${prefix}/help`}
+          className={cn(
+            "group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/[0.04] hover:text-zinc-100",
+            pathname.startsWith(`${prefix}/help`) ? "bg-white/[0.06] text-zinc-100" : "text-zinc-400"
+          )}
+        >
+          <BookOpen className="h-[18px] w-[18px] flex-shrink-0 text-zinc-500 transition-colors group-hover:text-zinc-300" />
+          Help &amp; guides
+        </Link>
       </nav>
 
       {/* User Footer */}

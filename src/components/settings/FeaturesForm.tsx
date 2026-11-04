@@ -51,7 +51,15 @@ const QUESTIONS: { key: Toggle; question: string; hint: string }[] = [
   },
 ];
 
-export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; onSaved?: () => void }) {
+export function FeaturesForm({
+  societySlug,
+  onSaved,
+  submitLabel = "Save",
+}: {
+  societySlug: string;
+  onSaved?: () => void;
+  submitLabel?: string;
+}) {
   const [values, setValues] = useState<ModuleColumns | null>(null);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState({ on: false, smtp: false });
@@ -192,7 +200,7 @@ export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; on
               </p>
               {!email.smtp && (
                 <p className="font-medium">
-                  Email isn&apos;t set up on this server yet (SMTP settings), so nothing will be sent until it is.
+                  Email isn&apos;t set up yet, so nothing will be sent until it is: see Settings › Email.
                 </p>
               )}
             </div>
@@ -201,7 +209,7 @@ export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; on
       </Card>
 
       <Button onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
+        {saving ? "Saving…" : submitLabel}
       </Button>
     </div>
   );

@@ -20,6 +20,7 @@ interface BankAccount {
   accountName: string;
   bsb: string;
   accountNumber: string;
+  payId?: string | null;
 }
 
 interface BudgetCategory {
@@ -135,6 +136,7 @@ export default function NewTreasuryPage() {
       body.bankAccountName = form.get("bankAccountName");
       body.bankBsb = form.get("bankBsb");
       body.bankAccountNumber = form.get("bankAccountNumber");
+      body.bankPayId = form.get("bankPayId");
       body.saveToProfile = !savedAccount; // save to profile only if user has no account yet
     }
 
@@ -345,6 +347,12 @@ export default function NewTreasuryPage() {
                         <p className="font-medium">{savedAccount.accountNumber}</p>
                       </div>
                     </div>
+                    {savedAccount.payId && (
+                      <p className="text-sm">
+                        <span className="text-xs text-muted-foreground">PayID </span>
+                        <span className="font-medium">{savedAccount.payId}</span>
+                      </p>
+                    )}
                   </div>
                 ) : (
                   /* Manual entry */
@@ -367,6 +375,10 @@ export default function NewTreasuryPage() {
                         <Label htmlFor="bankAccountNumber">Account Number *</Label>
                         <Input id="bankAccountNumber" name="bankAccountNumber" placeholder="XXXXXXXXXX" required />
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bankPayId">PayID (optional)</Label>
+                      <Input id="bankPayId" name="bankPayId" placeholder="Email, phone number or ABN" />
                     </div>
                   </div>
                 )}

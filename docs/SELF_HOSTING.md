@@ -122,17 +122,59 @@ https://portal.chesssoc.org/setup?token=4f1c…
 ## 6. Finish setting up in the browser
 
 Open that link. It creates your account (you'll be the first executive), then walks you
-through six short steps: your society's details and timezone, portfolios, which
-features you use, rules for request forms, importing your committee, and Discord.
-Every step except the first can be skipped and changed later in **Settings**.
+through seven short steps: your society's details and timezone, portfolios, which
+features you use, rules for request forms, email, importing your committee, and
+Discord. Every step except the first is optional, and everything in them can be changed
+later in **Settings**. Once you're in, **Help & guides** in the menu has a checklist of
+what's left to set up and a guide to each part of the portal.
 
 The link only works until that first account exists. After that, everyone signs in at
 your web address.
 
 To bring your committee in, use **Import members** (in the wizard, or later in
-Settings): fill in the spreadsheet template and upload it. Nobody is emailed. Each
-person shows as "not invited" on the Members page until you open them and **Issue
-passphrase**, then pass that passphrase on.
+Settings): fill in the spreadsheet template and upload it. The import emails nobody.
+Each person shows as "not invited" on the Members page until you open them and **Issue
+passphrase**. With email set up, that emails them their sign-in details; without it,
+pass the passphrase on yourself.
+
+## 7. Email (optional)
+
+The portal can email new members their sign-in details (and, if an executive turns it
+on in **Settings › Features**, every notification). It needs two things: an account with
+an email service, and a domain you can add DNS records to, such as your society's
+website domain. Both services below have free plans:
+
+| | Free plan | Good for |
+|---|---|---|
+| [Brevo](https://www.brevo.com) | 300 emails a day | Most societies: room to invite a whole committee at once |
+| [Resend](https://resend.com) | 100 emails a day, 3,000 a month | A tidier dashboard; fine if you add people a few at a time |
+
+**Brevo:**
+
+1. Create a free account.
+2. **Senders, Domains & Dedicated IPs › Domains**: add your domain, then add the DNS
+   records it shows. If your domain is on Cloudflare, it can add them for you.
+3. **Senders**: add the address to send from, such as `noreply@chesssoc.org`.
+4. **SMTP & API › SMTP**: generate an SMTP key. The same page shows your SMTP login.
+
+New Brevo accounts sometimes need activating before they can send. If emails don't
+arrive and Brevo's log says the account isn't activated, contact Brevo's support.
+
+**Resend:**
+
+1. Create a free account.
+2. **Domains**: add your domain, add the DNS records it shows (it can add them for you
+   if your domain is on Cloudflare), then click **Verify**.
+3. **API Keys**: create a key with sending access to that domain.
+
+**Then, in the portal:** open **Settings › Email**, pick the service, paste the login
+and key, and enter the address to send as, like `Chess Society <noreply@chesssoc.org>`.
+Save, then click **Send me a test email**: if the service refuses, the page shows its
+reason. (Prefer the command line? `./portal email` in the portal folder does the same;
+settings saved in the portal win over it.)
+
+Mind the daily limit: going over it can get emails refused or the account paused, and
+then sign-in emails stop too. Leave notification emails off unless your plan has room.
 
 ## Everyday use
 
@@ -145,6 +187,7 @@ Run these in the portal folder. On Windows, use
 | `./portal stop` / `./portal start` | Stops or starts the portal |
 | `./portal update` | Takes a backup, then moves to the newest version now |
 | `./portal autoupdate on` / `off` | Turns automatic updates on or off (on after install) |
+| `./portal email` | Sets up email from the command line (usually done in Settings › Email) |
 | `./portal backup` | Takes a backup now |
 | `./portal restore <file>` | Puts a backup back (asks you to confirm first) |
 | `./portal logs` | Shows what the portal is doing, live (Ctrl+C to stop watching) |

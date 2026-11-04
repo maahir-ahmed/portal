@@ -10,13 +10,17 @@ import { TitlesManager } from "@/components/settings/TitlesManager";
 import { FeaturesForm } from "@/components/settings/FeaturesForm";
 import { PoliciesForm } from "@/components/settings/PoliciesForm";
 import { DiscordWebhookSettings } from "@/components/settings/DiscordWebhookSettings";
+import { DiscordReminders } from "@/components/settings/DiscordServerSettings";
 import { MemberImport } from "@/components/settings/MemberImport";
+import { EmailStep } from "./EmailStep";
 import { offline } from "@/lib/utils";
 
 // First-run setup, after the first account exists. Every step is the same component
 // as its Settings tab, so anything skipped or got wrong here is fixed there later.
-// "form" steps save with their own button, which also moves on; "live" steps save
-// each change as it is made, so the footer just moves on.
+// "form" steps save with their own button, which is also the only way on: a separate
+// "skip" beside it dropped whatever had been changed in the form. Saving untouched
+// defaults changes nothing, so it doubles as the skip. "live" steps save each change
+// as it is made, so the footer just moves on.
 type Step = {
   title: string;
   blurb: string;
@@ -46,13 +50,19 @@ const STEPS: Step[] = [
     title: "Features",
     blurb: "Switch off anything your society won't use. Nothing is deleted, and you can switch it back on later.",
     kind: "form",
-    body: (slug, next) => <FeaturesForm societySlug={slug} onSaved={next} />,
+    body: (slug, next) => <FeaturesForm societySlug={slug} onSaved={next} submitLabel="Save and continue" />,
   },
   {
     title: "Rules on request forms",
     blurb: "Optional. Anything your members should agree to before they submit a request.",
     kind: "form",
-    body: (slug, next) => <PoliciesForm societySlug={slug} onSaved={next} />,
+    body: (slug, next) => <PoliciesForm societySlug={slug} onSaved={next} submitLabel="Save and continue" />,
+  },
+  {
+    title: "Email",
+    blurb: "Optional. Let the portal email new members their sign-in details.",
+    kind: "live",
+    body: (slug) => <EmailStep societySlug={slug} />,
   },
   {
     title: "Members",
@@ -68,6 +78,7 @@ const STEPS: Step[] = [
       <div className="space-y-6">
         <DiscordWebhookSettings societySlug={slug} />
         <DiscordWebhookSettings societySlug={slug} channel="events" />
+        <DiscordReminders societySlug={slug} />
       </div>
     ),
   },
@@ -130,13 +141,11 @@ export function SetupWizard({ societySlug, initialStep }: { societySlug: string;
           <Button variant="ghost" onClick={() => go(step - 1)} disabled={busy || step === 0}>
             Back
           </Button>
-          <Button
-            variant={current.kind === "form" && !last ? "outline" : "default"}
-            onClick={() => (last ? finish() : go(step + 1))}
-            disabled={busy}
-          >
-            {last ? "Finish" : current.kind === "form" ? "Skip for now" : "Continue"}
-          </Button>
+          {current.kind === "live" && (
+            <Button onClick={() => (last ? finish() : go(step + 1))} disabled={busy}>
+              {last ? "Finish" : "Continue"}
+            </Button>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">Everything here is also in Settings, to change later.</p>
       </div>

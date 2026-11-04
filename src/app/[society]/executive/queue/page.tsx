@@ -314,6 +314,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                                   <CopyValue label="BSB" value={t.bankAccount.bsb} />
                                   <CopyValue label="Account" value={t.bankAccount.accountNumber} />
                                   <CopyValue label="Name" value={t.bankAccount.accountName} />
+                                  {t.bankAccount.payId && <CopyValue label="PayID" value={t.bankAccount.payId} />}
                                 </>
                               )}
                             </div>

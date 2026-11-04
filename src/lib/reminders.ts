@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
+import { remindersDefault } from "./serverSettings";
 import { eventsWebhook, postToWebhook } from "./discordEvents";
 import { STAGES, urgency } from "./urgency";
 import { formatDateTime } from "./utils";
@@ -23,7 +24,12 @@ export async function sendReminders(now = new Date()): Promise<number> {
       status: { in: [...OPEN] },
       // Only requests already on Discord: that post is what a reminder hangs off.
       discordMessageId: { not: null },
-      society: { eventsWebhookUrl: { not: null }, moduleEvents: true },
+      society: {
+        eventsWebhookUrl: { not: null },
+        moduleEvents: true,
+        // The society's own switch (Settings > Discord), else the env file's DISCORD_REMINDERS.
+        OR: [{ discordReminders: true }, ...(remindersDefault() ? [{ discordReminders: null }] : [])],
+      },
     },
     select: {
       id: true,

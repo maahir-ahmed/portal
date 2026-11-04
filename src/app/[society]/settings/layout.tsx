@@ -33,6 +33,7 @@ export default async function SettingsLayout({
     { href: "/features", label: "Features" },
     { href: "/policies", label: "Policies" },
     { href: "/members", label: "Import members" },
+    { href: "/email", label: "Email" },
     { href: "/discord", label: "Discord" },
     ...(modules.ticketing ? [{ href: "/rubric", label: "Rubric" }] : []),
     ...(debugToolsEnabled() ? [{ href: "/debugging", label: "Debugging", danger: true }] : []),
