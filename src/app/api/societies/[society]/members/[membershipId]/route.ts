@@ -34,6 +34,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   try {
     const body = patchSchema.parse(await req.json());
 
+    // Without an executive nobody can reach Members or Settings to fix it.
+    if (target.role === "EXECUTIVE" && body.role && body.role !== "EXECUTIVE") {
+      const others = await prisma.societyMembership.count({
+        where: { societyId: target.societyId, role: "EXECUTIVE", isActive: true, id: { not: target.id } },
+      });
+      if (others === 0) {
+        return NextResponse.json({ error: "Make someone else an executive first" }, { status: 400 });
+      }
+    }
+
     // Role and title both feed the portfolio, so recompute it when either moves.
     const role = body.role ?? target.role;
     const title = body.title !== undefined ? body.title : target.title;
