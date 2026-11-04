@@ -173,7 +173,9 @@ services:
     image: caddy:2-alpine
     container_name: ${STACK}_caddy
     restart: unless-stopped
-    command: caddy reverse-proxy --from ${DOMAIN:-localhost} --to web:80
+    # nginx takes the client's address from CF-Connecting-IP. Here nothing but Caddy
+    # sits in front, so overwrite it with the real peer rather than pass on a forged one.
+    command: caddy reverse-proxy --from ${DOMAIN:-localhost} --to web:80 --header-up "CF-Connecting-IP: {http.request.remote.host}"
     ports:
       - "80:80"
       - "443:443"
