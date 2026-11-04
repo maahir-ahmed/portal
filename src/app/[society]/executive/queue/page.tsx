@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
+import { wallClockNow } from "@/lib/urgency";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,12 +25,14 @@ export default async function ExecutiveQueuePage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   if (!membership || membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
 
   const societyId = membership.societyId;
 
-  const now = new Date();
+  // Event dates are typed-in wall-clock times, so compare them with the society's clock.
+  const now = new Date(wallClockNow(membership.society.timezone));
   const modules = await modulesForSociety(societyId);
   const [rubricAll, roomAll, reimbursementPending, printingAll, grantsAll] = await Promise.all([
     prisma.contentRequest.findMany({

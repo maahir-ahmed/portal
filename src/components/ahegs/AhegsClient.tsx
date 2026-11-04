@@ -23,6 +23,9 @@ interface Meeting {
 interface Portfolio { id: string; name: string }
 interface Submitter { name: string; zid: string; email: string; phone: string; position: string; club: string }
 
+// Today's date on this browser's clock, for a date input (toISOString alone is UTC's).
+const localToday = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+
 const cell = "w-full rounded border bg-background px-2 py-1 text-sm";
 
 export function AhegsClient({
@@ -400,7 +403,7 @@ export function AhegsClient({
                 <div className="space-y-1">
                   <label htmlFor="meeting-date" className="text-xs font-medium">Date</label>
                   <input id="meeting-date" name="date" type="date" required
-                         defaultValue={new Date().toISOString().slice(0, 10)} className={cell} />
+                         defaultValue={localToday()} className={cell} />
                 </div>
                 <div className="space-y-1">
                   <label htmlFor="meeting-hours" className="text-xs font-medium">Hours</label>
