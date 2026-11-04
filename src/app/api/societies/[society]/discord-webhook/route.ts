@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { encryptSecret, decryptSecret } from "@/lib/secrets";
+import { encryptSecret, decryptSecret, NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
 import { postToWebhook } from "@/lib/discordEvents";
 import { z } from "zod";
 
@@ -82,6 +82,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  if (body.webhookUrl && !secretStorageReady()) {
+    return NextResponse.json({ error: NO_SECRET_KEY }, { status: 400 });
+  }
   const channel = channelOf(req);
   await prisma.society.update({
     where: { id: membership!.societyId },
