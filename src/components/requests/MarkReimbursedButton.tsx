@@ -33,14 +33,15 @@ export function MarkReimbursedButton({
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "REIMBURSED" }),
+      body: JSON.stringify({ status: "REIMBURSED", expectedAmount: amount }),
     });
     setLoading(false);
     if (res.ok) {
       toast.success("Marked as reimbursed");
       router.refresh();
     } else {
-      toast.error("Failed to update");
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Failed to update");
     }
   }
 

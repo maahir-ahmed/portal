@@ -33,9 +33,21 @@ const patchSchema = z.object({
     .array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here") }))
     .optional(),
   removeReceiptIds: z.array(z.string()).optional(),
+  // Sent with "Mark reimbursed": the amount the exec saw and transferred. The write
+  // refuses if the claim no longer has it.
+  expectedAmount: z.number().nonnegative().finite().optional(),
   // Sent with a draft submit when the policy wasn't ticked at draft time.
   acknowledgedRules: z.literal(true).optional(),
 });
+
+// "before → after" for each of the claim's fields that this edit actually changed.
+const TRACKED = ["amount", "description", "locationSupplier", "contactEmail", "expenseDate", "contentRequestId", "budgetCategoryId"] as const;
+const show = (v: unknown) => (v == null ? "none" : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 200));
+function changes(before: Record<string, unknown>, after: Record<string, unknown>) {
+  return Object.fromEntries(
+    TRACKED.filter((k) => show(before[k]) !== show(after[k])).map((k) => [k, `${show(before[k])} → ${show(after[k])}`])
+  );
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { session, error: authErr } = await requireAuth();
@@ -124,9 +136,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // so an edit can't land on a claim an executive has just started paying, or has paid:
   // the amount they confirmed is the amount recorded.
   const ownerGuard = isExec ? {} : { status: isOwnerSubmit ? ("DRAFT" as const) : { in: EDITABLE_STATUSES } };
+  const amountGuard = body.status === "REIMBURSED" && body.expectedAmount !== undefined ? { amount: body.expectedAmount } : {};
   const updated = await prisma.treasuryRequest
     .update({
-      where: { id, ...ownerGuard },
+      where: { id, ...ownerGuard, ...amountGuard },
       data: {
         ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
         ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
@@ -171,7 +184,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     action: body.status ? "STATUS_CHANGE" : "UPDATE",
     entityType: "TreasuryRequest",
     entityId: id,
-    ...(body.status ? { metadata: { from: request.status, to: body.status } } : {}),
+    metadata: {
+      ...(body.status ? { from: request.status, to: body.status } : {}),
+      ...changes(request, updated),
+    },
   });
 
   // Joining the payout queue (a draft being submitted) alerts the execs, exactly
