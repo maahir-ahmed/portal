@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Users, Download } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
+import { csvCell } from "@/lib/csv";
 
 type Filter = "active" | "expired" | "pending";
 
@@ -53,7 +54,7 @@ export default function RubricMembersPage() {
   function exportCsv() {
     if (members.length === 0) return;
     const header = "Name,Email,Student Number,Degree,Study Year,Membership,Joined,Phone";
-    const cell = (v?: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+    const cell = (v?: string) => csvCell(v ?? "");
     const rows = members.map((m) =>
       [
         cell(m.fullname), cell(m.email), cell(m.responses?.["Student Number"]),

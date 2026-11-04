@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, ArrowLeft, ExternalLink, Ticket, MapPin, Calendar, Users, DollarSign, Download, Search } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
+import { csvCell } from "@/lib/csv";
 
 interface EventDetail {
   eventname?: string;
@@ -112,7 +113,7 @@ export default function RubricEventDetailPage() {
   // every ticket, and a half-empty attendance sheet is easy to hand over by accident.
   function exportAttendanceCsv() {
     if (shownTickets.length === 0) return;
-    const cell = (v: unknown) => `"${fmt(v).replace(/"/g, '""')}"`;
+    const cell = (v: unknown) => csvCell(fmt(v));
     const header = columns.map(cell).join(",");
     const rows = shownTickets.map((t) => columns.map((c) => cell(t[c])).join(","));
     const csv = [header, ...rows].join("\n");

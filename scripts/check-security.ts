@@ -6,6 +6,7 @@ import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
 import { isPlausibleDate, safeCallback } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
+import { csvCell } from "../src/lib/csv";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
 // Member-typed text in an executive's notification email stays text.
@@ -55,5 +56,10 @@ for (let i = 0; i < 10; i++) recordFailure(limits, now);
 assert.ok(isLimited(limits, now), "the tenth wrong password locks the account");
 assert.ok(isLimited(passwordLimits("jane@example.com", new Headers()), now), "case doesn't dodge the lock");
 assert.ok(!isLimited(limits, now + 16 * 60_000), "the lock lifts after the window");
+
+// Spreadsheet exports: a ticket holder named "=HYPERLINK(...)" stays text.
+assert.equal(csvCell('=HYPERLINK("http://evil","x")'), `"'=HYPERLINK(""http://evil"",""x"")"`);
+assert.equal(csvCell("@SUM(A1)"), `"'@SUM(A1)"`);
+assert.equal(csvCell("Ada Lovelace"), `"Ada Lovelace"`, "ordinary text is unchanged");
 
 console.log("✅ security: audit fixes still in place");
