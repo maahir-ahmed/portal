@@ -77,7 +77,22 @@ export function eventsWebhook(stored: string | null): string | null {
  * posts `note` (say, "Status changed to Completed by Sam") into its thread. Never
  * throws: a broken webhook must not fail the request that triggered it.
  */
-export async function syncEventToDiscord(contentRequestId: string, note?: string): Promise<void> {
+export function syncEventToDiscord(contentRequestId: string, note?: string): Promise<void> {
+  // One at a time per request: two syncs at once (an edit and a status change landing
+  // together) would both see no message yet and post the event twice.
+  // ponytail: in-process queue, enough for the single app container; a second replica
+  // would need a database lock instead.
+  const next = (syncing.get(contentRequestId) ?? Promise.resolve()).then(() => syncNow(contentRequestId, note));
+  syncing.set(contentRequestId, next);
+  void next.finally(() => {
+    if (syncing.get(contentRequestId) === next) syncing.delete(contentRequestId);
+  });
+  return next;
+}
+
+const syncing = new Map<string, Promise<void>>();
+
+async function syncNow(contentRequestId: string, note?: string): Promise<void> {
   try {
     const r = await prisma.contentRequest.findUnique({
       where: { id: contentRequestId },
