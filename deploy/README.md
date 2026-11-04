@@ -1,18 +1,13 @@
-# Deploy (one server, several portals, GitHub Actions)
+# Deploy (GitHub Actions)
 
-For running several portals on one Ubuntu box behind a cloudflared tunnel, deployed on
-every push. A single self-hosted portal doesn't need any of this: see
-[docs/SELF_HOSTING.md](../docs/SELF_HOSTING.md).
+For running the portal on an Ubuntu box behind a cloudflared tunnel, built from source
+and deployed on every push. Installing a portal from the published images doesn't need
+any of this: see [docs/SELF_HOSTING.md](../docs/SELF_HOSTING.md).
 
-Each branch deploys to the stacks listed for it in
-[.github/workflows/deploy.yml](../.github/workflows/deploy.yml), as `project:envfile` pairs:
-- `main` → the production stacks, one per society (private, login required)
+Each branch deploys to the stack listed for it in
+[.github/workflows/deploy.yml](../.github/workflows/deploy.yml), as a `project:envfile` pair:
+- `main` → the production stack (private, login required)
 - `demo` → a public showcase stack (`DEMO_MODE=1`)
-
-Every stack on `main` runs the same code with its own database, uploads, backups and
-secrets. To add another society, copy an env file with a new `STACK`, `APP_PORT`,
-`SOCIETY_SLUG` and fresh secrets, add its `project:envfile` pair to the workflow, and
-point a tunnel hostname at the port.
 
 `dev` is the working branch and deploys nowhere. Move the demo forward by merging into `demo`.
 

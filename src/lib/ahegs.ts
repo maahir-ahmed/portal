@@ -31,17 +31,17 @@ export const TEMPLATES: Record<
   { file: string; headings: string[]; hasPosition: boolean }
 > = {
   EXECUTIVE: {
-    file: "Executive AHEGS Information Template_1.xlsx",
+    file: "ahegs/executive.xlsx",
     headings: ["Full name", "zID", "Email", "Executive position", "Date elected", "Period end"],
     hasPosition: true,
   },
   MENTOR: {
-    file: "Mentors AHEGS Information Template_1.xlsx",
+    file: "ahegs/mentors.xlsx",
     headings: ["Full name", "zID", "Email", "Mentoring start", "Mentoring end"],
     hasPosition: false,
   },
   SUBCOMMITTEE: {
-    file: "Sub-Committee AHEGS Information Template_1.xlsx",
+    file: "ahegs/subcommittee.xlsx",
     headings: ["Full name", "zID", "Email", "Sub-committee position", "Start date", "End date"],
     hasPosition: true,
   },
