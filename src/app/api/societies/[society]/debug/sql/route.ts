@@ -56,7 +56,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       await client.connect();
       await client.query("BEGIN");
       await client.query("SET LOCAL statement_timeout = '5min'");
-      const raw = await client.query(sql);
+      // Waiting on a lock the live app holds would stall the site behind it; give up instead.
+      await client.query("SET LOCAL lock_timeout = '10s'");
+      // Rows as arrays: as objects, two columns of the same name (a join's two ids)
+      // would collapse into one.
+      const raw = await client.query({ text: sql, rowMode: "array" });
       await client.query("COMMIT");
       // One statement gives one result, several give an array.
       const all = (Array.isArray(raw) ? raw : [raw]) as pg.QueryResult[];
@@ -66,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           command: r.command,
           rowCount: r.rowCount,
           columns: r.fields?.map((f) => f.name) ?? [],
-          rows: (r.rows ?? []).slice(0, MAX_ROWS).map((row) => Object.values(row).map(plain)),
+          rows: ((r.rows ?? []) as unknown as unknown[][]).slice(0, MAX_ROWS).map((row) => row.map(plain)),
           truncated: (r.rows?.length ?? 0) > MAX_ROWS,
         })),
       };
