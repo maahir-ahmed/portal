@@ -70,7 +70,9 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
         // Shown once and nowhere else, so it stays up until dismissed rather than
         // timing out while the exec is switching to Discord to send it on.
         toast.success(`Member added. Temporary passphrase: ${data.tempPassword}`, {
-          description: "Copy and share it now. They'll choose their own password when they sign in.",
+          description: data.emailed
+            ? "We've emailed it to them. They'll choose their own password when they sign in."
+            : "Copy and share it now. They'll choose their own password when they sign in.",
           duration: Infinity,
           closeButton: true,
         });
