@@ -77,7 +77,7 @@ async function route(req: NextAuthRequest, origin: string) {
     pathname.startsWith("/_next") || pathname.startsWith("/uploads");
 
   // CSRF: the session cookie is SameSite=Lax, which still sends it from a sibling
-  // subdomain (any *.maahir.dev page is "same site"). A browser names the page a write
+  // subdomain (any *.example.com page is "same site" with portal.example.com). A browser names the page a write
   // came from in Origin, so a write from anywhere but here is refused. No Origin means
   // not a browser (curl, the updater), which carries no cookie to abuse.
   if (pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(req.method) && !isDiscord && !isUpdater) {

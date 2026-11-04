@@ -1,9 +1,13 @@
-# Deploy (home server, Ubuntu + cloudflared)
+# Deploy (one server, several portals, GitHub Actions)
 
-Two stacks behind your existing cloudflared tunnel:
-- `main` branch → **rubric_prod** → your production hostname (private, login required)
-- `demo` branch → **rubric_dev** → your demo hostname (public showcase, `DEMO_MODE=1`)
-- `main` branch → **pcsoc_portal** → portal.unswpcsoc.com (UNSW PC Society, port 3003, `deploy/.env.pcsoc`)
+For running several portals on one Ubuntu box behind a cloudflared tunnel, deployed on
+every push. A single self-hosted portal doesn't need any of this: see
+[docs/SELF_HOSTING.md](../docs/SELF_HOSTING.md).
+
+Each branch deploys to the stacks listed for it in
+[.github/workflows/deploy.yml](../.github/workflows/deploy.yml), as `project:envfile` pairs:
+- `main` → the production stacks, one per society (private, login required)
+- `demo` → a public showcase stack (`DEMO_MODE=1`)
 
 Every stack on `main` runs the same code with its own database, uploads, backups and
 secrets. To add another society, copy an env file with a new `STACK`, `APP_PORT`,
@@ -39,19 +43,19 @@ point a tunnel hostname at the port.
    ```
    The runner needs docker access (its user in the `docker` group).
 
-6. **First deploy:** push to `demo` and `main`, or run manually:
+5. **First deploy:** push to `demo` and `main`, or run manually:
    ```bash
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml up -d --build --remove-orphans
    ```
 
-7. **First account** (once per stack). For a new society, put a long random
+6. **First account** (once per stack). For a new society, put a long random
    `SETUP_TOKEN` (`openssl rand -hex 24`) and optionally `ADMIN_EMAIL` in the env file
    before the first deploy, then open `https://<domain>/setup?token=<SETUP_TOKEN>`. It
    creates the first executive and the society (slug `SOCIETY_SLUG`), then runs the setup
    wizard. The token only works while the database has no accounts, so it can stay set.
 
-   The SecSoc demo data comes from the seed instead (it creates UNSW Security Society
-   and its accounts, already marked as set up). The app runs `db push` on startup, so the
+   A demo stack gets its data from the seed instead (a sample society and its accounts,
+   already marked as set up). The app runs `db push` on startup, so the
    schema already exists:
    ```bash
    docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml --profile seed run --rm seed
@@ -81,24 +85,24 @@ $C run --rm backup once
 docker logs rubric_prod_backup
 
 # check an archive is whole before relying on it
-$C run --rm backup validate /backups/rubric_prod_2026-11-03_030000.tar.gz
+$C run --rm backup validate /backups/rubric_prod_<date>_<time>.tar.gz
 
 # restore: stop the app (the web container shows the maintenance page meanwhile),
 # replace the database and uploads, start it again (which brings the schema up to date)
 $C stop app
-$C run --rm backup restore /backups/rubric_prod_2026-11-03_030000.tar.gz
+$C run --rm backup restore /backups/rubric_prod_<date>_<time>.tar.gz
 $C start app
 ```
 
 The restore replaces the whole database in one transaction, so a dump that fails
-partway changes nothing. Backups from before November 2026 are two files,
+partway changes nothing. Backups from before the single-archive format are two files,
 `<stack>_<date>.sql.gz` and `<stack>_uploads_<date>.tar.gz`; restore those by hand:
 
 ```bash
-gunzip -c ~/containers/rubric-backups/rubric_prod_2026-08-28_0300.sql.gz \
+gunzip -c ~/containers/rubric-backups/rubric_prod_<date>.sql.gz \
   | docker exec -i rubric_prod-db-1 psql -U society_user -d society_platform
 docker run --rm -v rubric_prod_uploads_data:/uploads -v ~/containers/rubric-backups:/b alpine \
-  tar xzf /b/rubric_prod_uploads_2026-08-28_0300.tar.gz -C /uploads
+  tar xzf /b/rubric_prod_uploads_<date>.tar.gz -C /uploads
 ```
 
 ## Debugging tab
@@ -116,7 +120,7 @@ cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere
 ## Discord reminders and the /print bot
 
 Deadline reminders are off on a stack until `DISCORD_REMINDERS=on` is in its env file
-(the self-host installer sets it), so upgrading SecSoc or PCSoc changes nothing until
+(the self-host installer sets it), so upgrading an existing stack changes nothing until
 you add it. Then a timer in `src/instrumentation.ts` checks every 10 minutes, and does
 nothing for a society without an events webhook. The first pass only records where each
 open request stands, so nothing pings until a request's deadline actually moves into a
@@ -128,7 +132,7 @@ The `/print` bot is a spike, off unless `ENABLE_DISCORD_BOT=true` with `DISCORD_
 
 ## Demo stack (no login)
 
-`rubric_dev` is a public showcase, not a staging copy of prod. Set in `deploy/.env.dev`:
+The demo stack (`rubric_dev` here) is a public showcase, not a staging copy of prod. Set in `deploy/.env.dev`:
 
 ```
 DEMO_MODE=1
@@ -194,7 +198,7 @@ The differences are all settings in that stack's `portal.env`, written by `./por
 
 Pushing `main` deploys the hosted stacks, as before, and publishes `latest`. Self-hosted
 portals don't follow `latest`: they follow the `1` tag, which moves only when you tag a
-release. So check a change on SecSoc and PCSoc first, then:
+release. So check a change on the hosted stacks first, then:
 
 ```bash
 git tag v1.4.0 && git push origin v1.4.0

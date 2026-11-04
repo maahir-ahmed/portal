@@ -32,7 +32,7 @@ member types /print in Discord
 - **The command registers itself.** On every start with the bot on, the app replaces the
   app's command list with `/print` (`registerCommands`), so a changed option reaches
   Discord with the next deploy and there's no registration script to run.
-- **Options:** file (required), copies, pages per copy, pickup time (`2026-11-20 14:00`),
+- **Options:** file (required), copies, pages per copy, pickup time (`YYYY-MM-DD HH:MM`),
   and optionally paper size, sides, colour and notes. Size, sides and colour are
   dropdowns, so they can't be mistyped.
 - **Same rules as the website:** the file type allowlist and size limit
