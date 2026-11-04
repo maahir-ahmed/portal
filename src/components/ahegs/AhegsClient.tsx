@@ -27,8 +27,9 @@ const cell = "w-full rounded border bg-background px-2 py-1 text-sm";
 
 export function AhegsClient({
   societySlug, year, years, scope, rows: initialRows, meetings,
-  portfolios, evidence, submitter,
+  portfolios, evidence, submitter, ownMembershipId,
 }: {
+  ownMembershipId: string;
   societySlug: string; year: number; years: number[]; scope: AhegsScope;
   rows: RosterRow[]; meetings: Meeting[]; portfolios: Portfolio[];
   evidence: Evidence[]; submitter: Submitter;
@@ -655,7 +656,10 @@ export function AhegsClient({
             {tabRows.map((row) => {
               const problems = row.included ? rowProblems(row) : [];
               return (
-                <tr key={row.membershipId} className={cn(!row.included && "opacity-45")}>
+                // A director's own hours are for an executive to set, not themselves.
+                <tr key={row.membershipId} className={cn(!row.included && "opacity-45")}
+                    inert={!scope.isExec && row.membershipId === ownMembershipId}
+                    title={!scope.isExec && row.membershipId === ownMembershipId ? "An executive edits your own row" : undefined}>
                   <td className="p-2 align-top">
                     <input type="checkbox" checked={row.included}
                            onChange={(e) => edit(row.membershipId, { included: e.target.checked })}

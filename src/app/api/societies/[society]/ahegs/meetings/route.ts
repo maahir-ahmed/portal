@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
+import { createAuditLog } from "@/lib/audit";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
 import { ahegsYearOf } from "@/lib/years";
@@ -77,6 +78,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       include: { attendees: { select: { membershipId: true } } },
     });
 
+    await createAuditLog({
+      societyId: membership.societyId, userId: session.user.id, action: "CREATE", entityType: "AhegsMeeting",
+      entityId: meeting.id, metadata: { title: body.title, hours: body.hours, attendees: attendees.length },
+    });
     return NextResponse.json(meeting, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {

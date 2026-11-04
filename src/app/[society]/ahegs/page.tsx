@@ -140,6 +140,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
         year={year}
         years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2].filter((y) => y >= FIRST_YEAR)}
         scope={scope}
+        ownMembershipId={membership.id}
         rows={rows}
         meetings={meetings}
         portfolios={portfolios}

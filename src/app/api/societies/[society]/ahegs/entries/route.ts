@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 // One member's corrections for one year's submission. The row is created on first
@@ -25,7 +26,7 @@ const day = (v: string | null | undefined) => (v ? new Date(`${v}T00:00:00Z`) : 
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { society } = await params;
-  const { membership, scope, error } = await requireAhegsAccess(society);
+  const { session, membership, scope, error } = await requireAhegsAccess(society);
   if (error) return error;
 
   try {
@@ -36,6 +37,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     // id, and an exec could reach another club's member.
     const target = await membershipsInScope(membership.societyId, scope, [body.membershipId]);
     if (target === null) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    // Category and hours decide a director's own recognition, so an executive sets them.
+    if (!scope.isExec && body.membershipId === membership.id) {
+      return NextResponse.json({ error: "An executive edits your own row" }, { status: 403 });
+    }
 
     const data = {
       category: body.category,
@@ -53,6 +58,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
       where: { membershipId_year: { membershipId: body.membershipId, year: body.year } },
       create: { societyId: membership.societyId, membershipId: body.membershipId, year: body.year, ...data },
       update: data,
+    });
+    await createAuditLog({
+      societyId: membership.societyId,
+      userId: session.user.id,
+      action: "UPDATE",
+      entityType: "AhegsEntry",
+      entityId: body.membershipId,
+      metadata: { year: body.year, category: body.category, included: body.included, hoursAdjustment: data.hoursAdjustment },
     });
 
     return NextResponse.json({ ok: true });
