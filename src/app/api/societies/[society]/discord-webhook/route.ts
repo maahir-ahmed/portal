@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { encryptSecret, decryptSecret, NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
+import { demoEnabled } from "@/lib/rubricDemo";
 import { postToWebhook } from "@/lib/discordEvents";
 import { z } from "zod";
 
@@ -71,6 +72,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
   const { society } = await params;
   const { membership, error } = await requireExec(session!.user.id, society);
   if (error) return error;
+
+  // Every demo visitor is an executive: one could point the demo's posts at their own
+  // server, or at someone else's webhook to spam it.
+  if (demoEnabled()) {
+    return NextResponse.json({ error: "Webhooks can't be changed on the public demo" }, { status: 403 });
+  }
 
   let body;
   try {
