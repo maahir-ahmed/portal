@@ -19,7 +19,6 @@ export const BASE_POLICY: Record<PolicyKind, string[]> = {
     "Alcohol and alcoholic beverages are NOT reimbursable under any circumstances.",
     "Personal transport (Uber, taxi, fuel) is NOT reimbursable unless explicitly pre-approved in writing.",
     "Claims submitted more than 3 weeks after the purchase date may not be reimbursed.",
-    "Bonding money (held deposits) must be pre-approved and will only be reimbursed once returned.",
   ],
   PRINTING: [
     "Requests with less than two full business days' notice may not be processed at all.",
