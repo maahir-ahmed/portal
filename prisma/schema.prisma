@@ -298,7 +298,7 @@ model User {
   discordUserId    String?   @unique
   // A one-time code from the Account page, redeemed with /link in Discord to set
   // discordUserId. Stored as its sha256; good for 15 minutes.
-  discordLinkCode    String?   @unique
+  discordLinkCode    String?
   discordLinkExpires DateTime?
   twoFactorEnabled Boolean   @default(false)
   twoFactorSecret  String?

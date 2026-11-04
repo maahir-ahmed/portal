@@ -125,7 +125,9 @@ export async function handleLink(i: Interaction): Promise<string> {
   const discordUser = i.member?.user ?? i.user;
   if (!discordUser || i.guild_id !== process.env.DISCORD_GUILD_ID) return "Use /link in your society's server.";
   const code = String(i.data.options?.find((o) => o.name === "code")?.value ?? "");
-  const user = await prisma.user.findUnique({
+  // ponytail: no unique index (adding one makes db push stop a self-hosted start);
+  // eight random characters don't collide, and an expired code is refused anyway.
+  const user = await prisma.user.findFirst({
     where: { discordLinkCode: hashCode(code) },
     select: { id: true, name: true, discordLinkExpires: true },
   });
