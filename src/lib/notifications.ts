@@ -26,12 +26,15 @@ export async function createNotification({
   if (sendEmailNotification) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user?.email) {
-      await sendEmail({
+      // Not awaited: the in-app notification is written, and the person who triggered
+      // it shouldn't wait on (or fail with) the mail server. The server process keeps
+      // running, so the send finishes after the response.
+      void sendEmail({
         to: user.email,
         subject: title,
         html: notificationEmail(title, body, link),
         text: body,
-      }).catch(() => {}); // don't fail the request if email fails
+      }).catch((err) => console.warn("Email failed:", err instanceof Error ? err.message : err));
     }
   }
 

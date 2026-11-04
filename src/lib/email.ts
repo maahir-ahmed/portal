@@ -1,9 +1,17 @@
 import nodemailer from "nodemailer";
 
+const port = Number(process.env.SMTP_PORT ?? 587);
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT ?? 587),
-  secure: false,
+  port,
+  // 465 is TLS from the start; anything else must upgrade with STARTTLS, or the
+  // password would cross the network in the clear when a server doesn't offer it.
+  secure: port === 465,
+  requireTLS: port !== 465,
+  // A hung mail server must not hold sockets open forever.
+  connectionTimeout: 10_000,
+  greetingTimeout: 10_000,
+  socketTimeout: 20_000,
   auth:
     process.env.SMTP_USER
       ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
