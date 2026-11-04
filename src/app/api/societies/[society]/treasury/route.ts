@@ -68,62 +68,67 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       }
     }
 
-    let bankAccountId: string | null = null;
+    // One transaction: a failure part way must not leave a new bank account, or a claim
+    // without its receipts or thread, behind.
+    const request = await prisma.$transaction(async (tx) => {
+      let bankAccountId: string | null = null;
 
-    if (!body.useExistingBank && body.bankAccountName && body.bankBsb && body.bankAccountNumber) {
-      // Check if user already has a bank account on file
-      const existingCount = await prisma.bankAccount.count({ where: { userId: session!.user.id } });
-      const account = await prisma.bankAccount.create({
+      if (!body.useExistingBank && body.bankAccountName && body.bankBsb && body.bankAccountNumber) {
+        // Check if user already has a bank account on file
+        const existingCount = await tx.bankAccount.count({ where: { userId: session!.user.id } });
+        const account = await tx.bankAccount.create({
+          data: {
+            userId: session!.user.id,
+            accountName: body.bankAccountName,
+            bsb: body.bankBsb,
+            accountNumber: body.bankAccountNumber,
+            isDefault: existingCount === 0, // first account becomes default
+          },
+        });
+        bankAccountId = account.id;
+      } else if (body.useExistingBank) {
+        // Must match the ordering in GET /api/me/bank-account — that is the account
+        // the form showed the submitter. A one-off account typed into an earlier claim
+        // is newer but not default, and would otherwise be picked instead.
+        const existing = await tx.bankAccount.findFirst({
+          where: { userId: session!.user.id },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+        });
+        bankAccountId = existing?.id ?? null;
+      }
+
+      const request = await tx.treasuryRequest.create({
         data: {
-          userId: session!.user.id,
-          accountName: body.bankAccountName,
-          bsb: body.bankBsb,
-          accountNumber: body.bankAccountNumber,
-          isDefault: existingCount === 0, // first account becomes default
+          societyId: membership!.societyId,
+          submittedById: session!.user.id,
+          contactEmail: body.contactEmail || "",
+          expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
+          locationSupplier: body.locationSupplier || "",
+          description: body.description || "",
+          amount: body.amount ?? 0,
+          bankAccountId,
+          budgetCategoryId: body.budgetCategoryId ?? null,
+          contentRequestId: body.contentRequestId ?? null,
+          acknowledgedRules: body.acknowledgedRules ?? false,
+          status: body.status, // "DRAFT" or "REIMBURSEMENT_PENDING"
         },
       });
-      bankAccountId = account.id;
-    } else if (body.useExistingBank) {
-      // Must match the ordering in GET /api/me/bank-account — that is the account
-      // the form showed the submitter. A one-off account typed into an earlier claim
-      // is newer but not default, and would otherwise be picked instead.
-      const existing = await prisma.bankAccount.findFirst({
-        where: { userId: session!.user.id },
-        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-      });
-      bankAccountId = existing?.id ?? null;
-    }
 
-    const request = await prisma.treasuryRequest.create({
-      data: {
-        societyId: membership!.societyId,
-        submittedById: session!.user.id,
-        contactEmail: body.contactEmail || "",
-        expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
-        locationSupplier: body.locationSupplier || "",
-        description: body.description || "",
-        amount: body.amount ?? 0,
-        bankAccountId,
-        budgetCategoryId: body.budgetCategoryId ?? null,
-        contentRequestId: body.contentRequestId ?? null,
-        acknowledgedRules: body.acknowledgedRules ?? false,
-        status: body.status, // "DRAFT" or "REIMBURSEMENT_PENDING"
-      },
+      if (body.receiptUrls?.length) {
+        await tx.treasuryAttachment.createMany({
+          data: body.receiptUrls.map((url: string) => ({
+            treasuryRequestId: request.id,
+            fileName: url.split("/").pop() ?? "receipt",
+            fileUrl: url,
+            fileSize: 0,
+            mimeType: "application/octet-stream",
+          })),
+        });
+      }
+
+      await tx.thread.create({ data: { treasuryRequestId: request.id } });
+      return request;
     });
-
-    if (body.receiptUrls?.length) {
-      await prisma.treasuryAttachment.createMany({
-        data: body.receiptUrls.map((url: string) => ({
-          treasuryRequestId: request.id,
-          fileName: url.split("/").pop() ?? "receipt",
-          fileUrl: url,
-          fileSize: 0,
-          mimeType: "application/octet-stream",
-        })),
-      });
-    }
-
-    await prisma.thread.create({ data: { treasuryRequestId: request.id } });
 
     await createAuditLog({
       societyId: membership!.societyId,
