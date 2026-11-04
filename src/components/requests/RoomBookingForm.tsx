@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { EVENT_TYPES } from "@/lib/utils";
 import Link from "next/link";
+import { offline } from "@/lib/utils";
 
 const LOCATIONS = [
   { value: "LECTURE_THEATRE", label: "Lecture Theatre" },
@@ -85,7 +86,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }
-    );
+    ).catch(offline);
 
     setLoading(false);
     if (res.ok) {

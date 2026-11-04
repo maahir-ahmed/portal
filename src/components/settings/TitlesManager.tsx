@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface SocietyTitle {
   id: string;
@@ -66,7 +67,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
         roleLevel,
         portfolioId: newPortfolioId === NO_PORTFOLIO ? null : newPortfolioId,
       }),
-    });
+    }).catch(offline);
     setLoading(false);
     if (res.ok) {
       toast.success("Title added");
@@ -87,7 +88,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: editValue.trim() }),
-    });
+    }).catch(offline);
     setLoading(false);
     if (res.ok) {
       toast.success("Title renamed");
@@ -104,7 +105,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ portfolioId: value === NO_PORTFOLIO ? null : value }),
-    });
+    }).catch(offline);
     setLoading(false);
     if (res.ok) {
       toast.success("Portfolio updated, members holding this title moved with it");
@@ -116,7 +117,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete title "${name}"?`)) return;
-    const res = await fetch(`/api/societies/${societySlug}/titles/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/societies/${societySlug}/titles/${id}`, { method: "DELETE" }).catch(offline);
     if (res.ok) {
       toast.success("Title removed");
       load();

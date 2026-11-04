@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { IMPORT_TEMPLATE, type ImportCheck } from "@/lib/memberImport";
 import { cn } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 const STATUS = {
   add: { label: "Will add", className: "bg-green-100 text-green-800" },
@@ -25,7 +26,7 @@ export function MemberImport({ societySlug, onImported }: { societySlug: string;
 
   async function send(f: File, dryRun: boolean) {
     const q = new URLSearchParams({ name: f.name, ...(dryRun ? { dryRun: "1" } : {}) });
-    const res = await fetch(`/api/societies/${societySlug}/members/import?${q}`, { method: "POST", body: f });
+    const res = await fetch(`/api/societies/${societySlug}/members/import?${q}`, { method: "POST", body: f }).catch(offline);
     return { ok: res.ok, data: (await res.json().catch(() => ({ error: "Something went wrong" }))) as ImportCheck & { added?: number } };
   }
 

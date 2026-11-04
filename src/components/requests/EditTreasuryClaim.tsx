@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Upload, X, FileText, Loader2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 interface Receipt { id: string; fileName: string; fileUrl: string; }
 interface LinkableEvent { id: string; eventName: string; startDate: string; }
@@ -76,7 +77,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
     for (const file of Array.from(files)) {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/upload", { method: "POST", body: fd }).catch(offline);
       if (res.ok) {
         const { url } = await res.json();
         setNewFiles((p) => [...p, { fileName: file.name, fileUrl: url }]);
@@ -102,7 +103,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
         addReceipts: newFiles,
         removeReceiptIds: removedIds,
       }),
-    });
+    }).catch(offline);
     setSaving(false);
     if (res.ok) {
       toast.success("Claim updated");

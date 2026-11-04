@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { KeyRound, Loader2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 // Shown when an executive issued the password (a new member, or a reset), until
 // the member picks their own. Blocking on purpose: no X, no Escape, no clicking
@@ -70,7 +71,7 @@ export function ChangePasswordDialog() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
-    });
+    }).catch(offline);
 
     if (res.ok) {
       // The change signed out every session, this one included, so sign back in.

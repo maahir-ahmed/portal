@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarSearch, Loader2 } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
 import { flattenEvents, type RubricEvent } from "@/lib/rubricEvents";
+import { offline } from "@/lib/utils";
 
 interface Props {
   societySlug: string;
@@ -57,7 +58,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
           rubricEventLink: event.purchaseurl,
           markSubmitted: false,
         }),
-      });
+      }).catch(offline);
       if (res.ok) {
         toast.success("Rubric event assigned");
         setOpen(false);

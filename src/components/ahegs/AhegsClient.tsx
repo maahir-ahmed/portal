@@ -14,6 +14,7 @@ import {
   groupLabel, rowProblems, type AhegsScope, type RosterRow,
 } from "@/lib/ahegs";
 import type { AhegsCategory, AhegsEvidenceKind } from "@prisma/client";
+import { offline } from "@/lib/utils";
 
 interface Evidence { category: AhegsCategory; kind: AhegsEvidenceKind; url: string; label: string | null }
 interface Meeting {
@@ -92,7 +93,7 @@ export function AhegsClient({
       method,
       headers: { "Content-Type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    }).catch(offline);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Request failed");
     return res.json().catch(() => ({}));
   }
@@ -127,7 +128,7 @@ export function AhegsClient({
     // Minutes are PDF-only: they get split and merged into the files Arc asks for.
     // Evidence an exec uploads by hand is whatever Arc will take.
     if (accept) body.append("accept", accept);
-    const res = await fetch("/api/upload", { method: "POST", body });
+    const res = await fetch("/api/upload", { method: "POST", body }).catch(offline);
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Upload failed");
     return res.json();
   }

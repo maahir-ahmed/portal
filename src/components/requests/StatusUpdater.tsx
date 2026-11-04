@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { statusLabel } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 interface Member {
   id: string;
@@ -44,7 +45,7 @@ export function StatusUpdater({
         status,
         assignedToId: assignedTo === "__none__" ? null : assignedTo,
       }),
-    });
+    }).catch(offline);
     setSaving(false);
 
     if (res.ok) {

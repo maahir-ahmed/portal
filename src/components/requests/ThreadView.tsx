@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { timeAgo } from "@/lib/utils";
 import { MessageSquare, Lock, Send } from "lucide-react";
 import type { CommentWithAuthor } from "@/types";
+import { offline } from "@/lib/utils";
 
 interface ThreadViewProps {
   comments: CommentWithAuthor[];
@@ -39,7 +40,7 @@ export function ThreadView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, isInternal, requestType }),
-    });
+    }).catch(offline);
 
     setSubmitting(false);
     if (res.ok) {

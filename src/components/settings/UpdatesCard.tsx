@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { UpdateStatus } from "@/lib/updates";
+import { offline } from "@/lib/utils";
 
 type Status = Omit<UpdateStatus, "requestedAt" | "resultAt" | "nextCheckAt"> & {
   requestedAt: string | null;
@@ -49,7 +50,7 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
 
   async function updateNow() {
     setSending(true);
-    const res = await fetch(`/api/societies/${societySlug}/updates`, { method: "POST" });
+    const res = await fetch(`/api/societies/${societySlug}/updates`, { method: "POST" }).catch(offline);
     setSending(false);
     setConfirming(false);
     if (res.ok) {

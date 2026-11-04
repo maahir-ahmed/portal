@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Upload, Download, X, Loader2, CheckCircle2, Megaphone, Check } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface Deliverable {
   id: string;
@@ -59,7 +60,7 @@ export function MarketingContentPanel({
     for (const file of Array.from(files)) {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const res = await fetch("/api/upload", { method: "POST", body: fd }).catch(offline);
       if (res.ok) {
         const { url } = await res.json();
         setNewFiles((prev) => [...prev, { fileName: file.name, fileUrl: url }]);
@@ -76,7 +77,7 @@ export function MarketingContentPanel({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }).catch(offline);
     setBusy(null);
     if (!res.ok) {
       toast.error("Failed to save");

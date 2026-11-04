@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface SocietyTitle {
   id: string;
@@ -88,7 +89,7 @@ export function EditMemberDialog({
         phone: phone.trim() || null,
         extraPortfolioIds: extras,
       }),
-    });
+    }).catch(offline);
     setSaving(false);
     if (res.ok) {
       toast.success("Member updated");
@@ -103,7 +104,7 @@ export function EditMemberDialog({
   async function handleRemove() {
     if (!confirm(`Remove ${memberName} from this society?`)) return;
     setRemoving(true);
-    const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}`, { method: "DELETE" });
+    const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}`, { method: "DELETE" }).catch(offline);
     setRemoving(false);
     if (res.ok) {
       toast.success(`${memberName} removed`);
@@ -118,7 +119,7 @@ export function EditMemberDialog({
   async function handleReset() {
     if (!notInvited && !confirm(`Reset ${memberName}'s password? Their current password stops working immediately.`)) return;
     setResetting(true);
-    const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}/reset-password`, { method: "POST" });
+    const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}/reset-password`, { method: "POST" }).catch(offline);
     setResetting(false);
     if (res.ok) {
       setTempPassword((await res.json()).tempPassword);

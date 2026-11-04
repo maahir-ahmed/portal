@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
@@ -32,19 +32,27 @@ export default function RubricMembersPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Switching filters quickly can have an older list arrive after a newer one; only
+  // the latest request may set the table.
+  const latest = useRef(0);
   const load = useCallback((f: Filter) => {
+    const mine = ++latest.current;
     setLoading(true);
     Promise.all([
       rubric.call({ type: "getSocietyPortalMembershipHomePage" }),
       rubric.call({ type: "getSocietyPortalMembershipList", viewFilter: f }),
     ]).then(([home, list]) => {
+      if (mine !== latest.current) return;
       const memberships = (list.allMemberships ?? []) as RubricMember[];
       setMembers(memberships);
       setHomeData(home as Record<string, unknown>);
     }).catch((err: unknown) => {
+      if (mine !== latest.current) return;
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg === "not_configured" ? "not_configured" : msg);
-    }).finally(() => setLoading(false));
+    }).finally(() => {
+      if (mine === latest.current) setLoading(false);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.society]);
 

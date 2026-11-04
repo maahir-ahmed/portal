@@ -3,6 +3,17 @@ import { twMerge } from "tailwind-merge";
 import { format, formatDistanceToNow, isSameDay } from "date-fns";
 import { wallClockNow } from "./urgency";
 
+/**
+ * For fetch(...).catch(offline): a dropped connection becomes an ordinary failed
+ * response, so the form's usual error path runs (a toast, the button back) instead of
+ * an unhandled rejection that leaves its spinner going for good.
+ */
+export const offline = () =>
+  new Response(JSON.stringify({ error: "Couldn't reach the portal. Check your connection and try again." }), {
+    status: 503,
+    headers: { "Content-Type": "application/json" },
+  });
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

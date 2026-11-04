@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { offline } from "@/lib/utils";
 
 interface Me {
   id: string;
@@ -57,7 +58,7 @@ export default function AccountPage() {
         email,
         currentPassword: form.get("currentPassword"),
       }),
-    });
+    }).catch(offline);
 
     setSavingProfile(false);
     if (res.ok) {
@@ -90,7 +91,7 @@ export default function AccountPage() {
         currentPassword: form.get("currentPassword"),
         newPassword: form.get("newPassword"),
       }),
-    });
+    }).catch(offline);
 
     setSavingPassword(false);
     if (res.ok) {
@@ -124,7 +125,7 @@ export default function AccountPage() {
         bsb: form.get("bsb"),
         accountNumber: form.get("accountNumber"),
       }),
-    });
+    }).catch(offline);
 
     setSavingBank(false);
     if (res.ok) {

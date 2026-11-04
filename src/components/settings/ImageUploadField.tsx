@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, ImageIcon } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface ImageUploadFieldProps {
   name: string;            // form field name (hidden input carries the URL)
@@ -24,7 +25,7 @@ export function ImageUploadField({ name, label, defaultValue, shape = "wide", hi
     const fd = new FormData();
     fd.append("file", file);
     fd.append("accept", "image"); // refused at upload, not later on save
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const res = await fetch("/api/upload", { method: "POST", body: fd }).catch(offline);
     setUploading(false);
     if (res.ok) {
       const data = await res.json();

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { cn, formatDate } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 export type Lane = "TODO" | "DOING" | "DONE";
 
@@ -61,7 +62,7 @@ export function BoardClient({
       method,
       headers: { "Content-Type": "application/json" },
       ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    }).catch(offline);
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error ?? "Request failed");

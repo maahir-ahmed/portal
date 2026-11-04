@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { Banknote } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 export function MarkReimbursedButton({
   societySlug,
@@ -34,7 +35,7 @@ export function MarkReimbursedButton({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "REIMBURSED", expectedAmount: amount }),
-    });
+    }).catch(offline);
     setLoading(false);
     if (res.ok) {
       toast.success("Marked as reimbursed");

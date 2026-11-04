@@ -13,6 +13,7 @@ import { ArrowLeft, AlertCircle, CheckCircle, Upload, Building } from "lucide-re
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { usePolicy } from "@/hooks/usePolicy";
+import { offline } from "@/lib/utils";
 
 interface BankAccount {
   id: string;
@@ -105,7 +106,7 @@ export default function NewTreasuryPage() {
     for (const file of files) {
       const fd = new FormData();
       fd.append("file", file);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd }).catch(offline);
       if (!uploadRes.ok) {
         const d = await uploadRes.json().catch(() => ({}));
         toast.error(`${file.name} couldn't be uploaded${d.error ? `: ${d.error}` : ""}. Remove it or pick another file.`);
@@ -141,7 +142,7 @@ export default function NewTreasuryPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
+    }).catch(offline);
 
     setLoading(false);
     if (res.ok) {

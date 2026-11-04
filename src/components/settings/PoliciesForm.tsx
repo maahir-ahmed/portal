@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { useModules } from "@/hooks/useModules";
 import { BASE_POLICY, POLICY_KINDS, type PolicyKind } from "@/lib/policies";
+import { offline } from "@/lib/utils";
 
 // Settings > Policies, and the first-run setup's policy step. The base rules are
 // shown read-only for context; only the society's own lines are editable.
@@ -34,7 +35,7 @@ export function PoliciesForm({ societySlug, onSaved }: { societySlug: string; on
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind, text: draft[kind] ?? "" }),
-      });
+      }).catch(offline);
       if (!res.ok) {
         setSaving(false);
         toast.error("Couldn't save. Try again.");

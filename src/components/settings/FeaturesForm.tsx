@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { MODULES_CHANGED } from "@/hooks/useModules";
 import type { ModuleColumns } from "@/lib/modules";
 import { cn } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 type Toggle = Exclude<keyof ModuleColumns, "treasuryMode">;
 
@@ -78,7 +79,7 @@ export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; on
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
-    });
+    }).catch(offline);
     setSaving(false);
     if (!res.ok) {
       toast.error("Couldn't save. Try again.");

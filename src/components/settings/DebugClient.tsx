@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { offline } from "@/lib/utils";
 
 // Settings > Debugging. Everything here acts on the live database, so the whole tab
 // sits in one red panel, and each action that changes data asks for the society's
@@ -20,7 +21,7 @@ const size = (n: number) =>
   n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await fetch(url, init).catch(offline);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error ?? `Request failed (${res.status})`), { data });
   return data as T;
@@ -233,7 +234,7 @@ function Restore({ base, societyName }: { base: string; societyName: string }) {
       setPhase("restarting");
       await new Promise((r) => setTimeout(r, 4000));
       for (let i = 0; i < 90; i++) {
-        const ok = await fetch("/login", { cache: "no-store" }).then((r) => r.ok).catch(() => false);
+        const ok = await fetch("/login", { cache: "no-store" }).catch(offline).then((r) => r.ok).catch(() => false);
         if (ok) break;
         await new Promise((r) => setTimeout(r, 2000));
       }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { offline } from "@/lib/utils";
 
 export function RubricForm({ requestId, societySlug, defaultValue }: { requestId: string; societySlug: string; defaultValue?: string }) {
   const router = useRouter();
@@ -19,7 +20,7 @@ export function RubricForm({ requestId, societySlug, defaultValue }: { requestId
       body: JSON.stringify({
         rubricEventLink: fd.get("rubricEventLink"),
       }),
-    });
+    }).catch(offline);
     setSaving(false);
     if (res.ok) {
       toast.success("Rubric event attached");

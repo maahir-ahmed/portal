@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Shield } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 // Multi-society mode only (no SOCIETY_SLUG): a signed-in user with no society yet.
 export function CreateSocietyForm() {
@@ -28,7 +29,7 @@ export function CreateSocietyForm() {
         description: form.get("description"),
         contactEmail: form.get("contactEmail"),
       }),
-    });
+    }).catch(offline);
 
     setLoading(false);
     if (res.ok) {

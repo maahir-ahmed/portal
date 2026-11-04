@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Upload, X, Loader2 } from "lucide-react";
+import { offline } from "@/lib/utils";
 
 interface Photo {
   id: string;
@@ -42,7 +43,7 @@ export function EventPhotos({ societySlug, requestId, photos, canManage }: Props
         const fd = new FormData();
         fd.append("file", file);
         fd.append("accept", "image");
-        const up = await fetch("/api/upload", { method: "POST", body: fd });
+        const up = await fetch("/api/upload", { method: "POST", body: fd }).catch(offline);
         const upData = await up.json().catch(() => ({}));
         if (!up.ok) throw new Error(upData.error);
 
@@ -50,7 +51,7 @@ export function EventPhotos({ societySlug, requestId, photos, canManage }: Props
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileName: file.name, fileUrl: upData.url }),
-        });
+        }).catch(offline);
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error);
         saved++;
@@ -68,7 +69,7 @@ export function EventPhotos({ societySlug, requestId, photos, canManage }: Props
 
   async function remove(photo: Photo) {
     setDeletingId(photo.id);
-    const res = await fetch(`${apiPath}?photoId=${encodeURIComponent(photo.id)}`, { method: "DELETE" });
+    const res = await fetch(`${apiPath}?photoId=${encodeURIComponent(photo.id)}`, { method: "DELETE" }).catch(offline);
     setDeletingId(null);
     if (res.ok) {
       toast.success("Photo removed");

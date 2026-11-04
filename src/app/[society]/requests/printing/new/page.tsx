@@ -14,6 +14,7 @@ import { ArrowLeft, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { computePrintingCost, type PaperSize, type Sided, type Colour } from "@/lib/printing";
 import { PrintingRates } from "@/components/requests/PrintingRates";
+import { offline } from "@/lib/utils";
 
 export default function NewPrintingRequestPage() {
   const params = useParams<{ society: string }>();
@@ -48,7 +49,7 @@ export default function NewPrintingRequestPage() {
     // Upload the document first
     const fd = new FormData();
     fd.append("file", file);
-    const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+    const uploadRes = await fetch("/api/upload", { method: "POST", body: fd }).catch(offline);
     if (!uploadRes.ok) {
       const d = await uploadRes.json().catch(() => ({}));
       toast.error(d.error ?? "File upload failed (must be PDF or Word doc)");
@@ -71,7 +72,7 @@ export default function NewPrintingRequestPage() {
         fileName: file.name,
         additionalDetails: form.get("additionalDetails") || undefined,
       }),
-    });
+    }).catch(offline);
     setLoading(false);
     if (res.ok) {
       toast.success("Printing request submitted for approval");
