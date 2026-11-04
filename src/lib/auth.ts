@@ -1,6 +1,5 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "./rateLimit";
@@ -15,7 +14,6 @@ class TooManyAttempts extends CredentialsSignin {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   // Behind a reverse proxy (cloudflared) the Host header is external; trust it.
   trustHost: true,
   session: { strategy: "jwt" },
