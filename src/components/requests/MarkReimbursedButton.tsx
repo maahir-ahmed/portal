@@ -19,7 +19,7 @@ export function MarkReimbursedButton({
   amount: number;
   // The row the claim is actually linked to, not the submitter's current default —
   // the exec is confirming the details they are about to transfer money to.
-  account: { accountName: string; bsb: string; accountNumber: string } | null;
+  account: { accountName: string; bsb: string; accountNumber: string; payId?: string | null } | null;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -27,7 +27,7 @@ export function MarkReimbursedButton({
   async function handleClick(e: React.MouseEvent) {
     e.preventDefault();
     const payee = account
-      ? `${account.accountName}\nBSB ${account.bsb} · Acct ${account.accountNumber}`
+      ? `${account.accountName}\nBSB ${account.bsb} · Acct ${account.accountNumber}${account.payId ? `\nPayID ${account.payId}` : ""}`
       : "No bank details on this claim.";
     if (!confirm(`Paying ${formatCurrency(amount)} to:\n\n${payee}\n\nConfirm this has been transferred?`)) return;
     setLoading(true);

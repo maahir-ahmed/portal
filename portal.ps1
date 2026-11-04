@@ -6,6 +6,7 @@
 #   install           set up (asks a few questions), then start
 #   start | stop      start or stop everything
 #   update            back up, then move to the newest version
+#   email             set up email from here instead of in the portal's Settings
 #   autoupdate on     check for a new release each night at UPDATE_HOUR, and install
 #   autoupdate off    it (and anything asked for in Settings); or stop
 #   backup            back up the database and uploads now
@@ -52,6 +53,79 @@ function Has-Setting([string]$key) {
 # Docker Compose would read a BOM as part of the first key.
 function Ensure([string]$key, [string]$value) {
   if (-not (Has-Setting $key)) { [IO.File]::AppendAllText($EnvFile, "$key=$value`n") }
+}
+# Replaces KEY's value: for a setting someone is deliberately changing. Single quotes
+# keep Docker Compose from reading a $ in a password as a variable.
+function Set-Setting([string]$key, [string]$value) {
+  $lines = @(Get-Content $EnvFile | Where-Object { $_ -notlike "$key=*" })
+  $lines += "$key='$value'"
+  [IO.File]::WriteAllText($EnvFile, (($lines -join "`n") + "`n"))
+}
+
+# The email the portal sends: new members' sign-in details, and notifications if an
+# executive turns those on in Settings. Usually set up in the portal (Settings > Email,
+# which wins over this); the same questions as ./portal email.
+function Email-Settings {
+  Say ""
+  Say "Which email service?"
+  Say "  1) Brevo   (free plan: 300 emails a day)"
+  Say "  2) Resend  (free plan: 100 emails a day)"
+  Say "  3) Another one (any SMTP server)"
+  Say "  4) None: turn email off"
+  $user = ""; $pass = ""
+  switch (Ask "Choose 1, 2, 3 or 4" "1") {
+    "1" {
+      Say ""
+      Say "In Brevo (brevo.com, a free account):"
+      Say "  1. Senders, Domains & Dedicated IPs > Domains: add your domain and add the DNS"
+      Say "     records it shows (it can add them for you if your domain is on Cloudflare)."
+      Say "  2. Senders: add the address to send from, such as noreply@your-domain."
+      Say "  3. SMTP & API > SMTP: generate an SMTP key. The page also shows your login."
+      $hostName = "smtp-relay.brevo.com"; $port = "587"
+      $user = Ask "SMTP login (ends in @smtp-brevo.com)"
+      $pass = Ask "SMTP key"
+    }
+    "2" {
+      Say ""
+      Say "In Resend (resend.com, a free account):"
+      Say "  1. Domains: add your domain, add the DNS records it shows (it can add them for"
+      Say "     you if your domain is on Cloudflare), then Verify."
+      Say "  2. API Keys: create one with sending access to that domain."
+      $hostName = "smtp.resend.com"; $port = "465"; $user = "resend"
+      $pass = Ask "API key (starts with re_)"
+    }
+    "3" {
+      $hostName = Ask "SMTP server"
+      $port = Ask "Port" "587"
+      $user = Ask "Username"
+      $pass = Ask "Password"
+    }
+    "4" {
+      Set-Setting "SMTP_HOST" ""
+      Say "Email is off. Turn it on later with: portal.ps1 email"
+      return
+    }
+    default { Die "choose 1, 2, 3 or 4" }
+  }
+  $from = Ask "Send as, at your verified domain (e.g. Chess Society <noreply@chesssoc.org>)"
+  if (-not $hostName -or -not $pass -or -not $from) { Die "that needs every answer. Run portal.ps1 email to try again" }
+  # Checked before writing any, so a refused answer leaves the old settings whole.
+  if ("$hostName$port$user$pass$from".Contains("'")) { Die "the answers can't contain a ' character" }
+  Set-Setting "SMTP_HOST" $hostName
+  Set-Setting "SMTP_PORT" $port
+  Set-Setting "SMTP_USER" $user
+  Set-Setting "SMTP_PASS" $pass
+  Set-Setting "EMAIL_FROM" $from
+  Say "Saved. To check it, add yourself as a member or reset a password in the portal:"
+  Say "the email should arrive within a minute. Your email service's log shows why one didn't."
+}
+
+function Email {
+  if (-not (Test-Path $EnvFile)) { Die "no portal.env yet. Run portal.ps1 install first." }
+  Email-Settings
+  Say "Restarting the portal so it uses the new settings..."
+  Compose up -d --no-build app
+  Wait-Ready | Out-Null
 }
 
 # Runs a command with its output and errors hidden; returns its exit code. PowerShell
@@ -276,6 +350,7 @@ function Install {
   if ($users.Trim() -eq "0") {
     Say "Finish setting up here (this link only works until the first account exists):"
     Say "  $url/setup?token=$(Get-Setting 'SETUP_TOKEN')"
+    Say "Everything else, email included, is set up in the portal itself: see Help & guides there."
   } else {
     Say "Open it at $url"
   }
@@ -501,12 +576,13 @@ switch ($Command) {
   "update" { Update }
   "tick" { Tick }
   "autoupdate" { Autoupdate $Arg }
+  "email" { Email }
   "backup" { Backup }
   "restore" { Restore $Arg }
   "logs" { if ($Arg) { Compose logs -f --tail 200 $Arg } else { Compose logs -f --tail 200 } }
   "status" { Compose ps }
   default {
-    Get-Content $PSCommandPath | Select-Object -Skip 3 -First 12 | ForEach-Object { $_ -replace "^# ?", "" }
+    Get-Content $PSCommandPath | Select-Object -Skip 3 -First 13 | ForEach-Object { $_ -replace "^# ?", "" }
     exit 1
   }
 }

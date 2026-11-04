@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { isLimited, passwordLimits, recordFailure } from "@/lib/rateLimit";
-import { botEnabled } from "@/lib/discordBot";
+import { botSettings } from "@/lib/serverSettings";
 import { auditAccountChange } from "@/lib/audit";
 import { z } from "zod";
 
@@ -18,12 +18,14 @@ export async function GET() {
   if (!user) return NextResponse.json(null);
 
   const { discordUserId, ...rest } = user;
-  return NextResponse.json({ ...rest, discordBot: botEnabled(), discordLinked: !!discordUserId });
+  return NextResponse.json({ ...rest, discordBot: !!(await botSettings()), discordLinked: !!discordUserId });
 }
 
 const schema = z.object({
   name: z.string().min(2).max(100).optional(),
   email: z.string().email().optional(),
+  // Blank clears it. Lowercase, as AHEGS and the import write it.
+  zId: z.string().trim().toLowerCase().regex(/^(z\d{7})?$/, "A zID is z followed by 7 digits, like z1234567").optional(),
   // Required only when the email is actually being changed.
   currentPassword: z.string().optional(),
 });
@@ -38,10 +40,14 @@ export async function PATCH(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: session!.user.id } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const update: { name?: string; email?: string } = {};
+    const update: { name?: string; email?: string; zId?: string | null } = {};
 
     if (data.name && data.name !== user.name) {
       update.name = data.name;
+    }
+
+    if (data.zId !== undefined && (data.zId || null) !== user.zId) {
+      update.zId = data.zId || null;
     }
 
     if (data.email) {
@@ -84,11 +90,12 @@ export async function PATCH(req: NextRequest) {
     const updated = await prisma.user.update({
       where: { id: user.id },
       data: update,
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, zId: true },
     });
     await auditAccountChange(user.id, "Profile", {
       ...(update.name ? { name: `${user.name} → ${update.name}` } : {}),
       ...(update.email ? { email: `${user.email} → ${update.email}` } : {}),
+      ...("zId" in update ? { zId: `${user.zId ?? "none"} → ${update.zId ?? "none"}` } : {}),
     });
 
     return NextResponse.json(updated);

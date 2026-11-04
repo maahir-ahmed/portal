@@ -6,8 +6,8 @@ way a self-hosted society can run?
 **Answer: yes, and cheaply.** A `/print` slash command now files a printing request,
 using the portal's existing upload checks, costing and exec approval. It runs inside the
 app, with no bot process, and works behind the same Cloudflare Tunnel or Caddy setup as
-the website. It is a prototype behind `ENABLE_DISCORD_BOT=true`, off by default, because
-of how it identifies people (see "Linking accounts").
+the website. It is off until an executive sets it up in **Settings › Discord** (or, on
+older stacks, `ENABLE_DISCORD_BOT=true` in the env file).
 
 ## How it works
 
@@ -47,9 +47,14 @@ in the society's server. The portal stores their Discord ID (`User.discordUserId
 unique), and later commands match by it. A code works once, for 15 minutes, and only
 its sha256 is stored.
 
-The prototype matched the Discord username from the member import instead. That was
-never confirmed by the member, so a typo, or a username someone else used to have,
-could link the wrong account, which is why it was replaced.
+A member who hasn't linked is still recognised if an executive put their Discord username
+in the member import: the first command they run links them by that name. That match was
+never confirmed by the member, so a typo, or a username someone else used to have, could
+link the wrong account, and with `/claim` that's a claim filed in someone else's name. So
+a username link is in the audit log, and the member gets a notification (emailed, if
+notification emails are on) saying which Discord user was linked and to tell an executive
+if it wasn't them. Members can't set their own Discord username: if that ever changes,
+this match has to go, or anyone could take someone else's name.
 
 ## Setting it up (for the spike)
 
@@ -57,11 +62,13 @@ could link the wrong account, which is why it was replaced.
    create an application. Copy its **Application ID** and **Public Key** (General
    Information), and reset and copy its **Bot token** (Bot). Turn off **Public Bot** so
    only you can add it to servers.
-2. In the portal's env file: `ENABLE_DISCORD_BOT=true`, `DISCORD_APP_ID`,
-   `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`, and `DISCORD_GUILD_ID` (your server's ID:
-   enable Developer Mode in Discord, right-click the server, Copy Server ID). The bot
-   stays off without it, so the commands only ever work in your own server. Restart
-   (`./portal start`, or `up -d`).
+2. In the portal, **Settings › Discord › Print from Discord**: paste the Application
+   ID, Public Key and Bot token, and your server's ID (enable Developer Mode in
+   Discord, right-click the server, Copy Server ID), then Save. The bot stays off
+   without the server ID, so the commands only ever work in your own server. Saving
+   registers the commands with Discord and says so if Discord refuses the token. (The
+   old env file settings, `ENABLE_DISCORD_BOT`, `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`,
+   `DISCORD_BOT_TOKEN` and `DISCORD_GUILD_ID`, still work; Settings wins over them.)
 3. Back in the developer portal, set **Interactions Endpoint URL** to
    `https://<your portal>/api/discord/interactions` and save. Discord tests it straight
    away, and refuses to save it if the portal isn't answering correctly.
@@ -93,7 +100,7 @@ could link the wrong account, which is why it was replaced.
 | Request | From Discord? | Why |
 |---|---|---|
 | Printing | **Yes** (this spike) | Short, structured, and the file is usually already in Discord |
-| Treasury claims | Maybe later | Receipts upload well from a phone, but a claim needs bank details and a category; better as a link that opens the portal form prefilled |
+| Treasury claims | **Yes** (`/claim`) | Receipts upload well from a phone. The command saves a draft, shows it with the society's rules, and files it on **Submit claim**; the first time, a Discord form asks for bank details (and an optional PayID) and saves them to the member's account. The category option only exists in budget mode |
 | Event and content requests | No | Long free text (key points, notes) fits a form, not command options |
 | Room bookings | No | Needs Arc's details and availability checks that the form walks through |
 | **Exec approvals** | **Best next step** | Approve or reject buttons on the exec-queue posts that already go to Discord. Same endpoint, same signature check, and it saves execs the most clicks |

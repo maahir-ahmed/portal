@@ -215,6 +215,21 @@ model Society {
   treasuryMode         TreasuryMode @default(BUDGET)
   // Also email each in-app notification (Settings > Features). Off: SMTP plans cap daily sends.
   emailNotifications   Boolean      @default(false)
+  // Settings > Email and Settings > Discord: server settings an executive can set in the
+  // app instead of the env file (src/lib/serverSettings.ts). Null means "use the env file".
+  // smtpHost "" is email switched off here even if the env file has some. Secrets are
+  // encrypted (src/lib/secrets.ts).
+  smtpHost             String?
+  smtpPort             Int?
+  smtpUser             String?
+  smtpPass             String?
+  emailFrom            String?
+  discordReminders     Boolean?
+  discordBotEnabled    Boolean?
+  discordAppId         String?
+  discordPublicKey     String?
+  discordBotToken      String?
+  discordGuildId       String?
   // IANA zone that real moments (createdAt and the like) are shown in. Typed-in dates
   // are naive wall-clock and ignore it (see formatTimestamp in src/lib/utils.ts).
   timezone             String       @default("Australia/Sydney")
@@ -644,6 +659,8 @@ model BankAccount {
   accountName   String
   bsb           String
   accountNumber String
+  // Optional: an email, phone number or ABN registered for PayID, for treasurers who pay that way.
+  payId         String?
   isDefault     Boolean  @default(false)
   createdAt     DateTime @default(now())
 

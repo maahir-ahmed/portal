@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { MODULE_SELECT } from "@/lib/modules";
+import { botSettings, emailSettings, remindersDefault } from "@/lib/serverSettings";
+import { registerCommands } from "@/lib/discordBot";
 import { z } from "zod";
 
 const UPLOADED_IMAGE = /^\/uploads\/[A-Za-z0-9-]+\.(png|jpe?g|gif|webp)$/;
@@ -34,6 +36,8 @@ const updateSchema = z.object({
   moduleAhegs: z.boolean(),
   treasuryMode: z.enum(["BUDGET", "TRANSACTIONS"]),
   emailNotifications: z.boolean(),
+  // Settings > Discord. null goes back to the server's default (DISCORD_REMINDERS).
+  discordReminders: z.boolean().nullable(),
   timezone: z.string().refine(validTimeZone, "Unknown timezone"),
   // First-run setup: the step to resume at, and finishing it.
   setupStep: z.number().int().min(0).max(20),
@@ -84,6 +88,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       rubricSocietyId: true,
       ...MODULE_SELECT,
       emailNotifications: true,
+      discordReminders: true,
       timezone: true,
       setupStep: true,
       setupCompletedAt: true,
@@ -92,7 +97,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
     },
   });
   // Whether the server can send email at all, so Settings can say when the toggle does nothing.
-  return NextResponse.json({ ...s, smtpConfigured: !!process.env.SMTP_HOST });
+  return NextResponse.json({ ...s, smtpConfigured: !!(await emailSettings()), remindersDefault: remindersDefault() });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
@@ -133,6 +138,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
       where: { id: membership!.societyId },
       data: { ...body, ...(setupDone ? { setupCompletedAt: new Date() } : {}) },
     });
+
+    // /claim only offers a category in budget mode, and Discord holds the command's
+    // options, so tell it again. Not awaited: Discord being slow mustn't hold the save.
+    if (body.treasuryMode) {
+      void botSettings().then((bot) => bot && registerCommands(bot)).catch(() => {});
+    }
 
     await createAuditLog({
       societyId: membership!.societyId,

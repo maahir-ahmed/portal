@@ -13,6 +13,7 @@ interface Me {
   id: string;
   name: string;
   email: string;
+  zId: string | null;
   discordBot: boolean;
   discordLinked: boolean;
 }
@@ -21,6 +22,7 @@ interface BankAccount {
   accountName: string;
   bsb: string;
   accountNumber: string;
+  payId?: string | null;
 }
 
 export default function AccountPage() {
@@ -56,6 +58,7 @@ export default function AccountPage() {
       body: JSON.stringify({
         name: form.get("name"),
         email,
+        zId: form.get("zId"),
         currentPassword: form.get("currentPassword"),
       }),
     }).catch(offline);
@@ -63,7 +66,8 @@ export default function AccountPage() {
     setSavingProfile(false);
     if (res.ok) {
       const updated = await res.json();
-      setMe(updated);
+      // The response is only the profile fields; keep the rest (the Discord card's).
+      setMe({ ...me!, ...updated });
       // Refresh the JWT-backed session so the sidebar/header reflect the change.
       await update({ name: updated.name, email: updated.email });
       toast.success(emailChanged ? "Profile and email updated" : "Profile updated");
@@ -124,6 +128,7 @@ export default function AccountPage() {
         accountName: form.get("accountName"),
         bsb: form.get("bsb"),
         accountNumber: form.get("accountNumber"),
+        payId: form.get("payId"),
       }),
     }).catch(offline);
 
@@ -163,6 +168,10 @@ export default function AccountPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" defaultValue={me.email} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="zId">zID</Label>
+              <Input id="zId" name="zId" defaultValue={me.zId ?? ""} placeholder="z1234567" autoComplete="off" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="profile-currentPassword">Current Password</Label>
@@ -206,6 +215,10 @@ export default function AccountPage() {
                 <Input id="accountNumber" name="accountNumber" defaultValue={bank?.accountNumber ?? ""} placeholder="XXXXXXXXXX" required />
               </div>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="payId">PayID (optional)</Label>
+              <Input id="payId" name="payId" defaultValue={bank?.payId ?? ""} placeholder="Email, phone number or ABN" />
+            </div>
             <Button type="submit" disabled={savingBank}>
               {savingBank ? "Saving…" : "Save Bank Details"}
             </Button>
@@ -245,8 +258,8 @@ export default function AccountPage() {
             <CardTitle className="text-base">Discord</CardTitle>
             <CardDescription>
               {me.discordLinked
-                ? "Your Discord account is linked, so /print works for you. Link again to switch accounts."
-                : "Link your Discord account to send printing requests with /print."}
+                ? "Your Discord account is linked, so /print and /claim work for you. Link again to switch accounts."
+                : "Link your Discord account to send printing requests with /print and claims with /claim."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">

@@ -21,6 +21,7 @@ const schema = z.object({
   bankAccountName: z.string().max(100).nullable().optional(),
   bankBsb: z.string().max(20).nullable().optional(),
   bankAccountNumber: z.string().max(30).nullable().optional(),
+  bankPayId: z.string().trim().max(100).nullable().optional(),
   saveToProfile: z.boolean().optional(),
   acknowledgedRules: z.boolean().optional(),
   receiptUrls: z.array(z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here")).optional(),
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
             accountName: body.bankAccountName,
             bsb: body.bankBsb,
             accountNumber: body.bankAccountNumber,
+            payId: body.bankPayId || null,
             isDefault: existingCount === 0, // first account becomes default
           },
         });

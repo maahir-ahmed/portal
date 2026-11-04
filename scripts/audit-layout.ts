@@ -32,8 +32,8 @@ const PAGES = [
   "/requests/treasury", "/requests/treasury/new",
   "/requests/printing", "/requests/printing/new",
   "/budget", "/executive/queue", "/board", "/members", "/ahegs",
-  "/rubric", "/account",
-  "/settings/general", "/settings/portfolios", "/settings/features", "/settings/policies", "/settings/members", "/settings/discord", "/settings/rubric", "/settings/debugging",
+  "/rubric", "/account", "/help",
+  "/settings/general", "/settings/portfolios", "/settings/features", "/settings/policies", "/settings/members", "/settings/email", "/settings/discord", "/settings/rubric", "/settings/debugging",
 ];
 
 interface Finding { page: string; viewport: string; kind: string; detail: string }

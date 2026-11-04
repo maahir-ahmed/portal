@@ -4,6 +4,7 @@
 #   ./portal install          set up (asks a few questions), then start
 #   ./portal start | stop     start or stop everything
 #   ./portal update           back up, then move to the newest version
+#   ./portal email            set up email from here instead of in the portal's Settings
 #   ./portal autoupdate on    check for a new release each night at UPDATE_HOUR, and
 #   ./portal autoupdate off   install it (and anything asked for in Settings); or stop
 #   ./portal backup           back up the database and uploads now
@@ -43,6 +44,17 @@ get() { [ -f "$ENV_FILE" ] && sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1 || true
 has() { [ -f "$ENV_FILE" ] && grep -q "^$1=" "$ENV_FILE"; }
 # Appends KEY=value unless KEY is already there, so a re-run keeps every existing setting.
 ensure() { has "$1" || printf '%s=%s\n' "$1" "$2" >> "$ENV_FILE"; }
+# Replaces KEY's value: for a setting someone is deliberately changing. Single quotes
+# keep Docker Compose from reading a $ in a password as a variable.
+set_setting() {
+  case "$2" in *"'"*) die "$1 can't contain a ' character" ;; esac
+  local tmp
+  tmp="$(mktemp)"
+  grep -v "^$1=" "$ENV_FILE" > "$tmp" || true
+  printf "%s='%s'\n" "$1" "$2" >> "$tmp"
+  cat "$tmp" > "$ENV_FILE" # keeps portal.env's permissions
+  rm -f "$tmp"
+}
 
 compose() {
   [ -f "$ENV_FILE" ] || die "no portal.env yet. Run ./portal install first."
@@ -182,6 +194,72 @@ get_images() {
   compose build
 }
 
+# The email the portal sends: new members' sign-in details, and notifications if an
+# executive turns those on in Settings. Usually set up in the portal (Settings > Email,
+# which wins over this); this is for anyone who'd rather use the command line.
+email_settings() {
+  local host port user pass from
+  say ""
+  say "Which email service?"
+  say "  1) Brevo   (free plan: 300 emails a day)"
+  say "  2) Resend  (free plan: 100 emails a day)"
+  say "  3) Another one (any SMTP server)"
+  say "  4) None: turn email off"
+  case "$(ask "Choose 1, 2, 3 or 4" 1)" in
+    1)
+      say ""
+      say "In Brevo (brevo.com, a free account):"
+      say "  1. Senders, Domains & Dedicated IPs > Domains: add your domain and add the DNS"
+      say "     records it shows (it can add them for you if your domain is on Cloudflare)."
+      say "  2. Senders: add the address to send from, such as noreply@your-domain."
+      say "  3. SMTP & API > SMTP: generate an SMTP key. The page also shows your login."
+      host=smtp-relay.brevo.com port=587
+      user="$(ask "SMTP login (ends in @smtp-brevo.com)")"
+      pass="$(ask "SMTP key")"
+      ;;
+    2)
+      say ""
+      say "In Resend (resend.com, a free account):"
+      say "  1. Domains: add your domain, add the DNS records it shows (it can add them for"
+      say "     you if your domain is on Cloudflare), then Verify."
+      say "  2. API Keys: create one with sending access to that domain."
+      host=smtp.resend.com port=465 user=resend
+      pass="$(ask "API key (starts with re_)")"
+      ;;
+    3)
+      host="$(ask "SMTP server")"
+      port="$(ask "Port" 587)"
+      user="$(ask "Username")"
+      pass="$(ask "Password")"
+      ;;
+    4)
+      set_setting SMTP_HOST ""
+      say "Email is off. Turn it on later with: ./portal email"
+      return
+      ;;
+    *) die "choose 1, 2, 3 or 4" ;;
+  esac
+  from="$(ask "Send as, at your verified domain (e.g. Chess Society <noreply@chesssoc.org>)")"
+  [ -n "$host" ] && [ -n "$pass" ] && [ -n "$from" ] || die "that needs every answer. Run ./portal email to try again"
+  # Checked before writing any, so a refused answer leaves the old settings whole.
+  case "$host$port$user$pass$from" in *"'"*) die "the answers can't contain a ' character" ;; esac
+  set_setting SMTP_HOST "$host"
+  set_setting SMTP_PORT "$port"
+  set_setting SMTP_USER "$user"
+  set_setting SMTP_PASS "$pass"
+  set_setting EMAIL_FROM "$from"
+  say "Saved. To check it, add yourself as a member or reset a password in the portal:"
+  say "the email should arrive within a minute. Your email service's log shows why one didn't."
+}
+
+cmd_email() {
+  [ -f "$ENV_FILE" ] || die "no portal.env yet. Run ./portal install first."
+  email_settings
+  say "Restarting the portal so it uses the new settings..."
+  compose up -d --no-build app </dev/null
+  wait_ready
+}
+
 wait_ready() {
   say "Waiting for the portal to start (it brings the database up to date first)..."
 
@@ -225,6 +303,7 @@ cmd_install() {
   if [ "${users//[^0-9]/}" = 0 ]; then
     say "Finish setting up here (this link only works until the first account exists):"
     say "  $url/setup?token=$(get SETUP_TOKEN)"
+    say "Everything else, email included, is set up in the portal itself: see Help & guides there."
   else
     say "Open it at $url"
   fi
@@ -449,9 +528,10 @@ case "${1:-}" in
   update) cmd_update ;;
   tick) cmd_tick ;;
   autoupdate) cmd_autoupdate "${2:-}" ;;
+  email) cmd_email ;;
   backup) cmd_backup ;;
   restore) cmd_restore "${2:-}" ;;
   logs) compose logs -f --tail 200 ${2:+"$2"} ;;
   status) compose ps ;;
-  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac

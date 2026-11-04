@@ -11,7 +11,15 @@ import { offline } from "@/lib/utils";
 
 // Settings > Policies, and the first-run setup's policy step. The base rules are
 // shown read-only for context; only the society's own lines are editable.
-export function PoliciesForm({ societySlug, onSaved }: { societySlug: string; onSaved?: () => void }) {
+export function PoliciesForm({
+  societySlug,
+  onSaved,
+  submitLabel = "Save",
+}: {
+  societySlug: string;
+  onSaved?: () => void;
+  submitLabel?: string;
+}) {
   const modules = useModules(societySlug);
   const [saved, setSaved] = useState<Record<string, string> | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -91,7 +99,7 @@ export function PoliciesForm({ societySlug, onSaved }: { societySlug: string; on
         </Card>
       ))}
       <Button onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
+        {saving ? "Saving…" : submitLabel}
       </Button>
     </div>
   );

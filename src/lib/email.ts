@@ -1,22 +1,23 @@
 import nodemailer from "nodemailer";
+import { emailSettings, type Smtp } from "./serverSettings";
 
-const port = Number(process.env.SMTP_PORT ?? 587);
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port,
-  // 465 is TLS from the start; anything else must upgrade with STARTTLS, or the
-  // password would cross the network in the clear when a server doesn't offer it.
-  secure: port === 465,
-  requireTLS: port !== 465,
-  // A hung mail server must not hold sockets open forever.
-  connectionTimeout: 10_000,
-  greetingTimeout: 10_000,
-  socketTimeout: 20_000,
-  auth:
-    process.env.SMTP_USER
-      ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      : undefined,
-});
+// Built per send from the current settings, which an executive can change in the app
+// (Settings > Email) at any time. Email is rare enough that a fresh connection is fine.
+function transport(s: Smtp) {
+  return nodemailer.createTransport({
+    host: s.host,
+    port: s.port,
+    // 465 is TLS from the start; anything else must upgrade with STARTTLS, or the
+    // password would cross the network in the clear when a server doesn't offer it.
+    secure: s.port === 465,
+    requireTLS: s.port !== 465,
+    // A hung mail server must not hold sockets open forever.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+    auth: s.user ? { user: s.user, pass: s.pass } : undefined,
+  });
+}
 
 interface EmailOptions {
   to: string | string[];
@@ -25,11 +26,13 @@ interface EmailOptions {
   text?: string;
 }
 
-export async function sendEmail({ to, subject, html, text }: EmailOptions) {
-  if (!process.env.SMTP_HOST) return; // email disabled if not configured
+/** Sends, or quietly does nothing when email is off. Throws when the server refuses. */
+export async function sendEmail({ to, subject, html, text }: EmailOptions, settings?: Smtp) {
+  const s = settings ?? (await emailSettings());
+  if (!s) return;
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM ?? "noreply@society.local",
+  await transport(s).sendMail({
+    from: s.from,
     to: Array.isArray(to) ? to.join(", ") : to,
     subject,
     html,
@@ -70,7 +73,8 @@ export function notificationEmail(title: string, body: string, link?: string, la
  * exec knows to hand it over themselves when it didn't (no SMTP, or the send failed).
  */
 export async function emailPassphrase(to: string, name: string, society: string, passphrase: string, reset: boolean) {
-  if (!process.env.SMTP_HOST) return false;
+  const settings = await emailSettings();
+  if (!settings) return false;
   const title = reset ? `Your ${society} portal password was reset` : `You've been added to the ${society} portal`;
   const body =
     `Hi ${name},\n\n` +
@@ -79,7 +83,7 @@ export async function emailPassphrase(to: string, name: string, society: string,
     "You'll choose your own password straight after.";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
-    await sendEmail({ to, subject: title, html: notificationEmail(title, body, "/login", "Sign in"), text: `${body}\n\n${appUrl}/login` });
+    await sendEmail({ to, subject: title, html: notificationEmail(title, body, "/login", "Sign in"), text: `${body}\n\n${appUrl}/login` }, settings);
     return true;
   } catch (err) {
     console.warn("Passphrase email failed:", err instanceof Error ? err.message : err);
