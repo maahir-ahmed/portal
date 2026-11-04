@@ -157,7 +157,7 @@ there is no login step. Consequences, all deliberate:
   forward with the calendar, so this also keeps its events upcoming rather than expired.
   The restart afterwards hands the recreated tables back to `portal_app`:
   ```
-  0 4 * * *  cd ~/containers/society-project && (docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml --profile seed run --rm seed sh -c "npx prisma db push --schema=prisma/schema.prisma --force-reset --accept-data-loss && npx tsx prisma/seed.ts" && docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml restart app) >> ~/containers/rubric-demo-reset.log 2>&1
+  0 4 * * *  cd ~/containers/society-project && (docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml --profile seed run --rm --build seed sh -c "npx prisma db push --schema=prisma/schema.prisma --force-reset --accept-data-loss && npx tsx prisma/seed.ts" && docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml restart app) >> ~/containers/rubric-demo-reset.log 2>&1
   ```
   `SEED_DEMO_DATA=1` and `SEED_LOGO_URL` in `deploy/.env.dev` load the invented dataset
   and keep the logo across re-seeds.
