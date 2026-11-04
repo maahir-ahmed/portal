@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { wallClockNow } from "@/lib/urgency";
+import { TUTORIAL_MARKER } from "@/lib/tutorial";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,19 +35,24 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   // Event dates are typed-in wall-clock times, so compare them with the society's clock.
   const now = new Date(wallClockNow(membership.society.timezone));
   const modules = await modulesForSociety(societyId);
+  // Someone else's tour records are theirs to see, not work for this exec. One's own
+  // stay, so the tour's queue step has something to show.
+  const othersDemo = (field: string) => ({
+    NOT: { [field]: { startsWith: TUTORIAL_MARKER }, submittedById: { not: session.user.id } },
+  });
   const [rubricAll, roomAll, reimbursementPending, printingAll, grantsAll] = await Promise.all([
     prisma.contentRequest.findMany({
-      where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] } },
+      where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] }, ...othersDemo("eventName") },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { deadline: "asc" },
     }),
     prisma.roomBooking.findMany({
-      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
+      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW"] }, ...othersDemo("eventName") },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { preferredDate: "asc" },
     }),
     prisma.treasuryRequest.findMany({
-      where: { societyId, status: "REIMBURSEMENT_PENDING" },
+      where: { societyId, status: "REIMBURSEMENT_PENDING", ...othersDemo("description") },
       include: {
         submittedBy: { select: { id: true, name: true, avatarUrl: true } },
         bankAccount: true,
@@ -56,7 +62,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
     prisma.printingRequest.findMany({
       // Everything still in flight: awaiting approval, awaiting Arc submission,
       // or at Arc. Ready-for-pickup and rejected jobs leave the queue.
-      where: { societyId, status: { in: ["PENDING_APPROVAL", "PENDING_ARC_SUBMISSION", "SUBMITTED"] } },
+      where: { societyId, status: { in: ["PENDING_APPROVAL", "PENDING_ARC_SUBMISSION", "SUBMITTED"] }, ...othersDemo("fileName") },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { pickupAt: "asc" },
     }),
@@ -69,6 +75,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
         OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
         status: { not: "CANCELLED" },
         activityGrantStatus: "NOT_SUBMITTED",
+        ...othersDemo("eventName"),
         startDate: { lte: now, gte: new Date(now.getTime() - ACTIVITY_GRANT_DAYS * 86_400_000) },
       },
       include: {

@@ -1,4 +1,5 @@
 import type { PrintingStatus, SecretarialTier } from "@prisma/client";
+import { TUTORIAL_MARKER } from "./tutorial";
 
 // Statuses that count against the secretarial allowance (approved and beyond).
 export const PRINTING_COUNTS_TOWARD_BUDGET: PrintingStatus[] = [
@@ -14,6 +15,8 @@ export function allowanceSpendWhere(societyId: string, now = new Date()) {
     societyId,
     status: { in: PRINTING_COUNTS_TOWARD_BUDGET },
     createdAt: { gte: new Date(Date.UTC(now.getUTCFullYear(), 0, 1)) },
+    // The tour's demo job (src/lib/tutorial.ts) is never real spending.
+    NOT: { fileName: { startsWith: TUTORIAL_MARKER } },
   };
 }
 
