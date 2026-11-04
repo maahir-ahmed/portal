@@ -53,6 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
 
   await createNotification({
     userId: request.submittedById,
+    societyId: request.societyId,
     type: "STATUS_CHANGE",
     title: `Rubric Event Attached: ${request.eventName}`,
     body: "An executive has attached the Rubric event link and QR code to your request.",

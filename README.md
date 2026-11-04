@@ -152,7 +152,7 @@ The installer writes `portal.env`, and you can edit it afterwards. Run
 | `METHOD` | `cloudflare`, `caddy` or `local` |
 | `UPDATE_HOUR` | Hour for the nightly update check (default `4`) |
 | `BACKUP_HOUR`, `BACKUP_KEEP_DAYS` | When the nightly backup runs, and how many days to keep (`3`, `14`) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Email notifications (optional) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Email (optional): sign-in details for new members, and notifications if turned on in Settings › Features |
 | `MAX_FILE_SIZE_MB` | Largest upload allowed (default `10`) |
 | `DISCORD_REMINDERS` | `on` pings a portfolio's role as its deadlines get close |
 | `ENABLE_DEBUG_TOOLS` | `true` adds a Debugging tab with a database viewer, backups and restore in the browser. It gives every executive full control of the database, so it's off by default |

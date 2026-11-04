@@ -5,25 +5,27 @@ import { cut } from "./discordEvents";
 import type { NotificationType } from "@prisma/client";
 
 export async function createNotification({
+  societyId,
   userId,
   type,
   title,
   body,
   link,
-  sendEmailNotification = true,
 }: {
+  societyId: string;
   userId: string;
   type: NotificationType;
   title: string;
   body: string;
   link?: string;
-  sendEmailNotification?: boolean;
 }) {
   const notification = await prisma.notification.create({
     data: { userId, type, title, body, link },
   });
 
-  if (sendEmailNotification) {
+  // Off unless an exec turns it on in Settings > Features.
+  const society = await prisma.society.findUnique({ where: { id: societyId }, select: { emailNotifications: true } });
+  if (society?.emailNotifications) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user?.email) {
       // Not awaited: the in-app notification is written, and the person who triggered
@@ -101,7 +103,7 @@ export async function notifyExecs(
 
   await Promise.all(
     execs.map((e) =>
-      createNotification({ userId: e.userId, type, title, body, link })
+      createNotification({ societyId, userId: e.userId, type, title, body, link })
     )
   );
 

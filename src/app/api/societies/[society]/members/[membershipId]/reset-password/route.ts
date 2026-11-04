@@ -4,6 +4,7 @@ import { requireAuth, requireMembership, blockDemoAccountWrite, blockForeignAcco
 import { hashPassword } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { generatePassphrase } from "@/lib/passphrase";
+import { emailPassphrase } from "@/lib/email";
 
 type Params = { society: string; membershipId: string };
 
@@ -19,7 +20,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
   const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
   if (memErr) return memErr;
 
-  const target = await prisma.societyMembership.findUnique({ where: { id: membershipId } });
+  const target = await prisma.societyMembership.findUnique({
+    where: { id: membershipId },
+    include: { user: { select: { email: true, name: true } } },
+  });
   if (!target || target.societyId !== membership!.societyId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -48,5 +52,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
     metadata: { action: target.inviteStatus === "NOT_INVITED" ? "first_passphrase" : "password_reset" },
   });
 
-  return NextResponse.json({ tempPassword });
+  // An imported member's first passphrase is an invite, not a reset, whatever its route.
+  const emailed = await emailPassphrase(
+    target.user.email, target.user.name, membership!.society.name, tempPassword, target.inviteStatus !== "NOT_INVITED"
+  );
+  return NextResponse.json({ tempPassword, emailed });
 }

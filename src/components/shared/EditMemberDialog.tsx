@@ -53,6 +53,7 @@ export function EditMemberDialog({
   const [removing, setRemoving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [emailed, setEmailed] = useState(false);
   const [titles, setTitles] = useState<SocietyTitle[]>([]);
   const [role, setRole] = useState(currentRole);
   const [title, setTitle] = useState(currentTitle ?? "__none__");
@@ -122,7 +123,9 @@ export function EditMemberDialog({
     const res = await fetch(`/api/societies/${societySlug}/members/${membershipId}/reset-password`, { method: "POST" }).catch(offline);
     setResetting(false);
     if (res.ok) {
-      setTempPassword((await res.json()).tempPassword);
+      const data = await res.json();
+      setTempPassword(data.tempPassword);
+      setEmailed(!!data.emailed);
       if (notInvited) router.refresh(); // drops the "not invited" badge
     } else {
       const data = await res.json().catch(() => ({}));
@@ -208,8 +211,10 @@ export function EditMemberDialog({
             {tempPassword ? (
               <div className="rounded-md border bg-muted/40 p-2">
                 <p className="text-xs text-muted-foreground mb-1.5">
-                  Temporary passphrase: copy and share it now, it won&apos;t be shown again. They&apos;ll
-                  be asked to choose their own password when they sign in.
+                  {emailed
+                    ? "Temporary passphrase, also emailed to them. "
+                    : "Temporary passphrase: copy and share it now, it won't be shown again. "}
+                  They&apos;ll be asked to choose their own password when they sign in.
                 </p>
                 <div className="flex items-center gap-2">
                   {/* Wraps rather than truncates: the whole point of a passphrase is being readable. */}

@@ -33,6 +33,7 @@ const updateSchema = z.object({
   moduleBoard: z.boolean(),
   moduleAhegs: z.boolean(),
   treasuryMode: z.enum(["BUDGET", "TRANSACTIONS"]),
+  emailNotifications: z.boolean(),
   timezone: z.string().refine(validTimeZone, "Unknown timezone"),
   // First-run setup: the step to resume at, and finishing it.
   setupStep: z.number().int().min(0).max(20),
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       ahegsYear: true,
       rubricSocietyId: true,
       ...MODULE_SELECT,
+      emailNotifications: true,
       timezone: true,
       setupStep: true,
       setupCompletedAt: true,
@@ -89,7 +91,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
       updatedAt: true,
     },
   });
-  return NextResponse.json(s);
+  // Whether the server can send email at all, so Settings can say when the toggle does nothing.
+  return NextResponse.json({ ...s, smtpConfigured: !!process.env.SMTP_HOST });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {

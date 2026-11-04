@@ -5,6 +5,7 @@ import { createAuditLog } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
 import { portfolioForTitle } from "@/lib/titles";
 import { generatePassphrase } from "@/lib/passphrase";
+import { emailPassphrase } from "@/lib/email";
 import { z } from "zod";
 
 const schema = z.object({
@@ -78,7 +79,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       metadata: { addedEmail: body.email, role: body.role },
     });
 
-    return NextResponse.json({ ok: true, tempPassword }, { status: 201 });
+    const emailed = tempPassword
+      ? await emailPassphrase(body.email, body.name, membership!.society.name, tempPassword, false)
+      : false;
+    return NextResponse.json({ ok: true, tempPassword, emailed }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });

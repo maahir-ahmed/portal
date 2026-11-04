@@ -54,11 +54,13 @@ const QUESTIONS: { key: Toggle; question: string; hint: string }[] = [
 export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; onSaved?: () => void }) {
   const [values, setValues] = useState<ModuleColumns | null>(null);
   const [saving, setSaving] = useState(false);
+  const [email, setEmail] = useState({ on: false, smtp: false });
 
   useEffect(() => {
     fetch(`/api/societies/${societySlug}`)
       .then((r) => r.json())
-      .then((s: ModuleColumns) =>
+      .then((s: ModuleColumns & { emailNotifications: boolean; smtpConfigured: boolean }) => {
+        setEmail({ on: s.emailNotifications, smtp: s.smtpConfigured });
         setValues({
           moduleEvents: s.moduleEvents,
           moduleRoomBookings: s.moduleRoomBookings,
@@ -68,8 +70,8 @@ export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; on
           moduleBoard: s.moduleBoard,
           moduleAhegs: s.moduleAhegs,
           treasuryMode: s.treasuryMode,
-        })
-      );
+        });
+      });
   }, [societySlug]);
 
   async function save() {
@@ -78,7 +80,7 @@ export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; on
     const res = await fetch(`/api/societies/${societySlug}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify({ ...values, emailNotifications: email.on }),
     }).catch(offline);
     setSaving(false);
     if (!res.ok) {
@@ -154,6 +156,47 @@ export function FeaturesForm({ societySlug, onSaved }: { societySlug: string; on
               </span>
             </label>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Email</CardTitle>
+          <CardDescription>
+            Notifications always appear in the portal. New members get their sign-in details by email either way.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-secondary/50">
+            <input
+              type="checkbox"
+              checked={email.on}
+              onChange={(e) => setEmail({ ...email, on: e.target.checked })}
+              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">Also send notifications by email?</span>
+              <span className="block text-xs text-muted-foreground">
+                Every notification goes to its recipient&apos;s inbox too.
+              </span>
+            </span>
+          </label>
+          {email.on && (
+            <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+              <p className="font-medium">This can send a lot of email.</p>
+              <p>
+                Each new item in the exec queue emails every executive, and each status change emails the member. Email
+                services cap how much you can send: Brevo&apos;s free plan allows 300 a day, and a Gmail account about
+                500. Going over can get emails rejected or the account paused, and then sign-in details for new members
+                stop arriving too. Check your provider&apos;s limits before turning this on.
+              </p>
+              {!email.smtp && (
+                <p className="font-medium">
+                  Email isn&apos;t set up on this server yet (SMTP settings), so nothing will be sent until it is.
+                </p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
