@@ -153,10 +153,14 @@ there is no login step. Consequences, all deliberate:
   docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml \
     --profile seed run --rm seed npx tsx scripts/rubric-snapshot.ts
   ```
-- Visitors can write. Reseed on a schedule to keep the showcase tidy:
+- Visitors can write. Reseed nightly to keep the showcase tidy. The seed's dates move
+  forward with the calendar, so this also keeps its events upcoming rather than expired.
+  The restart afterwards hands the recreated tables back to `portal_app`:
   ```
-  0 4 * * *  cd ~/containers/society-project && docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml --profile seed run --rm seed sh -c "npx prisma db push --schema=prisma/schema.prisma --force-reset --accept-data-loss && npx tsx prisma/seed.ts" >> ~/containers/rubric-demo-reset.log 2>&1
+  0 4 * * *  cd ~/containers/society-project && (docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml --profile seed run --rm seed sh -c "npx prisma db push --schema=prisma/schema.prisma --force-reset --accept-data-loss && npx tsx prisma/seed.ts" && docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml restart app) >> ~/containers/rubric-demo-reset.log 2>&1
   ```
+  `SEED_DEMO_DATA=1` and `SEED_LOGO_URL` in `deploy/.env.dev` load the invented dataset
+  and keep the logo across re-seeds.
 
 ## Notes
 - Schema is applied with `prisma db push` (no migrations dir). Fine for now; add a migrations history later for safe prod schema changes.

@@ -20,6 +20,8 @@ async function main() {
       name: "UNSW Security Society",
       slug: "secsoc",
       description: "The premier cybersecurity and information security society at UNSW Sydney.",
+      // An image already in the uploads volume, which a re-seed doesn't touch.
+      logoUrl: process.env.SEED_LOGO_URL || null,
       primaryColor: "#00ffd1",
       secondaryColor: "#007869",
       contactEmail: "contact@example.com",
@@ -168,11 +170,22 @@ async function main() {
   if (process.env.SEED_DEMO_DATA === "1") {
     // The society calendar: AGMs and Term 3 ends, so treasury and the budget split into
     // financial years and AHEGS into its Term 3 to Term 3 years (src/lib/years.ts).
+    // The story below is written as if today were 1 Sep 2026. Every date moves forward
+    // by the whole weeks since then (so weekdays stay put), and the nightly re-seed
+    // (deploy/README.md) keeps upcoming events upcoming instead of letting them expire.
+    // ponytail: year labels (2025, 2026, "Sec-a-thon 2026") stay put while the dates move,
+    // so the 2026 AGM drifts into 2027 and on. Bumping the labels and ANCHOR by a year
+    // resets the drift.
+    const WEEK = 7 * 86_400_000;
+    const ANCHOR = Date.UTC(2026, 8, 1);
+    const SHIFT = Math.max(0, Math.floor((Date.now() - ANCHOR) / WEEK)) * WEEK;
+    const at = (day: string, time = "12:00") => new Date(Date.parse(`${day}T${time}:00Z`) + SHIFT);
+
     for (const y of [
       { year: 2025, agmDate: "2025-10-20", term3End: "2025-11-29" },
       { year: 2026, agmDate: "2026-10-19", term3End: "2026-11-28" },
     ]) {
-      const dates = { agmDate: new Date(`${y.agmDate}T00:00:00Z`), term3End: new Date(`${y.term3End}T00:00:00Z`) };
+      const dates = { agmDate: at(y.agmDate, "00:00"), term3End: at(y.term3End, "00:00") };
       await prisma.societyYear.upsert({
         where: { societyId_year: { societyId: society.id, year: y.year } },
         update: {},
@@ -186,8 +199,6 @@ async function main() {
     // invented ones in src/lib/rubricDemoSnapshot.json so the app's own records and
     // the Rubric tab tell the same story. Fixed ids keep a re-run idempotent.
     // ---------------------------------------------------------------------------
-    const at = (day: string, time = "12:00") => new Date(`${day}T${time}:00Z`);
-
     const cast = [
       { key: "priya", email: "priya@example.com", name: "Priya Raman", zId: "z5100001", role: "EXECUTIVE" as const, title: "Treasurer", portfolio: null },
       { key: "tom", email: "tom@example.com", name: "Tom Whitfield", zId: "z5100002", role: "EXECUTIVE" as const, title: "Vice President", portfolio: null },
