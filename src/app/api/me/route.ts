@@ -4,6 +4,7 @@ import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import bcrypt from "bcryptjs";
 import { isLimited, passwordLimits, recordFailure } from "@/lib/rateLimit";
 import { botEnabled } from "@/lib/discordBot";
+import { auditAccountChange } from "@/lib/audit";
 import { z } from "zod";
 
 export async function GET() {
@@ -84,6 +85,10 @@ export async function PATCH(req: NextRequest) {
       where: { id: user.id },
       data: update,
       select: { id: true, name: true, email: true },
+    });
+    await auditAccountChange(user.id, "Profile", {
+      ...(update.name ? { name: `${user.name} → ${update.name}` } : {}),
+      ...(update.email ? { email: `${user.email} → ${update.email}` } : {}),
     });
 
     return NextResponse.json(updated);

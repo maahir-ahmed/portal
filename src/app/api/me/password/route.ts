@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
+import { auditAccountChange } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 import { isLimited, passwordLimits, recordFailure } from "@/lib/rateLimit";
 import { z } from "zod";
@@ -50,6 +51,7 @@ export async function PATCH(req: NextRequest) {
       data: { passwordHash, mustChangePassword: false, sessionVersion: { increment: 1 } },
     });
 
+    await auditAccountChange(user.id, "Password");
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {

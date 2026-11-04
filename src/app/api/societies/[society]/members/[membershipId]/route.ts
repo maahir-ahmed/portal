@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       action: "UPDATE",
       entityType: "SocietyMembership",
       entityId: membershipId,
-      metadata: { role: body.role ?? null, extraPortfolios: body.extraPortfolioIds?.length ?? null },
+      metadata: { role: body.role ?? null, title: body.title ?? null, extraPortfolios: body.extraPortfolioIds?.length ?? null },
     });
 
     return NextResponse.json(updated);

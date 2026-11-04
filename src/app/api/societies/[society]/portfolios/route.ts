@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 const createSchema = z.object({ name: z.string().min(1).max(60) });
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     });
     const portfolio = await prisma.portfolio.create({
       data: { societyId: membership!.societyId, name, sortOrder: (last._max.sortOrder ?? 0) + 1 },
+    });
+    await createAuditLog({
+      societyId: membership!.societyId, userId: session!.user.id, action: "CREATE", entityType: "Portfolio",
+      entityId: portfolio.id, metadata: { name },
     });
     return NextResponse.json(portfolio, { status: 201 });
   } catch (err) {

@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
+import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -60,6 +61,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       },
     });
 
+    await createAuditLog({
+      societyId: membership!.societyId, userId: session!.user.id, action: "CREATE", entityType: "SocietyTitle",
+      entityId: title.id, metadata: { name: title.name, roleLevel: title.roleLevel },
+    });
     return NextResponse.json(title, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
