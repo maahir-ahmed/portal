@@ -209,7 +209,7 @@ must not break:
 `npm run audit:layout` loads every page at widths from 320 to 1440px and reports
 anything that scrolls sideways.
 
-Running several portals on one machine, deployed from GitHub Actions, is covered in
+Deploying from GitHub Actions on every push is covered in
 [deploy/README.md](deploy/README.md), along with how releases reach self-hosted portals.
 
 ## Security
