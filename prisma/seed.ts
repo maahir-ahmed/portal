@@ -20,7 +20,6 @@ async function main() {
       name: "UNSW Security Society",
       slug: "secsoc",
       description: "The premier cybersecurity and information security society at UNSW Sydney.",
-      logoUrl: "/secsoc-logo.png",
       primaryColor: "#00ffd1",
       secondaryColor: "#007869",
       contactEmail: "contact@example.com",

@@ -134,6 +134,6 @@ async function route(req: NextAuthRequest, origin: string) {
 
 export const config = {
   // Skip Next internals and static files in /public (so the auth guard doesn't
-  // redirect e.g. /secsoc-logo.png to /login).
+  // redirect an image such as /logo.png to /login).
   matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)).*)"],
 };
