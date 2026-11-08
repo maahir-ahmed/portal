@@ -4,7 +4,9 @@ import { prisma } from "@/lib/db";
 import { getBrand } from "@/lib/branding";
 import { setupTokenOk } from "@/lib/setup";
 import { BrandMark } from "@/components/shared/BrandMark";
+import { backupsEnabled } from "@/lib/debugTools";
 import { FirstAccountForm } from "./FirstAccountForm";
+import { FreshOrRestore } from "./FreshOrRestore";
 import { CreateSocietyForm } from "./CreateSocietyForm";
 import { SetupWizard } from "./SetupWizard";
 
@@ -25,7 +27,9 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
             <h1 className="text-xl font-semibold tracking-tight">Set up your society portal</h1>
           </div>
           {setupTokenOk(token) ? (
-            <FirstAccountForm token={token!} defaultEmail={process.env.ADMIN_EMAIL ?? ""} />
+            <FreshOrRestore token={token!} canRestore={backupsEnabled()}>
+              <FirstAccountForm token={token!} defaultEmail={process.env.ADMIN_EMAIL ?? ""} />
+            </FreshOrRestore>
           ) : (
             <p className="text-sm text-muted-foreground text-center">
               {process.env.SETUP_TOKEN

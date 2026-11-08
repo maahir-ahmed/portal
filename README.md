@@ -137,6 +137,9 @@ is one `.tar.gz` file in the `backups` folder, and the last 14 days are kept.
 ./portal restore backups/<file>   # put one back
 ```
 
+Executives can also download a backup, or restore one, in Settings › Backups. To move
+to a new computer, install there and choose **Restore a backup** on the setup page.
+
 Copy a backup somewhere else now and then. A backup on the same machine won't help if
 that machine dies. Keep a copy of `portal.env` too, because it holds the portal's
 passwords.
@@ -155,7 +158,7 @@ The installer writes `portal.env`, and you can edit it afterwards. Run
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Email (optional): sign-in details for new members, and notifications if turned on in Settings › Features |
 | `MAX_FILE_SIZE_MB` | Largest upload allowed (default `10`) |
 | `DISCORD_REMINDERS` | `on` pings a portfolio's role as its deadlines get close |
-| `ENABLE_DEBUG_TOOLS` | `true` adds a Debugging tab with a database viewer, backups and restore in the browser. It gives every executive full control of the database, so it's off by default |
+| `ENABLE_DEBUG_TOOLS` | `true` adds a Debugging tab with a database viewer and a SQL runner in the browser. It gives every executive full control of the database, so it's off by default |
 | `ENABLE_DISCORD_BOT` | `true` turns on the experimental `/print` Discord command ([notes](docs/DISCORD_BOT_SPIKE.md)) |
 
 Everything else (passwords, the encryption key, the update token) is generated for you

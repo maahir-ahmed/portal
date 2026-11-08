@@ -1,7 +1,13 @@
-// The Settings > Debugging tab reads, backs up, restores and runs raw SQL against the
-// whole database. It exists only when the stack opts in, never on the public demo,
-// where every visitor is signed in as an executive, and only on a single-society stack
-// (SOCIETY_SLUG): with several societies, one society's executive would hold all of them.
+// Settings > Backups (export and import a whole-portal archive) exists on any
+// single-society stack (SOCIETY_SLUG) except the public demo, where every visitor is
+// signed in as an executive. With several societies on one stack, one society's
+// executive would hold all of them.
+export function backupsEnabled(): boolean {
+  return process.env.DEMO_MODE !== "1" && !!process.env.SOCIETY_SLUG;
+}
+
+// The Settings > Debugging tab reads and runs raw SQL against the whole database, so
+// on top of that it exists only when the stack opts in.
 export function debugToolsEnabled(): boolean {
-  return process.env.ENABLE_DEBUG_TOOLS === "true" && process.env.DEMO_MODE !== "1" && !!process.env.SOCIETY_SLUG;
+  return process.env.ENABLE_DEBUG_TOOLS === "true" && backupsEnabled();
 }

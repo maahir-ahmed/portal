@@ -100,16 +100,24 @@ docker run --rm -v rubric_prod_uploads_data:/uploads -v ~/containers/rubric-back
   tar xzf /b/rubric_prod_uploads_<date>.tar.gz -C /uploads
 ```
 
-## Debugging tab
+## Backups tab and Debugging tab
 
-`ENABLE_DEBUG_TOOLS=true` in a stack's env file adds Settings > Debugging for its
-executives: a read-only database viewer (passwords, tokens, sessions, webhooks and bank
-details masked), backups to download, restore from an uploaded archive, and running a
-`.sql` file in one transaction. Restore and SQL need the society's name typed in and take
-a backup first; all three are in the audit log. It is off by default, and forced off with
-`DEMO_MODE=1`, where every visitor is an executive.
+Settings > Backups is on for every single-society stack (`SOCIETY_SLUG`) except
+`DEMO_MODE=1`, where every visitor is an executive. Executives can take and download an
+archive, and restore an uploaded one (the society's name typed in, a backup taken first,
+the maintenance page up, then a restart so `db push` brings an older dump up to date).
+On a fresh stack, `/setup?token=…` offers the same restore instead of creating the first
+account, for moving a portal to a new machine. If the restored database has exactly one
+society with a different slug, it takes this stack's `SOCIETY_SLUG`. Secrets saved in
+Settings are encrypted with `RUBRIC_SECRET_KEY`, so they only survive the move when the
+new stack has the old key.
 
-Archives made in the tab go to the `debug_backups` volume (the app runs as a user that
+`ENABLE_DEBUG_TOOLS=true` additionally adds Settings > Debugging: a read-only database
+viewer (passwords, tokens, sessions, webhooks and bank details masked) and running a
+`.sql` file in one transaction, after the society's name and a backup. Off by default,
+and forced off with `DEMO_MODE=1`. Backups, restores and SQL runs are in the audit log.
+
+Archives made in the app go to the `debug_backups` volume (the app runs as a user that
 cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere.
 
 ## Discord reminders and the /print bot

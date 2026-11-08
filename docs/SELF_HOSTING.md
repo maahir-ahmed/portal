@@ -232,14 +232,20 @@ every night at 3am and kept for 14 days, in the `backups` folder. Each backup is
 **A backup on the same computer won't help if that computer dies.** Copy the newest one
 somewhere else regularly: a USB stick, or your society's Google Drive.
 
-Also keep a copy of **`portal.env`** somewhere safe and private. It holds the portal's
-passwords. To move the portal to a new computer: download the portal there, copy
-`portal.env` into the folder, run install, then `./portal restore` your newest backup.
+Executives can also download a backup at any time from **Settings › Backups**, and
+restore one there. Backups made there, by `./portal backup` and by the nightly run are
+all the same kind of file, so any of them restores anywhere.
 
-Executives can also take and restore backups from the browser, in **Settings ›
-Debugging**, if you turn that on (`ENABLE_DEBUG_TOOLS=true` in `portal.env`, then
-`./portal start`). It's off by default because it gives every executive full control of
-the database. Backups made either way restore either way.
+Also keep a copy of **`portal.env`** somewhere safe and private. It holds the portal's
+passwords, including the key that locks the email, Discord and Rubric passwords saved
+in Settings.
+
+**Moving to a new computer:** download a backup from Settings › Backups on the old one.
+On the new one, download the portal, copy the old `portal.env` into the folder, and run
+install. Open the setup link it prints and choose **Restore a backup**. Everyone signs
+in with the same email and password as before. (Without the old `portal.env`, it still
+works, but you'll need to enter the email, Discord and Rubric passwords again in Settings.)
+`./portal restore <file>` does the same from the command line.
 
 ### Changing your answers
 
@@ -281,7 +287,7 @@ They can run the portal, but we don't support them for now:
   in front. On those platforms that is three or four paid pieces, so it usually costs
   more than a $5 server that runs all of it.
 - Backups wouldn't be the one-file backups above, so the portal's own backup and
-  restore (here and in Settings › Debugging) wouldn't work, and moving off would be hard.
+  restore (here and in Settings › Backups) wouldn't work, and moving off would be hard.
 - Every extra way of running it is another set of instructions to keep correct.
 
 A small server, a Pi or a spare computer, with the install script, covers the same

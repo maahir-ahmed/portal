@@ -3,13 +3,13 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { Readable } from "node:stream";
-import { ARCHIVE_NAME, BACKUP_OUT, requireDebug } from "@/lib/debugServer";
+import { ARCHIVE_NAME, BACKUP_OUT, requireBackups } from "@/lib/debugServer";
 
 // Streams an archive to the browser. With Content-Length set, the browser's own
 // download bar shows progress, and the file never sits in this process's memory.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string; file: string }> }) {
   const { society, file } = await params;
-  const { error } = await requireDebug(society);
+  const { error } = await requireBackups(society);
   if (error) return error;
 
   if (!ARCHIVE_NAME.test(file)) return NextResponse.json({ error: "Not found" }, { status: 404 });
