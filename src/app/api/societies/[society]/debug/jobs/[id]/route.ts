@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { JOB_ID, readJob, requireDebug } from "@/lib/debugServer";
 
-// How a backup, restore or SQL run is going. The page polls this until it ends.
+// How a SQL run is going. The page polls this until it ends.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string; id: string }> }) {
   const { society, id } = await params;
   const { error } = await requireDebug(society);

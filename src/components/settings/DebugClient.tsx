@@ -1,50 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Database, Download, FileCode, Loader2, RotateCcw, Save } from "lucide-react";
+import { AlertTriangle, Database, FileCode, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { offline } from "@/lib/utils";
+import { ConfirmName, api, runJob, size } from "./BackupsClient";
 
 // Settings > Debugging. Everything here acts on the live database, so the whole tab
-// sits in one red panel, and each action that changes data asks for the society's
-// name and takes a backup first (server side, not trusted to this page).
-
-// Under the proxy's request buffer (next.config.ts) with room to spare; well under
-// Cloudflare's 100MB body limit, which is why uploads are chunked at all.
-const CHUNK = 16 * 1024 * 1024;
-
-const size = (n: number) =>
-  n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
-
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init).catch(offline);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error ?? `Request failed (${res.status})`), { data });
-  return data as T;
-}
-
-/**
- * Starts a job and waits for it. The server runs backups, restores and SQL in the
- * background (a request would hit Cloudflare's 100-second limit), so this polls. A
- * 502/503 means the maintenance page or a restart is in the way: keep waiting.
- */
-async function runJob<T>(url: string, init: RequestInit, base: string): Promise<T> {
-  const { job } = await api<{ job: string }>(url, init);
-  for (;;) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const res = await fetch(`${base}/jobs/${job}`, { cache: "no-store" }).catch(() => null);
-    if (!res || res.status === 502 || res.status === 503 || res.status === 504) continue;
-    // Signed out by a restore that replaced the account: the reload sorts that out.
-    if (res.status === 401 || res.status === 403) throw Object.assign(new Error("signed out"), { signedOut: true });
-    const s = await res.json();
-    if (s.state === "done") return s.result as T;
-    if (s.state === "failed") throw Object.assign(new Error(s.error), { data: s.result ?? {} });
-  }
-}
+// sits in one red panel, and running SQL asks for the society's name and takes a
+// backup first (server side, not trusted to this page). Backups have their own tab.
 
 export function DebugClient({ societySlug, societyName }: { societySlug: string; societyName: string }) {
   const base = `/api/societies/${societySlug}/debug`;
@@ -56,258 +22,18 @@ export function DebugClient({ societySlug, societyName }: { societySlug: string;
           <p className="text-base font-semibold">Danger zone</p>
           <p>
             These tools read and change the live database directly. They are meant for testing and for someone
-            who knows the data model. A restore or a SQL file can delete every record on this portal.
+            who knows the data model. A SQL file can delete every record on this portal.
           </p>
           <p>
-            Raw SQL and restores bypass the app, so they can leave the database out of step with the schema the
-            app expects. Restoring restarts the portal, which brings the schema up to date; after running SQL,
-            check the app still works.
+            Raw SQL bypasses the app, so it can leave the database out of step with the schema the app expects.
+            After running SQL, check the app still works.
           </p>
-          <p>Every backup, restore and SQL run is recorded in the audit log.</p>
+          <p>Every SQL run is recorded in the audit log, and the backup taken before it is in Settings › Backups.</p>
         </div>
       </div>
-      <Backups base={base} />
-      <Restore base={base} societyName={societyName} />
       <SqlRunner base={base} societyName={societyName} />
       <TableViewer base={base} />
     </div>
-  );
-}
-
-function ConfirmName({ societyName, value, onChange }: { societyName: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block space-y-1.5 text-sm">
-      <span>
-        Type <span className="font-semibold break-words">{societyName}</span> to confirm
-      </span>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} autoComplete="off" spellCheck={false} />
-    </label>
-  );
-}
-
-// ── Backups ───────────────────────────────────────────────────────────────────
-
-interface BackupFile {
-  name: string;
-  bytes: number;
-  createdAt: string;
-}
-
-function Backups({ base }: { base: string }) {
-  const [files, setFiles] = useState<BackupFile[] | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const load = useCallback(() => {
-    api<BackupFile[]>(`${base}/backups`).then(setFiles).catch((e) => toast.error(e.message));
-  }, [base]);
-  useEffect(load, [load]);
-
-  async function create() {
-    setBusy(true);
-    try {
-      const r = await runJob<{ name: string; bytes: number }>(`${base}/backups`, { method: "POST" }, base);
-      toast.success(`Backed up: ${r.name} (${size(r.bytes)})`);
-      load();
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-    setBusy(false);
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2"><Save className="h-4 w-4" /> Backups</CardTitle>
-        <CardDescription>
-          The whole database and every uploaded file (receipts, photos, logos, minutes) in one archive. It restores
-          here or with the restore script, and so do the daily backups.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Button onClick={create} disabled={busy} className="gap-1.5">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {busy ? "Backing up…" : "Back up now"}
-        </Button>
-        {files === null ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : files.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No backups here yet.</p>
-        ) : (
-          <ul className="divide-y rounded-md border bg-background">
-            {files.map((f) => (
-              <li key={f.name} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                <span className="min-w-0 break-all font-mono text-xs">{f.name}</span>
-                <span className="flex items-center gap-3 text-xs text-muted-foreground">
-                  {size(f.bytes)}
-                  <a href={`${base}/backups/${f.name}`} download className="inline-flex items-center gap-1 text-foreground underline">
-                    <Download className="h-3.5 w-3.5" /> Download
-                  </a>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ── Restore ───────────────────────────────────────────────────────────────────
-
-type Report = Record<string, string>;
-
-function Restore({ base, societyName }: { base: string; societyName: string }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [sent, setSent] = useState(0);
-  const [id, setId] = useState<string | null>(null);
-  const [report, setReport] = useState<Report | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState("");
-  const [phase, setPhase] = useState<"idle" | "uploading" | "checking" | "restoring" | "restarting">("idle");
-
-  function reset(f: File | null) {
-    setFile(f);
-    setSent(0);
-    setId(null);
-    setReport(null);
-    setProblem(null);
-    setConfirm("");
-  }
-
-  async function upload() {
-    if (!file) return;
-    const uploadId = crypto.randomUUID();
-    setPhase("uploading");
-    setProblem(null);
-    try {
-      // One chunk at a time, in order: the server appends each and checks its offset.
-      for (let offset = 0; offset < file.size || offset === 0; offset += CHUNK) {
-        const chunk = file.slice(offset, offset + CHUNK);
-        await api(`${base}/upload?id=${uploadId}&offset=${offset}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/octet-stream", "X-Chunk-Length": String(chunk.size) },
-          body: chunk,
-        });
-        setSent(Math.min(file.size, offset + CHUNK));
-        if (file.size === 0) break;
-      }
-      setId(uploadId);
-      setPhase("checking");
-      setReport(
-        await runJob<Report>(
-          `${base}/restore`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: uploadId, action: "validate" }),
-          },
-          base
-        )
-      );
-    } catch (e) {
-      setProblem((e as Error).message);
-    }
-    setPhase("idle");
-  }
-
-  async function restore() {
-    if (!id) return;
-    setPhase("restoring");
-    try {
-      const r = await runJob<{ restarting: boolean; safetyBackup: string }>(
-        `${base}/restore`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, action: "restore", confirm }),
-        },
-        base
-      );
-      if (!r.restarting) {
-        toast.success("Restored. Restart the dev server and run npm run db:push.");
-        setPhase("idle");
-        return;
-      }
-      // The portal restarts to bring the schema up to date. Wait for it, then reload in
-      // full: the session may belong to someone the restored database does not have,
-      // in which case the reload lands on the login page.
-      setPhase("restarting");
-      await new Promise((r) => setTimeout(r, 4000));
-      for (let i = 0; i < 90; i++) {
-        const ok = await fetch("/login", { cache: "no-store" }).catch(offline).then((r) => r.ok).catch(() => false);
-        if (ok) break;
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-      window.location.reload();
-    } catch (e) {
-      const err = e as Error & { data?: { safetyBackup?: string }; signedOut?: boolean };
-      if (err.signedOut) return window.location.reload();
-      setProblem(err.message + (err.data?.safetyBackup ? ` A backup from just before is in Backups: ${err.data.safetyBackup}` : ""));
-      setPhase("idle");
-    }
-  }
-
-  const pct = file && file.size ? Math.round((sent / file.size) * 100) : 0;
-  const missing = Number(report?.missing_uploads ?? 0);
-
-  return (
-    <Card className="border-red-300">
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2"><RotateCcw className="h-4 w-4" /> Restore a backup</CardTitle>
-        <CardDescription>
-          Replaces the entire database and every uploaded file with the archive&apos;s. Anything added since that
-          backup is lost. A fresh backup is taken first, and the portal shows a maintenance page while it runs.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <input
-          type="file"
-          accept=".gz,.tar.gz,application/gzip"
-          aria-label="Backup archive"
-          onChange={(e) => reset(e.target.files?.[0] ?? null)}
-          disabled={phase !== "idle"}
-          className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5"
-        />
-        {file && !report && (
-          <Button onClick={upload} disabled={phase !== "idle"} variant="outline" className="gap-1.5">
-            {phase !== "idle" && <Loader2 className="h-4 w-4 animate-spin" />}
-            {phase === "uploading" ? `Uploading ${pct}%` : phase === "checking" ? "Checking the archive…" : `Upload and check (${size(file.size)})`}
-          </Button>
-        )}
-        {phase === "uploading" && (
-          <div className="h-2 w-full overflow-hidden rounded bg-red-100">
-            <div className="h-full bg-red-600 transition-all" style={{ width: `${pct}%` }} />
-          </div>
-        )}
-        {problem && <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-900 break-words">{problem}</p>}
-        {report && (
-          <div className="space-y-3">
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md border bg-background p-3 text-sm">
-              <dt className="text-muted-foreground">From stack</dt><dd className="break-all">{report.stack}</dd>
-              <dt className="text-muted-foreground">Taken</dt><dd className="break-all">{report.created}</dd>
-              <dt className="text-muted-foreground">Database</dt><dd>{size(Number(report.database_bytes))}</dd>
-              <dt className="text-muted-foreground">Uploads</dt><dd>{report.uploads} files</dd>
-            </dl>
-            <p className="text-sm text-green-800">The database dump and the uploads belong together and are undamaged.</p>
-            {missing > 0 && (
-              <p className="text-sm text-amber-800">
-                {missing} file{missing === 1 ? " the database links to is" : "s the database links to are"} not in the
-                archive. They were probably already missing when the backup was taken.
-              </p>
-            )}
-            <ConfirmName societyName={societyName} value={confirm} onChange={setConfirm} />
-            <Button
-              onClick={restore}
-              disabled={confirm.trim() !== societyName || phase !== "idle"}
-              className="h-auto min-h-9 gap-1.5 whitespace-normal bg-red-700 py-2 text-left text-white hover:bg-red-800"
-            >
-              {phase === "restoring" || phase === "restarting" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-              {phase === "restoring" ? "Restoring…" : phase === "restarting" ? "Restarting the portal…" : "Replace everything with this backup"}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

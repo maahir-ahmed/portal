@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { emailSettings, botSettings } from "@/lib/serverSettings";
 import { updatesEnabled } from "@/lib/updates";
+import { backupsEnabled } from "@/lib/debugTools";
 
 // Help & guides: the setup checklist and plain-language guides, in the app so nobody
 // has to find docs/SELF_HOSTING.md. Settings covers everything it can; the last section
@@ -195,6 +196,23 @@ export default async function HelpPage({ params }: { params: Promise<{ society: 
               society doesn&apos;t use. Nothing is deleted: switch it back on and it&apos;s all still there.
             </p>
           </Guide>
+          {backupsEnabled() && (
+            <Guide title="Backups, and moving to a new computer">
+              <p>
+                On <Link className="underline" href={s("/settings/backups")}>Settings › Backups</Link>, click{" "}
+                <b>Back up and download</b> to save everything on the portal as one file. Keep it somewhere other than
+                the server, and treat it like a password: it holds members&apos; bank details.
+              </p>
+              <p>
+                To move the portal, install it on the new computer, open the setup link, and choose{" "}
+                <b>Restore a backup</b>. Everyone signs in with the same email and password as before.
+              </p>
+              <p>
+                Restoring on the same page puts the portal back to how it was when the backup was taken. Anything added
+                since is lost, so a backup of how things are now is taken first.
+              </p>
+            </Guide>
+          )}
           {updatesEnabled() && (
             <Guide title="Updates and backups">
               <p>
@@ -219,14 +237,7 @@ export default async function HelpPage({ params }: { params: Promise<{ society: 
                   <code>./portal install</code>.
                 </li>
                 <li>
-                  <b>Restoring a backup:</b> <code>./portal restore</code> followed by the backup&apos;s file name.
-                </li>
-                <li>
                   <b>Installing an update straight away:</b> <code>./portal update</code>.
-                </li>
-                <li>
-                  <b>Moving to a new computer:</b> take a backup with <code>./portal backup</code>, install on the new one,
-                  then restore it there.
                 </li>
                 <li>
                   <b>The debugging tools</b> (raw database access): <code>ENABLE_DEBUG_TOOLS=true</code> in{" "}

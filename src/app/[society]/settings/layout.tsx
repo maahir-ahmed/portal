@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { debugToolsEnabled } from "@/lib/debugTools";
+import { backupsEnabled, debugToolsEnabled } from "@/lib/debugTools";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { SettingsTabs, type SettingsTab } from "@/components/settings/SettingsTabs";
 
@@ -36,6 +36,7 @@ export default async function SettingsLayout({
     { href: "/email", label: "Email" },
     { href: "/discord", label: "Discord" },
     ...(modules.ticketing ? [{ href: "/rubric", label: "Rubric" }] : []),
+    ...(backupsEnabled() ? [{ href: "/backups", label: "Backups" }] : []),
     ...(debugToolsEnabled() ? [{ href: "/debugging", label: "Debugging", danger: true }] : []),
   ];
 

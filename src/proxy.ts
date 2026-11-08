@@ -48,7 +48,7 @@ export default function proxy(req: NextRequest, ev: NextFetchEvent) {
 }
 
 async function route(req: NextAuthRequest, origin: string) {
-  // A restore is replacing the database (Settings > Debugging): nobody gets a page
+  // A restore is replacing the database (Settings > Backups): nobody gets a page
   // built from half of it. 503 with Retry-After, as nginx answers while the app restarts.
   if (maintenanceActive()) {
     return new NextResponse(maintenancePage(), {
@@ -67,7 +67,8 @@ async function route(req: NextAuthRequest, origin: string) {
   const isApiAuth = pathname.startsWith("/api/auth");
   // /setup checks for itself: on a fresh stack it is open to whoever holds the setup
   // token (src/lib/setup.ts), and from then on it sends anyone signed out to log in.
-  const isSetup = pathname === "/setup" || pathname === "/api/setup";
+  // Its restore-a-backup routes (/api/setup/backup/*) check the token the same way.
+  const isSetup = pathname === "/setup" || pathname === "/api/setup" || pathname.startsWith("/api/setup/");
   // Discord's calls for the /print command: signed by Discord, checked in the route.
   const isDiscord = pathname === "/api/discord/interactions";
   // The server's updater checking in, with UPDATE_TOKEN (src/lib/updates.ts).
