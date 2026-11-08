@@ -122,6 +122,13 @@ services:
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
+    healthcheck:
+      # /login renders without a session, so it proves Next is up and serving.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   # Holds the public port so a deploy never leaves the tunnel with nothing to talk to:
   # while app is being recreated this serves maintenance.html as a 502 instead.
@@ -137,6 +144,12 @@ services:
       # the compose network, and the port is only for opening it on the machine itself.
       - "${APP_BIND:-0.0.0.0}:${APP_PORT}:80"
     networks: [internal]
+    healthcheck:
+      # nginx's own /healthz (nginx.conf), not the app, so this tracks web alone.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # Dumps the database and archives the uploads volume into ${BACKUP_DIR} daily,
   # keeping ${BACKUP_KEEP_DAYS}. Part of the stack rather than a host crontab line,
