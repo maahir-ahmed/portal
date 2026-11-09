@@ -59,9 +59,13 @@ export function ConfirmName({ societyName, value, onChange }: { societyName: str
 
 interface BackupFile {
   name: string;
+  kind: "nightly" | "manual";
   bytes: number;
   createdAt: string;
 }
+
+const taken = (iso: string) =>
+  new Date(iso).toLocaleString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 
 export function Backups({ base }: { base: string }) {
   const [files, setFiles] = useState<BackupFile[] | null>(null);
@@ -101,23 +105,38 @@ export function Backups({ base }: { base: string }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {busy ? "Backing up…" : "Back up and download"}
         </Button>
-        {files && files.length > 0 && (
-          <>
-            <p className="text-sm text-muted-foreground">Backups taken here before:</p>
-            <ul className="divide-y rounded-md border bg-background">
-              {files.map((f) => (
-                <li key={f.name} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                  <span className="min-w-0 break-all font-mono text-xs">{f.name}</span>
-                  <span className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {size(f.bytes)}
-                    <a href={`${base}/${f.name}`} download className="inline-flex items-center gap-1 text-foreground underline">
+        {files && (
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Backups on the server</p>
+            <p className="text-xs text-muted-foreground">
+              Nightly backups are taken automatically and kept for two weeks. Ones taken here include the backup made
+              before each restore.
+            </p>
+            {files.length === 0 ? (
+              <p className="text-sm text-muted-foreground">None yet.</p>
+            ) : (
+              <ul className="divide-y rounded-md border bg-background">
+                {files.map((f) => (
+                  <li key={`${f.kind}/${f.name}`} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{taken(f.createdAt)}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {f.kind === "nightly" ? "Nightly" : "Taken here"} · {size(f.bytes)}
+                      </span>
+                    </span>
+                    <a
+                      href={`${base}/${f.name}`}
+                      download
+                      aria-label={`Download the backup from ${taken(f.createdAt)}`}
+                      className="inline-flex items-center gap-1 text-xs underline"
+                    >
                       <Download className="h-3.5 w-3.5" /> Download
                     </a>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,25 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, readdir, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createAuditLog } from "@/lib/audit";
 import { randomUUID } from "node:crypto";
-import { ARCHIVE_NAME, BACKUP_OUT, requireBackups, sha256File, startJob, takeBackup } from "@/lib/debugServer";
+import { BACKUP_OUT, listBackups, requireBackups, sha256File, startJob, takeBackup } from "@/lib/debugServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { society } = await params;
   const { error } = await requireBackups(society);
   if (error) return error;
 
-  await mkdir(BACKUP_OUT, { recursive: true });
-  const names = (await readdir(BACKUP_OUT)).filter((f) => ARCHIVE_NAME.test(f));
-  const files = await Promise.all(
-    names.map(async (name) => {
-      const s = await stat(join(BACKUP_OUT, name));
-      return { name, bytes: s.size, createdAt: s.mtime.toISOString() };
-    })
-  );
-  files.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return NextResponse.json(files);
+  return NextResponse.json(await listBackups());
 }
 
 // A full backup of the database and the uploads, as a job the page polls.

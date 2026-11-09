@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { appendFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireMembership } from "./api";
@@ -38,6 +38,47 @@ const SCRIPT = join(process.cwd(), "deploy", "backup.sh");
 
 /** An archive name as the script writes it. No paths. */
 export const ARCHIVE_NAME = /^[A-Za-z0-9_-]+\.tar\.gz$/;
+
+// The backup container's nightly archives (${BACKUP_DIR}), mounted read-only. On the
+// hosted box that folder is shared by every stack, so only this stack's own archives
+// count, by the exact name the script gives them; the older two-file backups
+// (<stack>_uploads_<date>.tar.gz beside a .sql.gz) don't match, and aren't restorable here.
+const NIGHTLY_DIR = process.env.NIGHTLY_DIR;
+const STACK = (process.env.STACK ?? "portal").replace(/[^A-Za-z0-9_-]/g, "");
+const OWN_ARCHIVE = new RegExp(`^${STACK}_\\d{4}-\\d\\d-\\d\\d_\\d{6}\\.tar\\.gz$`);
+
+export type BackupKind = "nightly" | "manual";
+const backupDirs = (): [string, BackupKind][] =>
+  NIGHTLY_DIR ? [[BACKUP_OUT, "manual"], [NIGHTLY_DIR, "nightly"]] : [[BACKUP_OUT, "manual"]];
+const listable = (name: string, kind: BackupKind) =>
+  ARCHIVE_NAME.test(name) && (kind === "manual" || OWN_ARCHIVE.test(name));
+
+/** Every archive on the server, newest first: the nightly ones and those made in the app. */
+export async function listBackups() {
+  await mkdir(BACKUP_OUT, { recursive: true });
+  const found = await Promise.all(
+    backupDirs().map(async ([dir, kind]) => {
+      const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => listable(n, kind));
+      return Promise.all(
+        names.map(async (name) => {
+          const s = await stat(join(dir, name));
+          return { name, kind, bytes: s.size, createdAt: s.mtime.toISOString() };
+        })
+      );
+    })
+  );
+  return found.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** The path of a listed archive, or null. The name is never trusted as a path. */
+export async function findBackup(name: string): Promise<{ path: string; bytes: number } | null> {
+  for (const [dir, kind] of backupDirs()) {
+    if (!listable(name, kind)) continue;
+    const s = await stat(join(dir, name)).catch(() => null);
+    if (s?.isFile()) return { path: join(dir, name), bytes: s.size };
+  }
+  return null;
+}
 
 /** An archive being uploaded for a restore. Dot-named, so it is never listed as a
  *  backup, and keyed by an id the browser picks per upload. */

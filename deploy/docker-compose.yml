@@ -113,12 +113,16 @@ services:
       STACK: ${STACK}
       UPLOADS_DIR: /app/uploads
       BACKUP_OUT: /app/backups
+      NIGHTLY_DIR: /app/nightly-backups
     volumes:
       - uploads_data:/app/uploads
       # The Debugging tab's own archives. A volume rather than ${BACKUP_DIR}: the app
       # runs as an unprivileged user that cannot write to a host folder it doesn't own.
       # Same format as the daily backups, so either restores with either.
       - debug_backups:/app/backups
+      # The backup service's nightly archives, listed and downloadable in Settings >
+      # Backups. Read-only: the app never writes or prunes them.
+      - ${BACKUP_DIR:-../../rubric-backups}:/app/nightly-backups:ro
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]

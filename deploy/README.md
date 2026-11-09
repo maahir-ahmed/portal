@@ -118,7 +118,11 @@ viewer (passwords, tokens, sessions, webhooks and bank details masked) and runni
 and forced off with `DEMO_MODE=1`. Backups, restores and SQL runs are in the audit log.
 
 Archives made in the app go to the `debug_backups` volume (the app runs as a user that
-cannot write to `${BACKUP_DIR}`); download one from the tab to keep it elsewhere.
+cannot write to `${BACKUP_DIR}`). `${BACKUP_DIR}` is mounted read-only at
+`/app/nightly-backups`, so the tab lists both, with when each was taken, and downloads
+either. Only this stack's single-archive backups are listed: the folder is shared with
+the other stacks on this box, and the older two-file backups can't be restored in-app.
+Downloads are in the audit log, since each archive holds every member's bank details.
 
 ## Discord reminders and the /print bot
 
