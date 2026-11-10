@@ -272,7 +272,9 @@ export default async function TreasuryDetailPage({ params }: Props) {
           {isExec && (
             <StatusUpdater
               currentStatus={request.status}
-              statuses={STATUSES}
+              // Reimbursed only through the Mark reimbursed button, which confirms the
+              // amount; this dropdown sends no expectedAmount, so the API refuses it.
+              statuses={request.status === "REIMBURSED" ? STATUSES : STATUSES.filter((s) => s !== "REIMBURSED")}
               apiPath={`/api/societies/${societySlug}/treasury/${request.id}`}
             />
           )}

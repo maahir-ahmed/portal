@@ -144,6 +144,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // so an edit can't land on a claim an executive has just started paying, or has paid:
   // the amount they confirmed is the amount recorded.
   const ownerGuard = isExec ? {} : { status: isOwnerSubmit ? ("DRAFT" as const) : { in: EDITABLE_STATUSES } };
+  // Marking a claim paid must carry the amount the executive saw: the owner can edit
+  // a pending claim, so a plain {status: "REIMBURSED"} would record whatever it says
+  // by then. F04 added the guard; this makes it impossible to skip.
+  if (body.status === "REIMBURSED" && request.status !== "REIMBURSED" && body.expectedAmount === undefined) {
+    return NextResponse.json({ error: "Confirm the amount being paid (expectedAmount) when marking a claim reimbursed" }, { status: 400 });
+  }
   const amountGuard = body.status === "REIMBURSED" && body.expectedAmount !== undefined ? { amount: body.expectedAmount } : {};
   const updated = await prisma.treasuryRequest
     .update({
