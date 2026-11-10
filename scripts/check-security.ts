@@ -47,15 +47,31 @@ assert.ok(!freshInteraction(String(now / 1000 - 3600), now), "an hour-old reques
 assert.ok(!freshInteraction("not a number", now));
 assert.ok(!freshInteraction(null, now));
 
-// Password guessing: ten wrong tries lock the account for the window, a right one resets it.
+// Password guessing: ten wrong tries from one address lock the account there for the
+// window, a right one resets it, and failures from elsewhere never lock the owner out.
 const limits = passwordLimits("Jane@Example.com", new Headers({ "x-real-ip": "203.0.113.9" }));
 for (let i = 0; i < 9; i++) recordFailure(limits, now);
 assert.ok(!isLimited(limits, now), "nine wrong passwords are still allowed");
 clearFailures(limits);
 for (let i = 0; i < 10; i++) recordFailure(limits, now);
 assert.ok(isLimited(limits, now), "the tenth wrong password locks the account");
-assert.ok(isLimited(passwordLimits("jane@example.com", new Headers()), now), "case doesn't dodge the lock");
+assert.ok(
+  isLimited(passwordLimits("jane@example.com", new Headers({ "x-real-ip": "203.0.113.9" })), now),
+  "case doesn't dodge the lock"
+);
+assert.ok(
+  !isLimited(passwordLimits("jane@example.com", new Headers({ "x-real-ip": "198.51.100.7" })), now),
+  "failures from one address must not lock the account's real owner out elsewhere"
+);
 assert.ok(!isLimited(limits, now + 16 * 60_000), "the lock lifts after the window");
+// Spreading the guesses over many addresses still caps out on the account itself.
+for (let i = 0; i < 100; i++) {
+  recordFailure(passwordLimits("spread@example.com", new Headers({ "x-real-ip": `192.0.2.${i % 40}` })), now);
+}
+assert.ok(
+  isLimited(passwordLimits("spread@example.com", new Headers({ "x-real-ip": "203.0.113.77" })), now),
+  "a hundred failures across addresses cap the account"
+);
 
 // Spreadsheet exports: a ticket holder named "=HYPERLINK(...)" stays text.
 assert.equal(csvCell('=HYPERLINK("http://evil","x")'), `"'=HYPERLINK(""http://evil"",""x"")"`);
