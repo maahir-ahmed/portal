@@ -10,6 +10,19 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  // The seed is for demo and dev databases only, but nothing used to stop it being
+  // run against a real one, where it would attach four known-password accounts (two
+  // of them executives) to the real society. Any account outside example.com (which
+  // only real use creates: the seed and the demo stay inside RFC 2606) means this is
+  // not a database to seed. The demo stack is reset with --force-reset first, so it
+  // is empty here and never trips this.
+  const realAccounts = await prisma.user.count({ where: { NOT: { email: { endsWith: "@example.com" } } } });
+  if (realAccounts > 0 && process.env.SEED_FORCE !== "1") {
+    console.error(`Refusing to seed: this database has ${realAccounts} real account(s).`);
+    console.error("The seed adds demo executives with a known password. If you really mean to, set SEED_FORCE=1.");
+    process.exit(1);
+  }
+
   console.log("🌱 Seeding database...");
 
   // Create demo society: UNSW Security Society
@@ -750,5 +763,9 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
+  // exitCode, so a failed or refused seed is a failed command, not a logged-and-green one.
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

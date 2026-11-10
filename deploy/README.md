@@ -53,7 +53,7 @@ Each branch deploys to the stack listed for it in
    already marked as set up). The app runs `db push` on startup, so the
    schema already exists:
    ```bash
-   docker compose --env-file deploy/.env.prod -p rubric_prod -f deploy/docker-compose.yml --profile seed run --rm seed
+   docker compose --env-file deploy/.env.dev -p rubric_dev -f deploy/docker-compose.yml --profile seed run --rm seed
    ```
 
    Societies that existed before the wizard are marked as set up by a post-push fix, so
