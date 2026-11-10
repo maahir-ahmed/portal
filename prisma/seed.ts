@@ -62,7 +62,8 @@ async function main() {
   const [demo, alice, bob, charlie] = await Promise.all([
     prisma.user.upsert({
       where: { email: "demo@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "demo@example.com",
         name: "Demo Executive",
@@ -72,7 +73,8 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "alice@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "alice@example.com",
         name: "Alice Chen",
@@ -82,7 +84,8 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "bob@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "bob@example.com",
         name: "Bob Nguyen",
@@ -92,7 +95,8 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "charlie@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "charlie@example.com",
         name: "Charlie Park",
