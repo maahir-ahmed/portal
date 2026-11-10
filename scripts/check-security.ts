@@ -2,6 +2,8 @@
 // change can't quietly undo one.
 //   npx tsx scripts/check-security.ts
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
 import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
@@ -77,6 +79,39 @@ assert.ok(
 assert.equal(csvCell('=HYPERLINK("http://evil","x")'), `"'=HYPERLINK(""http://evil"",""x"")"`);
 assert.equal(csvCell("@SUM(A1)"), `"'@SUM(A1)"`);
 assert.equal(csvCell("Ada Lovelace"), `"Ada Lovelace"`, "ordinary text is unchanged");
+
+// The restore guard in deploy/backup.sh: run its own awk program (extracted, not
+// re-implemented) against dumps it must accept and reject. The second layer, psql's
+// restricted mode, needs a live database, so here it is only pinned as present.
+{
+  const backupSh = readFileSync(new URL("../deploy/backup.sh", import.meta.url), "utf8");
+  const awkProg = backupSh.match(/awk '([^']+)' "\$into\/database\.sql"/)?.[1];
+  assert.ok(awkProg, "the dump guard's awk program must be in backup.sh");
+  const runGuard = (dump: string) => {
+    const r = spawnSync("awk", [awkProg!], { input: dump, encoding: "utf8" });
+    assert.equal(r.error, undefined);
+    return r.status === 0;
+  };
+  const goodDump = [
+    "-- PostgreSQL database dump",
+    "\\restrict k3y_0k",
+    "SET statement_timeout = 0;",
+    "COPY public.\"User\" (id, name) FROM stdin;",
+    "u1\tBack\\\\slash in data is fine",
+    "\\.",
+    "SELECT 1;",
+    "\\unrestrict k3y_0k",
+    "",
+  ].join("\n");
+  assert.ok(runGuard(goodDump), "a real pg_dump shape must pass the guard");
+  assert.ok(!runGuard('SELECT 1; \\echo oops\n'), "a psql command after SQL on the same line must be refused");
+  assert.ok(!runGuard('SELECT 1;\n\\echo oops\n'), "a psql command at line start must be refused");
+  assert.ok(!runGuard("\\restrict 'not a plain key'\n"), "a restrict line with extra content must be refused");
+  assert.ok(backupSh.includes("printf '\\\\restrict %s\\n' \"$restrict_key\""),
+    "restore() must put psql in restricted mode before the dump");
+  assert.ok(backupSh.includes("grep -Ev '^\\\\(restrict|unrestrict) '"),
+    "restore() must drop the dump's own restrict pair, whose key differs from ours");
+}
 
 // The Origin check on API writes: this host (whatever the port), never a sibling.
 assert.ok(sameHost("https://secsoc.maahir.dev", "secsoc.maahir.dev"));

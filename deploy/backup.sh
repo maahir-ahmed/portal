@@ -154,12 +154,17 @@ unpack_and_check() {
   [ -f "$into/database.sql" ] || die "archive has no database.sql"
   [ -d "$into/uploads" ] || die "archive has no uploads directory"
 
-  # psql runs the dump, and a line starting with a backslash is a psql command: \! runs a
-  # shell, \o and \copy write files. pg_dump's own output only has them as COPY data and
-  # \restrict / \unrestrict, so anything else means the dump was not made by pg_dump.
+  # psql treats a backslash as the start of a command WHEREVER it sits on a line, not
+  # just at the start: \! runs a shell, \o and \copy write files. pg_dump's own output
+  # only has backslashes inside COPY data and in its \restrict / \unrestrict pair, so
+  # any other backslash means the dump was not made by pg_dump. This is one of two
+  # layers: restore() below also runs psql in restricted mode, which refuses every
+  # command whatever the text looks like (a faked COPY header could blind this check).
   awk '/^COPY .* FROM stdin;$/ { copy = 1; next }
        copy && /^\\\.$/ { copy = 0; next }
-       !copy && /^\\/ && !/^\\(restrict|unrestrict) / { bad = 1 }
+       copy { next }
+       /^\\(restrict|unrestrict) [A-Za-z0-9_]+$/ { next }
+       /\\/ { bad = 1 }
        END { exit bad }' "$into/database.sql" ||
     die "database.sql holds psql commands; a dump from pg_dump never does"
 
@@ -198,7 +203,15 @@ restore() {
   # (rather than relying on the dump's own DROPs) also clears tables a newer version
   # added that the dump knows nothing about, which would otherwise block the drops.
   log "restoring database"
-  { echo 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;'; cat "$tmp/database.sql"; } |
+  # Restricted mode (psql 16.10+, which both images carry): after our \restrict, psql
+  # itself refuses every backslash command until an \unrestrict with the same random
+  # key, wherever it appears and whatever the text around it looks like. That makes
+  # psql, not the text check above, the thing an archive would have to beat. The
+  # dump's own restrict pair carries its own key and is dropped; ours spans the file.
+  restrict_key="r$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+  { printf '\\restrict %s\n' "$restrict_key"
+    echo 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;'
+    grep -Ev '^\\(restrict|unrestrict) ' "$tmp/database.sql"; } |
     PGOPTIONS="-c client_min_messages=warning" psql -q -v ON_ERROR_STOP=1 --single-transaction -f - "$PGURL" > /dev/null ||
     die "database restore failed; the database is unchanged"
 
