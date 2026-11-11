@@ -4,13 +4,14 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { parseYear } from "@/lib/years";
 import { z } from "zod";
+import { money } from "@/lib/schemas";
 
 type Params = { society: string; year: string };
 
 const setSchema = z.object({
   allocations: z.array(z.object({
     categoryId: z.string().min(1),
-    amount: z.number().min(0),
+    amount: money,
   })).min(1).max(200),
 });
 

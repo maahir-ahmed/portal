@@ -6,6 +6,7 @@ import { wallClockNow } from "./urgency";
 import { isPlausibleDate } from "./utils";
 import { ALLOWED_EXTS, ALLOWED_TYPES, MAX_UPLOAD, extOf, saveUpload } from "./uploads";
 import { memberFor, NOT_LINKED, type Attachment, type DiscordMessage, type Interaction } from "./discordBot";
+import { money as moneySchema } from "@/lib/schemas";
 
 // /claim: a reimbursement claim from Discord. The command saves the receipt and a DRAFT
 // claim, then shows it back with the society's rules and two buttons. "Submit claim"
@@ -35,7 +36,10 @@ export async function handleClaim(i: Interaction): Promise<DiscordMessage | stri
   });
   if (!society) return NOT_LINKED;
 
-  const amount = Math.round(Number(opt(i, "amount")) * 100) / 100;
+  // Checked before the receipt is saved: an amount past the column would fail after it.
+  const parsedAmount = moneySchema.safeParse(Number(opt(i, "amount")));
+  if (!parsedAmount.success) return "The amount has to be more than $0 and under $100 million.";
+  const amount = parsedAmount.data;
   if (!(amount > 0)) return "The amount has to be more than $0.";
   const what = String(opt(i, "what") ?? "").trim();
   const where = String(opt(i, "where") ?? "").trim();

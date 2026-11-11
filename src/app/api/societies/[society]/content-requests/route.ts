@@ -13,13 +13,13 @@ const createSchema = z.object({
   startDate: z.string().refine(isPlausibleDate, "Enter a real date"),
   endDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable().optional(),
   location: z.string().min(1).max(200),
-  keyPoints: z.string().min(1),
+  keyPoints: z.string().min(1).max(20000),
   deadline: z.string().refine(isPlausibleDate, "Enter a real date"),
   bannerRequired: z.boolean().default(false),
   blurbRequired: z.boolean().default(false),
   rubricRequired: z.boolean().default(false),
-  otherNotes: z.string().nullable().optional(),
-  portfolioId: z.string().nullable().optional(),
+  otherNotes: z.string().max(20000).nullable().optional(),
+  portfolioId: z.string().max(100).nullable().optional(),
   status: z.enum(["DRAFT", "SUBMITTED"]).default("SUBMITTED"),
 });
 

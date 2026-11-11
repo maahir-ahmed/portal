@@ -7,10 +7,13 @@ import { z } from "zod";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
 
+// More than any claim has; keeps one request from writing thousands of rows.
+const MAX_RECEIPTS = 20;
+
 // Fields are optional so a partial claim can be saved as a DRAFT; the full set
 // is enforced below only when the claim is actually submitted for approval.
 const schema = z.object({
-  contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  contactEmail: z.union([z.string().email().max(320), z.literal("")]).optional(),
   expenseDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").optional(),
   locationSupplier: z.string().max(500).optional(),
   description: z.string().max(10000).optional(),
@@ -24,10 +27,10 @@ const schema = z.object({
   bankPayId: z.string().trim().max(100).nullable().optional(),
   saveToProfile: z.boolean().optional(),
   acknowledgedRules: z.boolean().optional(),
-  receiptUrls: z.array(z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here")).optional(),
-  budgetCategoryId: z.string().nullable().optional(),
+  receiptUrls: z.array(z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here")).max(MAX_RECEIPTS).optional(),
+  budgetCategoryId: z.string().max(100).nullable().optional(),
   // The event this was spent on, if any.
-  contentRequestId: z.string().nullable().optional(),
+  contentRequestId: z.string().max(100).nullable().optional(),
   status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING"]).default("REIMBURSEMENT_PENDING"),
 });
 

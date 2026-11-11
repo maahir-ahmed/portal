@@ -6,24 +6,33 @@ import { notifyExecs } from "@/lib/notifications";
 import { isLateArcSubmission, isPlausibleDate } from "@/lib/utils";
 import { EVENT_TYPES } from "@/lib/utils";
 import { z } from "zod";
+import { time24 } from "@/lib/schemas";
 
+const MAX_PEOPLE = 10000;
 const schema = z.object({
   eventName: z.string().min(1).max(200),
   eventType: z.enum(EVENT_TYPES.map((t) => t.value)),
   preferredDate: z.string().refine(isPlausibleDate, "Enter a real date"),
-  startTime: z.string(),
-  endTime: z.string(),
-  description: z.string().min(1),
-  maxAttendees: z.number().int().positive(),
+  startTime: time24,
+  endTime: time24,
+  description: z.string().min(1).max(20000),
+  maxAttendees: z.number().int().positive().max(MAX_PEOPLE),
   hasExternalGuests: z.boolean(),
-  externalGuestsDesc: z.string().nullable().optional(),
-  numExternalGuests: z.number().nullable().optional(),
+  externalGuestsDesc: z.string().max(5000).nullable().optional(),
+  numExternalGuests: z.number().int().min(0).max(MAX_PEOPLE).nullable().optional(),
   preferredLocation: z.enum(["LECTURE_THEATRE", "CATS_ROOM", "SECLAB", "ROUNDHOUSE", "OUTDOOR_SPACE", "OTHER"]),
-  safetyOfficerName: z.string().min(1),
-  safetyOfficerZid: z.string().min(1),
-  safetyOfficerPhone: z.string().min(1),
-  roomRequirements: z.string().min(1),
-});
+  safetyOfficerName: z.string().min(1).max(200),
+  safetyOfficerZid: z.string().min(1).max(50),
+  safetyOfficerPhone: z.string().min(1).max(50),
+  roomRequirements: z.string().min(1).max(5000),
+})
+  // The form enforces these with `required`; an API caller has to meet them too.
+  // Same-day times compare as text because both are zero-padded HH:MM.
+  .refine((b) => b.endTime > b.startTime, { message: "The end time has to be after the start time", path: ["endTime"] })
+  .refine((b) => !b.hasExternalGuests || (!!b.externalGuestsDesc?.trim() && b.numExternalGuests != null), {
+    message: "Describe the external guests and say how many",
+    path: ["externalGuestsDesc"],
+  });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();

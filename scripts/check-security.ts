@@ -10,7 +10,7 @@ import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
 import { tempPassphraseExpiry } from "../src/lib/passphrase";
-import { httpUrl, plainDate, plausibleDate } from "../src/lib/schemas";
+import { httpUrl, money, plainDate, plausibleDate, time24 } from "../src/lib/schemas";
 import { UPLOADED_FILE } from "../src/lib/uploads";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
@@ -55,6 +55,12 @@ for (const bad of ["https://evil.example/x.png", "javascript:alert(1)", "/upload
 assert.ok(plausibleDate.safeParse("2026-11-04T18:00").success && plainDate.safeParse("2026-11-04").success);
 for (const bad of ["garbage", "+275760-09-13", "2999-01-01", ""]) assert.ok(!plausibleDate.safeParse(bad).success, bad);
 for (const bad of ["2026-11-04T18:00", "04/11/2026", "2999-01-01"]) assert.ok(!plainDate.safeParse(bad).success, bad);
+
+// Money fits Decimal(10,2): capped, rounded to cents, never Infinity or negative.
+assert.equal(money.parse(12.345), 12.35);
+assert.equal(money.parse(99_999_999.99), 99_999_999.99);
+for (const bad of [1e8, -1, Infinity, NaN]) assert.ok(!money.safeParse(bad).success, String(bad));
+assert.ok(time24.safeParse("09:30").success && !time24.safeParse("9:30").success && !time24.safeParse("24:00").success);
 
 // /print: a signed request is only good for a few minutes, so a captured one can't be replayed.
 const now = Date.UTC(2026, 10, 4, 12, 0, 0);

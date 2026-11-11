@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { financialYearOf } from "@/lib/years";
+import { money } from "@/lib/schemas";
 
 // Statuses that represent money the society has actually committed. Drafts aren't
 // submitted; rejected claims are never paid. Neither counts toward spend.
@@ -54,12 +55,12 @@ export async function ensureAllocations(societyId: string) {
   if (data.length > 0) await prisma.budgetAllocation.createMany({ data, skipDuplicates: true });
 }
 
-const nullableMoney = z.number().min(0).nullable().optional();
+const nullableMoney = money.nullable().optional();
 
 /** One category's figures for one year, as the category create/edit routes take them. */
 export const allocationSchema = z.object({
   year: z.number().int().min(2000).max(2100),
-  amount: z.number().min(0),
+  amount: money,
   revised: nullableMoney,
   worstCase: nullableMoney,
   actualUsage: nullableMoney,

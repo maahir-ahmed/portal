@@ -21,7 +21,7 @@ const schema = z.object({
   colour: z.enum(["BW", "COLOUR"]),
   fileUrl: z.string().regex(UPLOADED_FILE, "The file has to be uploaded here"),
   fileName: z.string().min(1).max(500),
-  additionalDetails: z.string().optional(),
+  additionalDetails: z.string().max(10000).optional(),
 });
 
 // Budget left = tier allowance − sum of this year's approved-and-beyond request costs.

@@ -31,6 +31,7 @@ const patchSchema = z.object({
   amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
   addReceipts: z
     .array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here") }))
+    .max(20)
     .optional(),
   removeReceiptIds: z.array(z.string()).optional(),
   // Sent with "Mark reimbursed": the amount the exec saw and transferred. The write
