@@ -61,10 +61,11 @@ export async function listBackups() {
       const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => listable(n, kind));
       return Promise.all(
         names.map(async (name) => {
-          const s = await stat(join(dir, name));
-          return { name, kind, bytes: s.size, createdAt: s.mtime.toISOString() };
+          // An archive removed (by the keep-days sweep) or unreadable since the listing is skipped.
+          const s = await stat(join(dir, name)).catch(() => null);
+          return s ? { name, kind, bytes: s.size, createdAt: s.mtime.toISOString() } : null;
         })
-      );
+      ).then((rows) => rows.filter((r) => r !== null));
     })
   );
   return found.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
