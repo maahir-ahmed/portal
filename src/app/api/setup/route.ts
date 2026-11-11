@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { setupTokenOk } from "@/lib/setup";
-import { generateSlug } from "@/lib/utils";
+import { generateSlug, slugProblem } from "@/lib/utils";
 
 const schema = z.object({
   token: z.string(),
@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hashPassword(body.password);
   const slug = process.env.SOCIETY_SLUG || generateSlug(body.societyName);
+  const bad = slugProblem(slug);
+  if (bad) return NextResponse.json({ error: bad }, { status: 400 });
   try {
     const user = await prisma.$transaction(
       async (tx) => {

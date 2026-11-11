@@ -211,6 +211,16 @@ export function generateSlug(name: string): string {
     .trim();
 }
 
+// Top-level paths the app owns (see ROOT_PATHS in proxy.ts); a society slug can't sit there.
+const RESERVED_SLUGS = ["api", "login", "setup", "uploads", "_next"];
+
+/** Why a slug can't be used, or null. An empty one would send the home page to `//dashboard`. */
+export function slugProblem(slug: string): string | null {
+  if (!slug) return "Use a name with some letters or numbers (a-z, 0-9) so it can make a web address";
+  if (RESERVED_SLUGS.includes(slug)) return `"${slug}" is reserved, choose a different name`;
+  return null;
+}
+
 // Arc's event categories, used by the room booking form and the exec detail view.
 export const EVENT_TYPES = [
   { value: "SOCIAL_ACTIVITY", label: "Social - Activity" },
