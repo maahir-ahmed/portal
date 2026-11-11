@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { prisma } from "./db";
 import { createAuditLog } from "./audit";
 import { notifyExecs } from "./notifications";
@@ -268,12 +269,16 @@ async function submit(member: { id: string; name: string; societyId: string }, i
     entityId: id,
     metadata: { status: "DRAFT → REIMBURSEMENT_PENDING", via: "Discord /claim" },
   });
-  await notifyExecs(
-    member.societyId,
-    "EXECUTIVE_ACTION_REQUIRED",
-    `Reimbursement to pay: ${money(amount)} to ${member.name}`,
-    "Ready to pay out. Spending approval happens in the committee Discord.",
-    `/requests/treasury/${id}`
+  // After the reply: the exec-queue webhook can take up to 5 seconds, and Discord shows
+  // "This interaction failed" if the answer takes more than 3, although the claim is filed.
+  after(() =>
+    notifyExecs(
+      member.societyId,
+      "EXECUTIVE_ACTION_REQUIRED",
+      `Reimbursement to pay: ${money(amount)} to ${member.name}`,
+      "Ready to pay out. Spending approval happens in the committee Discord.",
+      `/requests/treasury/${id}`
+    ).catch((err) => console.warn("/claim: exec notification failed:", err instanceof Error ? err.message : err))
   );
   return (
     `Submitted: ${money(amount)}. The executives have it, and you'll get a notification when it's paid.` +
