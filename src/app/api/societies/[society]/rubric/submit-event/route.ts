@@ -12,7 +12,10 @@ import { httpUrl } from "@/lib/schemas";
 const schema = z.object({
   contentRequestId: z.string().optional(),
   rubricEventId: z.string().optional(),
-  rubricEventLink: httpUrl.optional(),
+  // null clears the stored value (a reassignment to an event with no link or QR must not
+  // keep the previous event's); left out leaves it alone.
+  rubricEventLink: httpUrl.nullable().optional(),
+  rubricQrCodeUrl: httpUrl.nullable().optional(),
   // false when linking an already-existing Rubric event (assignment, not submission)
   markSubmitted: z.boolean().optional().default(true),
 });
@@ -39,6 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         ...(parsed.data.markSubmitted ? { rubricSubmittedAt: new Date() } : {}),
         rubricEventId: parsed.data.rubricEventId,
         rubricEventLink: parsed.data.rubricEventLink,
+        rubricQrCodeUrl: parsed.data.rubricQrCodeUrl,
       },
     });
     if (!count) return NextResponse.json({ error: "Not found" }, { status: 404 });
