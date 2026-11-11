@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
+import { canViewRequest } from "@/lib/utils";
 import { z } from "zod";
 
 const schema = z.object({
   content: z.string().min(1).max(10000),
   isInternal: z.boolean().default(false),
-  // Recorded as the audit entry's type, so one of the three the thread views send.
-  requestType: z.enum(["content-request", "room-booking", "treasury"]),
+  // Sent by the thread views but not trusted: the audit entry's type comes from the thread.
+  requestType: z.string().optional(),
 });
 
 type Params = { society: string; id: string };
@@ -40,7 +41,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
           { treasuryRequest: { id: requestId, societyId } },
         ],
       },
-      include: { treasuryRequest: { select: { submittedById: true } } },
+      include: {
+        treasuryRequest: { select: { submittedById: true } },
+        contentRequest: { select: { submittedById: true, assignedToId: true } },
+        roomBooking: { select: { submittedById: true, assignedToId: true } },
+      },
     });
 
     // A claim is its owner's and the executives' only (the same rule as the claim page),
@@ -49,7 +54,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
       thread?.treasuryRequest &&
       membership!.role !== "EXECUTIVE" &&
       thread.treasuryRequest.submittedById !== session!.user.id;
-    if (!thread || foreignClaim) {
+    // An event or booking is open to the people canViewRequest names, so it takes
+    // comments from them only: knowing its id is not enough.
+    const foreignRequest =
+      (thread?.contentRequest && !canViewRequest(membership!, session!.user.id, thread.contentRequest)) ||
+      (thread?.roomBooking && !canViewRequest(membership!, session!.user.id, thread.roomBooking));
+    if (!thread || foreignClaim || foreignRequest) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 });
     }
 
@@ -69,7 +79,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
       societyId: membership!.societyId,
       userId: session!.user.id,
       action: "COMMENT",
-      entityType: body.requestType,
+      entityType: thread.contentRequest ? "content-request" : thread.roomBooking ? "room-booking" : "treasury",
       entityId: requestId,
     });
 
