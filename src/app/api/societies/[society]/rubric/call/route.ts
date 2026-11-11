@@ -3,7 +3,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { getRubricCredentials, postRubric } from "@/lib/rubric";
-import { RUBRIC_CALLS, canCall, scrubResponse } from "@/lib/rubricCalls";
+import { RUBRIC_CALLS, canCall, rubricRateLimited, scrubResponse } from "@/lib/rubricCalls";
 import { demoEnabled, demoResponse } from "@/lib/rubricDemo";
 import { z } from "zod";
 
@@ -19,25 +19,6 @@ const bodySchema = z.object({
   params: z.record(z.string(), z.unknown()).optional(),
 });
 
-// The allowlist stops a member reaching a call they shouldn't; this stops them
-// draining a call they may reach. Loading the Rubric tabs costs a handful of calls,
-// so a minute's worth of ordinary use sits well under the cap, while scraping the
-// membership or ticket lists hits it immediately.
-// ponytail: per-process counter, no store. Correct for the single-container
-// deployment and resets on restart; needs a shared store only if this ever runs
-// more than one replica. The map is bounded by the number of committee members.
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX = 60;
-const recentCalls = new Map<string, number[]>();
-
-function rateLimited(userId: string): boolean {
-  const now = Date.now();
-  const recent = (recentCalls.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  recent.push(now);
-  recentCalls.set(userId, recent);
-  return recent.length > RATE_MAX;
-}
-
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
   const { session, error: authErr } = await requireAuth();
   if (authErr) return authErr;
@@ -46,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
-  if (rateLimited(session!.user.id)) {
+  if (rubricRateLimited(session!.user.id)) {
     return NextResponse.json({ error: "Too many Rubric requests, try again shortly" }, { status: 429 });
   }
 
