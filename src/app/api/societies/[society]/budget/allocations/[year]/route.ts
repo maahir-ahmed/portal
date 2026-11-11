@@ -48,6 +48,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
       entityId: String(year),
       metadata: { year, categories: count },
     });
+    // skipDuplicates leaves a category that already has a figure for the year as it is,
+    // so fewer rows than sent means someone else saved first: say so rather than "saved".
+    if (count < ids.length) {
+      return NextResponse.json(
+        {
+          error: `${year} already had figures for ${ids.length - count} of these categories, so only ${count} of ${ids.length} were saved. Reload to see the current figures.`,
+          created: count,
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ ok: true, created: count }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
