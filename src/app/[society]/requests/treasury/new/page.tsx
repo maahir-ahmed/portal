@@ -137,7 +137,6 @@ export default function NewTreasuryPage() {
       body.bankBsb = form.get("bankBsb");
       body.bankAccountNumber = form.get("bankAccountNumber");
       body.bankPayId = form.get("bankPayId");
-      body.saveToProfile = !savedAccount; // save to profile only if user has no account yet
     }
 
     const res = await fetch(`/api/societies/${params.society}/treasury`, {

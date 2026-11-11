@@ -7,6 +7,9 @@ import { isPlausibleDate } from "./utils";
 import { ALLOWED_EXTS, ALLOWED_TYPES, MAX_UPLOAD, extOf, saveUpload } from "./uploads";
 import { memberFor, NOT_LINKED, type Attachment, type DiscordMessage, type Interaction } from "./discordBot";
 import { money as moneySchema } from "@/lib/schemas";
+import { checkBank } from "@/lib/bank";
+
+export { checkBank };
 
 // /claim: a reimbursement claim from Discord. The command saves the receipt and a DRAFT
 // claim, then shows it back with the society's rules and two buttons. "Submit claim"
@@ -231,21 +234,6 @@ export async function handleClaimBank(i: Interaction) {
     metadata: { via: "Discord /claim", accountName: bank.accountName },
   });
   return update({ content: await submit(found.member, id, account.id) });
-}
-
-/** BSB as 123-456, a 4 to 10 digit account number, and an optional PayID. */
-export function checkBank(accountName: string, bsb: string, accountNumber: string, payId: string) {
-  const bsbDigits = bsb.replace(/[\s-]/g, "");
-  const account = accountNumber.replace(/[\s-]/g, "");
-  if (!accountName) return { error: "Add the account name." };
-  if (!/^\d{6}$/.test(bsbDigits)) return { error: "A BSB is 6 digits, like 123-456." };
-  if (!/^\d{4,10}$/.test(account)) return { error: "An account number is 4 to 10 digits." };
-  return {
-    accountName: accountName.slice(0, 100),
-    bsb: `${bsbDigits.slice(0, 3)}-${bsbDigits.slice(3)}`,
-    accountNumber: account,
-    payId: payId.slice(0, 100) || null,
-  };
 }
 
 /** DRAFT → submitted, once even if the button is pressed twice. */
