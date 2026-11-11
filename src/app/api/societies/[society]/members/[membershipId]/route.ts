@@ -52,37 +52,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         ? await portfolioForTitle(membership!.societyId, title, role)
         : undefined;
 
-    if (body.extraPortfolioIds) {
-      // The title's own portfolio is implied, so it is never stored twice.
-      const fromTitle = portfolioId !== undefined ? portfolioId : target.portfolioId;
-      const ids = [...new Set(body.extraPortfolioIds)].filter((id) => id !== fromTitle);
-      const known = await prisma.portfolio.count({ where: { id: { in: ids }, societyId: membership!.societyId } });
-      if (known !== ids.length) return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
-      await prisma.$transaction([
-        prisma.memberPortfolio.deleteMany({ where: { membershipId } }),
-        prisma.memberPortfolio.createMany({ data: ids.map((portfolioId) => ({ membershipId, portfolioId })) }),
-      ]);
-    }
-
     // The phone is on the account, which may also belong to another society.
+    // Checked before any write so a refusal changes nothing.
     if (body.phone !== undefined) {
       const foreign = await blockForeignAccountWrite(target.userId, membership!.societyId);
       if (foreign) return foreign;
     }
 
-    const [updated] = await Promise.all([
-      prisma.societyMembership.update({
+    let extraIds: string[] | undefined;
+    if (body.extraPortfolioIds) {
+      // The title's own portfolio is implied, so it is never stored twice.
+      const fromTitle = portfolioId !== undefined ? portfolioId : target.portfolioId;
+      extraIds = [...new Set(body.extraPortfolioIds)].filter((id) => id !== fromTitle);
+      const known = await prisma.portfolio.count({ where: { id: { in: extraIds }, societyId: membership!.societyId } });
+      if (known !== extraIds.length) return NextResponse.json({ error: "Unknown portfolio" }, { status: 400 });
+    }
+
+    // One transaction: portfolios, membership and phone all change or none do.
+    const updated = await prisma.$transaction(async (tx) => {
+      if (extraIds) {
+        await tx.memberPortfolio.deleteMany({ where: { membershipId } });
+        await tx.memberPortfolio.createMany({ data: extraIds.map((portfolioId) => ({ membershipId, portfolioId })) });
+      }
+      if (body.phone !== undefined) {
+        await tx.user.update({ where: { id: target.userId }, data: { phone: body.phone } });
+      }
+      return tx.societyMembership.update({
         where: { id: membershipId },
         data: {
           ...(body.role !== undefined && { role: body.role }),
           ...(body.title !== undefined && { title: body.title }),
           ...(portfolioId !== undefined && { portfolioId }),
         },
-      }),
-      body.phone !== undefined
-        ? prisma.user.update({ where: { id: target.userId }, data: { phone: body.phone } })
-        : Promise.resolve(),
-    ]);
+      });
+    });
 
     await createAuditLog({
       societyId: membership!.societyId,
