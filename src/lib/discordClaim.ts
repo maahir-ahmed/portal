@@ -178,10 +178,25 @@ export async function handleClaimButton(i: Interaction) {
   const { member, draft } = found;
 
   if (action === "cancel") {
-    await prisma.$transaction([
-      prisma.thread.deleteMany({ where: { treasuryRequestId: id } }),
-      prisma.treasuryRequest.deleteMany({ where: { id, status: "DRAFT" } }),
-    ]);
+    // As the website's delete does: the thread goes only with a claim that is still a
+    // draft, so one submitted on the website a moment ago keeps its thread.
+    const gone = { id, submittedById: member.id, status: "DRAFT" as const };
+    const cancelled = await prisma
+      .$transaction(async (tx) => {
+        await tx.thread.deleteMany({ where: { treasuryRequest: { is: gone } } });
+        const { count } = await tx.treasuryRequest.deleteMany({ where: gone });
+        if (!count) throw new Error("not a draft any more");
+      })
+      .then(() => true, () => false);
+    if (!cancelled) return update({ content: "That claim has already been submitted." });
+    await createAuditLog({
+      societyId: member.societyId,
+      userId: member.id,
+      action: "DELETE",
+      entityType: "TreasuryRequest",
+      entityId: id,
+      metadata: { amount: Number(draft.amount), status: "DRAFT", via: "discord" },
+    });
     return update({ content: "Cancelled. Nothing was sent to the executives." });
   }
 
