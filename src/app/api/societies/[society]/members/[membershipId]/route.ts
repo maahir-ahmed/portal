@@ -9,7 +9,7 @@ type Params = { society: string; membershipId: string };
 
 const patchSchema = z.object({
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]).optional(),
-  title: z.string().nullable().optional(),
+  title: z.string().max(100).nullable().optional(),
   phone: z.string().nullable().optional(),
   // Portfolios beyond the title's own. Replaces the whole set when sent.
   extraPortfolioIds: z.array(z.string()).max(50).optional(),

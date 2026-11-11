@@ -11,9 +11,9 @@ import { z } from "zod";
 const schema = z.object({
   // Sign-in lowercases what is typed, so a capital here would lock the member out.
   email: z.string().trim().toLowerCase().email(),
-  name: z.string().min(1),
+  name: z.string().min(1).max(100),
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]),
-  title: z.string().nullable().optional(),
+  title: z.string().max(100).nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {

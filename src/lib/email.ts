@@ -63,6 +63,8 @@ interface EmailOptions {
 
 /** Sends, or quietly does nothing when email is off. Throws when the server refuses. */
 export async function sendEmail({ to, subject, html, text }: EmailOptions, settings?: Smtp) {
+  // Every demo visitor is an executive who can type any address and name: the demo sends nothing.
+  if (process.env.DEMO_MODE === "1") return;
   const s = settings ?? (await emailSettings());
   if (!s) return;
 
@@ -108,6 +110,7 @@ export function notificationEmail(title: string, body: string, link?: string, la
  * exec knows to hand it over themselves when it didn't (no SMTP, or the send failed).
  */
 export async function emailPassphrase(to: string, name: string, society: string, passphrase: string, reset: boolean) {
+  if (process.env.DEMO_MODE === "1") return false;
   const settings = await emailSettings();
   if (!settings) return false;
   const title = reset ? `Your ${society} portal password was reset` : `You've been added to the ${society} portal`;
