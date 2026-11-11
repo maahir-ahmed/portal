@@ -5,12 +5,13 @@ import { createAuditLog } from "@/lib/audit";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
 import { ahegsYearOf } from "@/lib/years";
+import { plainDate } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
 const schema = z.object({
   title: z.string().min(1).max(300).optional(),
-  date: z.string().min(1).optional(),
+  date: plainDate.optional(),
   hours: z.number().min(0).max(24).optional(),
   fileUrl: z.string().max(2000).nullable().optional(),
   fileName: z.string().max(300).nullable().optional(),

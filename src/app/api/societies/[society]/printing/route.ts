@@ -6,11 +6,12 @@ import { createPrintingRequest } from "@/lib/printingServer";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { refreshArcTier } from "@/lib/rubric";
 import { z } from "zod";
+import { plausibleDate } from "@/lib/schemas";
 
 // Contact details (club, name, email, phone) are derived server-side from the
 // logged-in user + society (createPrintingRequest), so the form doesn't ask for them.
 const schema = z.object({
-  pickupAt: z.string().min(1),
+  pickupAt: plausibleDate,
   // Far past any real job, and low enough that the cost (A3 colour double sided at
   // the most) stays inside its Decimal(10,2) column instead of failing with a 500.
   quantity: z.number().int().positive().max(5000),

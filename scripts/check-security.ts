@@ -10,7 +10,7 @@ import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
 import { tempPassphraseExpiry } from "../src/lib/passphrase";
-import { httpUrl } from "../src/lib/schemas";
+import { httpUrl, plainDate, plausibleDate } from "../src/lib/schemas";
 import { UPLOADED_FILE } from "../src/lib/uploads";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
@@ -50,6 +50,11 @@ for (const ok of ["https://rubric.example/e/1", "http://x.test/a?b=1"]) assert.o
 for (const bad of ["javascript:alert(1)", "data:text/html,x", "//evil.example", "/uploads/a.png", "https://a b", ""]) assert.ok(!httpUrl.safeParse(bad).success, bad);
 assert.ok(UPLOADED_FILE.test("/uploads/0f8fad5b-d9cb-469f-a165-70867728950e.png"));
 for (const bad of ["https://evil.example/x.png", "javascript:alert(1)", "/uploads/../x.png"]) assert.ok(!UPLOADED_FILE.test(bad), bad);
+
+// The date inputs the audit found unchecked: garbage and far-future values are refused.
+assert.ok(plausibleDate.safeParse("2026-11-04T18:00").success && plainDate.safeParse("2026-11-04").success);
+for (const bad of ["garbage", "+275760-09-13", "2999-01-01", ""]) assert.ok(!plausibleDate.safeParse(bad).success, bad);
+for (const bad of ["2026-11-04T18:00", "04/11/2026", "2999-01-01"]) assert.ok(!plainDate.safeParse(bad).success, bad);
 
 // /print: a signed request is only good for a few minutes, so a captured one can't be replayed.
 const now = Date.UTC(2026, 10, 4, 12, 0, 0);

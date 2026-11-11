@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { z } from "zod";
+import { optionalDate, plausibleDate } from "@/lib/schemas";
 
 // The exec board. Cards are a shared scratchpad, so — unlike every other write in
 // this app — they are not audit logged: dragging a note between columns is not a
@@ -11,7 +12,7 @@ import { z } from "zod";
 const schema = z.object({
   title: z.string().min(1).max(200),
   notes: z.string().max(2000).nullable().optional(),
-  dueDate: z.string().nullable().optional(),
+  dueDate: optionalDate(plausibleDate),
   lane: z.enum(["TODO", "DOING", "DONE"]).default("TODO"),
 });
 

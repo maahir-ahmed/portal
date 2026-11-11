@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { z } from "zod";
+import { optionalDate, plausibleDate } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
 const schema = z.object({
   title: z.string().min(1).max(200).optional(),
   notes: z.string().max(2000).nullable().optional(),
-  dueDate: z.string().nullable().optional(),
+  dueDate: optionalDate(plausibleDate),
   lane: z.enum(["TODO", "DOING", "DONE"]).optional(),
 });
 
