@@ -13,6 +13,7 @@ import { MarketingContentPanel } from "@/components/requests/MarketingContentPan
 import { RubricForm } from "./RubricForm";
 import { RubricQrCode } from "@/components/requests/RubricQrCode";
 import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog";
+import { SubmitRequestButton } from "@/components/requests/SubmitRequestButton";
 import { AssignRubricEvent } from "@/components/requests/AssignRubricEvent";
 import { EventPhotos } from "@/components/requests/EventPhotos";
 import { canViewRequest, formatCurrency, formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
@@ -114,6 +115,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
             Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt, membership.society.timezone)}
           </p>
         </div>
+        {isOwner && request.status === "DRAFT" && <SubmitRequestButton societySlug={societySlug} requestId={request.id} />}
         {canEdit && (
           <Button asChild variant="outline" size="sm" data-tour="content-edit" className="flex-shrink-0">
             <Link href={`/${societySlug}/requests/content/${request.id}/edit`}>

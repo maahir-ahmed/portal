@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ContentRequestStatus } from "@prisma/client";
+import { ContentRequestStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, notifyExecs } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { canViewRequest, statusLabel, isPlausibleDate } from "@/lib/utils";
 import { UPLOADED_FILE } from "@/lib/uploads";
@@ -92,13 +92,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
   // Only a manager's status is applied, so only theirs is announced: anyone else's
   // would otherwise be logged, notified and posted to Discord without having happened.
-  const statusSent = canManage && body.status ? body.status : null;
+  // The one exception is the owner submitting their own draft.
+  const ownerSubmit = !canManage && isOwner && request.status === "DRAFT" && body.status === "SUBMITTED";
+  const statusSent = (canManage || ownerSubmit) && body.status ? body.status : null;
   const statusChanged = !!statusSent && statusSent !== request.status;
 
+  // The status read above is re-checked in the write, so a draft can't be submitted
+  // twice (and announced twice) by two clicks.
   const updated = await prisma.contentRequest.update({
-    where: { id },
+    where: { id, ...(ownerSubmit ? { status: "DRAFT" as const } : {}) },
     data: {
-      ...(canManage && body.status ? { status: body.status } : {}),
+      ...((canManage || ownerSubmit) && body.status ? { status: body.status } : {}),
       ...(canManage && body.activityGrantStatus ? { activityGrantStatus: body.activityGrantStatus } : {}),
       ...(canEditCore && typeof body.eventName === "string" ? { eventName: body.eventName } : {}),
       ...(canEditCore && body.startDate ? { startDate: new Date(body.startDate) } : {}),
@@ -118,7 +122,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         ? { blurbDone: String(body.finishedBlurb ?? "").trim().length > 0 }
         : {}),
     },
+  }).catch((err) => {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
+    throw err;
   });
+  if (!updated) {
+    return NextResponse.json({ error: "This request was just updated by someone else. Reload and try again." }, { status: 409 });
+  }
 
   if (isMarketing && Array.isArray(body.addDeliverables) && body.addDeliverables.length > 0) {
     await prisma.contentDeliverable.createMany({
@@ -164,6 +174,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       body: `Status changed to ${statusSent!.replace(/_/g, " ").toLowerCase()}.`,
       link: `/requests/content/${id}`,
     });
+  }
+
+  // A draft joining the queue alerts the executives, exactly as a new request does.
+  if (statusChanged && request.status === "DRAFT" && statusSent === "SUBMITTED") {
+    await notifyExecs(
+      request.societyId,
+      "APPROVAL_REQUIRED",
+      `New Content Request: ${request.eventName}`,
+      `${session!.user.name} submitted a new content request.`,
+      `/requests/content/${id}`
+    );
+    if (updated.rubricRequired) {
+      await notifyExecs(
+        request.societyId,
+        "EXECUTIVE_ACTION_REQUIRED",
+        `Rubric Event Required: ${request.eventName}`,
+        "This content request requires an executive to create a Rubric event and attach the link/QR code.",
+        `/requests/content/${id}`
+      );
+    }
   }
 
   // Edits the marketing channel's message in place, or posts it if this edit is the
