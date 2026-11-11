@@ -7,6 +7,7 @@ import { createNotification, notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
+import { money } from "@/lib/schemas";
 import type { TreasuryStatus } from "@prisma/client";
 
 type Params = { society: string; id: string };
@@ -27,8 +28,8 @@ const patchSchema = z.object({
   expenseDate: z.string().refine(isPlausibleDate, "Enter a real date").optional(),
   locationSupplier: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(10000).optional(),
-  // .finite() matters: JSON.parse turns 1e999 into Infinity, which reaches Decimal as junk.
-  amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
+  // Rounded to cents here, so the "more than $0" checks see what is stored: 0.004 is $0.
+  amount: money.optional(),
   addReceipts: z
     .array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here") }))
     .max(20)
@@ -36,7 +37,7 @@ const patchSchema = z.object({
   removeReceiptIds: z.array(z.string()).optional(),
   // Sent with "Mark reimbursed": the amount the exec saw and transferred. The write
   // refuses if the claim no longer has it.
-  expectedAmount: z.number().nonnegative().finite().optional(),
+  expectedAmount: money.optional(),
   // Sent with a draft submit when the policy wasn't ticked at draft time.
   acknowledgedRules: z.literal(true).optional(),
 });

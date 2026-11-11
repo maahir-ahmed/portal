@@ -6,6 +6,7 @@ import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
+import { money } from "@/lib/schemas";
 
 // More than any claim has; keeps one request from writing thousands of rows.
 const MAX_RECEIPTS = 20;
@@ -17,8 +18,7 @@ const schema = z.object({
   expenseDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").optional(),
   locationSupplier: z.string().max(500).optional(),
   description: z.string().max(10000).optional(),
-  // Decimal(10,2) holds up to 99,999,999.99; past that Postgres refuses it with a 500.
-  amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
+  amount: money.optional(),
   useExistingBank: z.boolean(),
   // The same limits as saving bank details on the Account page.
   bankAccountName: z.string().max(100).nullable().optional(),
