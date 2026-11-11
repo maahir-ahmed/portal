@@ -239,7 +239,7 @@ export function validateJob(job: string, path: string) {
  */
 export function restoreJob(job: string, path: string, who: string | null) {
   const production = process.env.NODE_ENV === "production";
-  return startJob(job, async () => {
+  return startJob(job, () => exclusive(async () => {
     const sha256 = await sha256File(path);
     let safetyBackup: string | null = null;
     if (who) {
@@ -290,7 +290,21 @@ export function restoreJob(job: string, path: string, who: string | null) {
       setTimeout(() => process.exit(0), 1000);
     }
     return { restarting: production, safetyBackup, renamedFrom };
-  });
+  }));
+}
+
+// One restore at a time: a second would clear and refill the uploads folder under the first,
+// and its failure would switch the maintenance page off mid-restore. backup.sh refuses a
+// second too, but only after this process had already raised the maintenance flag.
+let restoring = false;
+async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
+  if (restoring) throw new Error("Another restore is already running");
+  restoring = true;
+  try {
+    return await fn();
+  } finally {
+    restoring = false;
+  }
 }
 
 /**

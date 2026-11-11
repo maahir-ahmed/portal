@@ -195,7 +195,13 @@ validate() {
 restore() {
   [ "$(basename "$UPLOADS")" = uploads ] || die "UPLOADS_DIR must be a directory named uploads, not $UPLOADS"
   tmp="$OUT/.restore-$$"
-  trap 'rm -rf "$tmp"' EXIT
+  # The archive's lock, but without waiting: two restores at once would both clear and refill
+  # the uploads folder, and the first to finish restarts the app under the other.
+  mkdir -p "$OUT"
+  lock="$OUT/.lock-$STACK"
+  find "$OUT" -maxdepth 1 -name ".lock-$STACK" -mmin +120 -exec rm -rf {} +
+  mkdir "$lock" 2>/dev/null || die "another backup or restore of $STACK is running; wait for it to finish"
+  trap 'rm -rf "$tmp" "$lock"' EXIT
   unpack_and_check "$1" "$tmp" >&2
 
   # One transaction (--single-transaction wraps -f input only, hence -f -): the old schema is dropped and the dump loaded together, so a dump
