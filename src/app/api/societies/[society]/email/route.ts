@@ -78,8 +78,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const blank = { smtpPort: null, smtpUser: null, smtpPass: null, emailFrom: null };
     await prisma.society.update({ where, data: { smtpHost: body.mode === "off" ? "" : null, ...blank } });
   } else {
-    const saved = await prisma.society.findUnique({ where, select: { smtpPass: true } });
+    const saved = await prisma.society.findUnique({ where, select: { smtpPass: true, smtpHost: true, smtpUser: true } });
     if (!body.pass && !saved?.smtpPass) return NextResponse.json({ error: "Paste the password or key" }, { status: 400 });
+    // A saved key is only ever presented to the server and login it was saved for: pointing the
+    // host at another server and pressing "Send test email" would otherwise hand it the key.
+    if (!body.pass && (body.host.toLowerCase() !== (saved?.smtpHost ?? "").toLowerCase() || body.user !== (saved?.smtpUser ?? ""))) {
+      return NextResponse.json({ error: "You changed the server or login, so paste the password or key again" }, { status: 400 });
+    }
     if (body.pass && !secretStorageReady()) return NextResponse.json({ error: NO_SECRET_KEY }, { status: 400 });
     await prisma.society.update({
       where,

@@ -109,6 +109,8 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
   if (!saved) return <div className="text-sm text-muted-foreground">Loading…</div>;
   const on = saved.source === "app" || saved.source === "server";
   const p = PROVIDERS[provider];
+  // The route keeps a saved key only for the server and login it was saved with.
+  const keepsKey = saved.passSet && saved.source === "app" && f.host.toLowerCase() === saved.host.toLowerCase() && f.user === saved.user;
 
   return (
     <div className="space-y-6">
@@ -214,7 +216,7 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
                 type="password"
                 value={f.pass}
                 onChange={(e) => setF({ ...f, pass: e.target.value })}
-                placeholder={saved.passSet && saved.source === "app" ? "Saved. Leave blank to keep it" : provider === "resend" ? "Starts with re_" : ""}
+                placeholder={keepsKey ? "Saved. Leave blank to keep it" : provider === "resend" ? "Starts with re_" : ""}
                 autoComplete="new-password"
               />
             </div>
