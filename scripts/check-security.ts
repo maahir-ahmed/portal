@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { escapeHtml, notificationEmail } from "../src/lib/email";
+import { escapeHtml, isPrivateAddress, notificationEmail, publicMailAddress } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
 import { ownsServerSettings } from "../src/lib/serverSettings";
 import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
@@ -43,6 +43,10 @@ env({ SOCIETY_SLUG: "secsoc" });
 assert.equal(ownsServerSettings("secsoc"), true);
 assert.equal(ownsServerSettings("other"), false, "another society's slug must not reach the settings");
 env({ SOCIETY_SLUG: undefined });
+
+// "Send test email" connects out, so a mail server on a private address is refused.
+for (const ip of ["127.0.0.1", "10.1.2.3", "172.17.0.1", "192.168.1.1", "169.254.169.254", "100.64.0.1", "::1", "fe80::1", "fd00::1", "::ffff:127.0.0.1", "0.0.0.0"]) assert.ok(isPrivateAddress(ip), ip);
+for (const ip of ["8.8.8.8", "93.184.216.34", "2606:4700:4700::1111", "172.32.0.1"]) assert.ok(!isPrivateAddress(ip), ip);
 
 // After sign-in, only ever a path on this site.
 for (const evil of ["https://evil.example/login", "//evil.example", "/\\evil.example", "javascript:alert(1)", "", null]) {
@@ -162,4 +166,9 @@ assert.match(
   "authorize must refuse an expired temporary passphrase",
 );
 
-console.log("✅ security: audit fixes still in place");
+// Resolving is async, so this runs last.
+(async () => {
+  assert.equal(await publicMailAddress("localhost"), null, "a name that resolves to loopback is refused");
+  assert.equal(await publicMailAddress("127.0.0.1"), null);
+  console.log("✅ security: audit fixes still in place");
+})();

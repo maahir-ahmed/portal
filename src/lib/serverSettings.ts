@@ -37,7 +37,8 @@ const reveal = (stored: string | null) => {
 };
 
 export type Source = "app" | "server";
-export type Smtp = { host: string; port: number; user: string; pass: string; from: string; source: Source };
+// servername: set when host is a pinned IP, so TLS still checks the certificate against the real name.
+export type Smtp = { host: string; port: number; user: string; pass: string; from: string; source: Source; servername?: string };
 
 /** How to send email, or null when it is off. */
 export async function emailSettings(): Promise<Smtp | null> {

@@ -5,7 +5,7 @@ import { createAuditLog } from "@/lib/audit";
 import { encryptSecret, NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
 import { demoEnabled } from "@/lib/rubricDemo";
 import { ownsServerSettings, emailSettings } from "@/lib/serverSettings";
-import { notificationEmail, sendEmail } from "@/lib/email";
+import { MAIL_PORTS, notificationEmail, publicMailAddress, sendEmail } from "@/lib/email";
 import { z } from "zod";
 
 // Settings > Email: the email service the portal sends through, set in the app rather
@@ -47,7 +47,7 @@ const schema = z.union([
   z.object({
     mode: z.literal("app"),
     host: z.string().trim().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, "That doesn't look like a server name, like smtp-relay.brevo.com"),
-    port: z.coerce.number().int().min(1).max(65535),
+    port: z.coerce.number().refine((n) => MAIL_PORTS.includes(n), "The port is usually 587, 465, 25 or 2525"),
     user: z.string().trim().max(200),
     // Blank keeps the saved one, so other fields can change without pasting it again.
     pass: z.string().trim().max(500),
@@ -114,16 +114,27 @@ export async function POST(_req: NextRequest, { params }: Params) {
   if ("error" in r) return r.error;
   if (demoEnabled()) return NextResponse.json({ error: "Email can't be set up on the public demo" }, { status: 403 });
 
-  const s = await emailSettings();
+  let s = await emailSettings();
   if (!s) return NextResponse.json({ error: "Email is off. Save your settings first." }, { status: 400 });
+  // A server typed into the app must be a real mail server on a public address: this button
+  // connects to it, so otherwise it could probe whatever else runs on this machine. The env
+  // file's server is the host's own choice and is left alone.
+  if (s.source === "app") {
+    const ip = MAIL_PORTS.includes(s.port) ? await publicMailAddress(s.host) : null;
+    if (!ip) return NextResponse.json({ error: "That email server can't be reached from here. Check the server name and port." }, { status: 400 });
+    s = { ...s, host: ip, servername: s.host };
+  }
   const title = "Test email from your society portal";
   const body = `This is the test you asked for. Email is working: new members will get their sign-in details from ${s.from}.`;
   try {
     await sendEmail({ to: r.session.user.email!, subject: title, html: notificationEmail(title, body), text: body }, s);
   } catch (err) {
-    // The mail server's own words: "Invalid login", "Sender not verified" and the like.
-    const reason = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `The email service refused it: ${reason.slice(0, 300)}` }, { status: 502 });
+    // An SMTP answer ("Invalid login", "Sender not verified") is the mail server's own words and
+    // worth showing; anything else is a connection error that could describe this machine's network.
+    if (err instanceof Error && typeof (err as { responseCode?: unknown }).responseCode === "number") {
+      return NextResponse.json({ error: `The email service refused it: ${err.message.slice(0, 300)}` }, { status: 502 });
+    }
+    return NextResponse.json({ error: "Couldn't connect to the email server. Check the server name and port." }, { status: 502 });
   }
   return NextResponse.json({ ok: true, to: r.session.user.email });
 }
