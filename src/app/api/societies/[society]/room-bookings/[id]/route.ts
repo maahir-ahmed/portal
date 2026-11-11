@@ -128,23 +128,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     },
   });
 
+  // Logged from the status that was applied, not the one the caller sent: a submitter's
+  // `status` is ignored above, so it must not appear in the log either.
+  const appliedStatus = autoComplete ? "COMPLETED" : isExec && body.status ? body.status : null;
   await createAuditLog({
     societyId: membership!.societyId,
     userId: session!.user.id,
-    action: body.status || autoComplete ? "STATUS_CHANGE" : "UPDATE",
+    action: appliedStatus ? "STATUS_CHANGE" : "UPDATE",
     entityType: "RoomBooking",
     entityId: id,
-    ...(body.status || autoComplete
-      ? { metadata: { from: booking.status, to: body.status ?? "COMPLETED" } }
-      : {}),
+    ...(appliedStatus ? { metadata: { from: booking.status, to: appliedStatus } } : {}),
   });
 
   // Tell the submitter their booking moved — unless they are the one who moved it.
-  const newStatus = body.status && isExec && body.status !== booking.status
-    ? body.status
-    : autoComplete
-      ? "COMPLETED"
-      : null;
+  const newStatus = appliedStatus && appliedStatus !== booking.status ? appliedStatus : null;
   if (newStatus && booking.submittedById !== session!.user.id) {
     await createNotification({
       userId: booking.submittedById,
