@@ -7,9 +7,8 @@ import { createNotification, notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
-import { money } from "@/lib/schemas";
+import { money, notDemo } from "@/lib/schemas";
 import type { TreasuryStatus } from "@prisma/client";
-import { notDemo } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
@@ -63,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   const { membership, error: memErr } = await requireMembership(session!.user.id, society);
   if (memErr) return memErr;
 
-  const parsed = patchSchema.safeParse(await req.json());
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Validation error" }, { status: 400 });
   }
@@ -135,6 +134,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     }
   }
 
+  // The amount an executive confirmed and paid is the record of what was paid out.
+  if (body.amount !== undefined && request.status === "REIMBURSED" && Number(request.amount) !== body.amount) {
+    return NextResponse.json({ error: "The amount of a reimbursed claim can't be changed" }, { status: 403 });
+  }
+
   const editsFields =
     [body.contactEmail, body.expenseDate, body.locationSupplier, body.description, body.amount, body.contentRequestId]
       .some((v) => v !== undefined) ||
@@ -154,20 +158,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     return NextResponse.json({ error: "Confirm the amount being paid (expectedAmount) when marking a claim reimbursed" }, { status: 400 });
   }
   const amountGuard = body.status === "REIMBURSED" && body.expectedAmount !== undefined ? { amount: body.expectedAmount } : {};
-  const updated = await prisma.treasuryRequest
-    .update({
-      where: { id, ...ownerGuard, ...amountGuard },
-      data: {
-        ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
-        ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
-        ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
-        ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
-        ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
-        ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
-        ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
-        ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
-        ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
-      },
+  // The claim and its receipt changes are one write: a failure part way leaves neither.
+  const updated = await prisma
+    .$transaction(async (tx) => {
+      const u = await tx.treasuryRequest.update({
+        where: { id, ...ownerGuard, ...amountGuard },
+        data: {
+          ...((isExec || isOwnerSubmit) && body.status ? { status: body.status } : {}),
+          ...(canEdit && body.contactEmail !== undefined ? { contactEmail: body.contactEmail } : {}),
+          ...(canEdit && body.expenseDate !== undefined ? { expenseDate: new Date(body.expenseDate) } : {}),
+          ...(canEdit && body.locationSupplier !== undefined ? { locationSupplier: body.locationSupplier } : {}),
+          ...(canEdit && body.description !== undefined ? { description: body.description } : {}),
+          ...(canEdit && body.amount !== undefined ? { amount: body.amount } : {}),
+          ...(canEdit && body.contentRequestId !== undefined ? { contentRequestId: body.contentRequestId } : {}),
+          ...(isExec && body.budgetCategoryId !== undefined ? { budgetCategoryId: body.budgetCategoryId } : {}),
+          ...(body.acknowledgedRules && (isExec || isOwnerSubmit) && body.status === "REIMBURSEMENT_PENDING" ? { acknowledgedRules: true } : {}),
+        },
+      });
+
+      if (canEdit && Array.isArray(body.addReceipts) && body.addReceipts.length > 0) {
+        await tx.treasuryAttachment.createMany({
+          data: body.addReceipts.map((r) => ({
+            treasuryRequestId: id,
+            fileName: r.fileName || r.fileUrl.split("/").pop() || "receipt",
+            fileUrl: r.fileUrl,
+            fileSize: 0,
+            mimeType: "application/octet-stream",
+          })),
+        });
+      }
+
+      if (canEdit && Array.isArray(body.removeReceiptIds) && body.removeReceiptIds.length > 0) {
+        await tx.treasuryAttachment.deleteMany({
+          where: { id: { in: body.removeReceiptIds }, treasuryRequestId: id },
+        });
+      }
+      return u;
     })
     .catch((err) => {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
@@ -175,24 +201,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     });
   if (!updated) {
     return NextResponse.json({ error: "This claim was just updated by someone else. Reload and try again." }, { status: 409 });
-  }
-
-  if (canEdit && Array.isArray(body.addReceipts) && body.addReceipts.length > 0) {
-    await prisma.treasuryAttachment.createMany({
-      data: body.addReceipts.map((r) => ({
-        treasuryRequestId: id,
-        fileName: r.fileName || r.fileUrl.split("/").pop() || "receipt",
-        fileUrl: r.fileUrl,
-        fileSize: 0,
-        mimeType: "application/octet-stream",
-      })),
-    });
-  }
-
-  if (canEdit && Array.isArray(body.removeReceiptIds) && body.removeReceiptIds.length > 0) {
-    await prisma.treasuryAttachment.deleteMany({
-      where: { id: { in: body.removeReceiptIds }, treasuryRequestId: id },
-    });
   }
 
   await createAuditLog({
@@ -211,10 +219,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   // like a brand-new claim does.
   if (body.status === "REIMBURSEMENT_PENDING" && request.status === "DRAFT") {
     const amt = Number(updated.amount);
+    // The payee is the claim's submitter, who is not the caller when an executive submits their draft.
+    const payee = isOwner
+      ? session!.user.name
+      : (await prisma.user.findUnique({ where: { id: request.submittedById }, select: { name: true } }))?.name ?? "the submitter";
     await notifyExecs(
       membership!.societyId,
       "EXECUTIVE_ACTION_REQUIRED",
-      `Reimbursement to pay: $${amt.toFixed(2)} to ${session!.user.name}`,
+      `Reimbursement to pay: $${amt.toFixed(2)} to ${payee}`,
       "Ready to pay out. Spending approval happens in the committee Discord.",
       `/requests/treasury/${id}`
     );
@@ -227,7 +239,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       societyId: request.societyId,
       type: "STATUS_CHANGE",
       title: "Reimbursement Status Updated",
-      body: `Your claim for $${Number(request.amount).toFixed(2)} has been updated to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
+      body: `Your claim for $${Number(updated.amount).toFixed(2)} has been updated to ${body.status.replace(/_/g, " ").toLowerCase()}.`,
       link: `/requests/treasury/${id}`,
     });
   }
