@@ -103,6 +103,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   // Saved either way; a refusal here is something to fix in Discord, said in its words.
   const bot = body.on ? await botSettings() : null;
-  const problem = bot ? await registerCommands(bot) : null;
+  // Saved as on but still off: the stored token was encrypted under a key this server no longer has.
+  const problem = bot ? await registerCommands(bot) : body.on ? "The token saved earlier can't be read on this server, so the bot is still off. Paste the token again." : null;
   return NextResponse.json({ ok: true, problem });
 }

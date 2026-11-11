@@ -176,7 +176,7 @@ export function DiscordBot({ societySlug }: { societySlug: string }) {
         </div>
         {problem && (
           <p role="alert" className="text-sm text-red-700">
-            Saved, but Discord said: {problem} Check the Application ID and token, then save again.
+            Saved, but the bot isn&apos;t working: {problem} Check the Application ID and token, then save again.
           </p>
         )}
         <div className="flex flex-wrap gap-2">
