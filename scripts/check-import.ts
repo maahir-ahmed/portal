@@ -89,6 +89,14 @@ assert.equal(by.get(8)!.status, "skip");
 assert.equal(bad.rows.length, 7); // the blank line is not a row
 assert.deepEqual(bad.newPortfolios, []); // only the skipped row used "New One"
 
+// Student IDs follow the Account page's rule (z + 7 digits); a bare number is a row error.
+const ids = checkImport(
+  parseCsv("name,email,role,student_id\nA,a@x.io,Director,1234567\nB,b@x.io,Director,Z1234567\nC,c@x.io,Director,"),
+  ctx,
+);
+assert.match(ids.rows[0].problems[0], /Student ID "1234567"/);
+assert.equal(ids.rows[1].studentId, "z1234567");
+assert.equal(ids.rows[2].status, "add");
 
 // Hostile workbooks: they must fail fast (or be skipped), not take the server down.
 const sheetXml = (cells: string) =>

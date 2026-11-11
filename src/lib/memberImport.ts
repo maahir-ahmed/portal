@@ -73,6 +73,9 @@ export function checkImport(table: string[][], ctx: ImportContext): ImportCheck 
     const roleText = col(cells, "role");
     const role = ROLES[roleText.toLowerCase()] ?? null;
     const titleText = col(cells, "title");
+    // The same rule as the Account page (api/me), which sends this with every save.
+    const studentId = col(cells, "student_id").toLowerCase();
+    if (studentId && !/^z\d{7}$/.test(studentId)) problems.push(`Student ID "${studentId}" must be z followed by 7 digits, like z1234567`);
     const portfolios = [...new Set(col(cells, "portfolios").split(";").map((p) => p.trim()).filter(Boolean))];
 
     if (!name) problems.push("Name is empty");
@@ -106,7 +109,7 @@ export function checkImport(table: string[][], ctx: ImportContext): ImportCheck 
       title,
       // Spelled as the existing portfolio is, so the commit can look them up.
       portfolios: portfolios.map((p) => ctx.portfolios.get(p.toLowerCase())?.name ?? newPortfolios.get(p.toLowerCase())!),
-      studentId: col(cells, "student_id") || null,
+      studentId: studentId || null,
       discordUsername: col(cells, "discord_username") || null,
       status: problems.length ? "error" : already ? "skip" : "add",
       problems: already ? ["Already a member, left as they are"] : problems,
