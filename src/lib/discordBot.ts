@@ -171,25 +171,31 @@ export async function memberFor(discordUser: DiscordUser): Promise<{ id: string;
     });
     if (matches.length !== 1) return null; // nobody, or two people with the same name: ask for /link
     user = matches[0];
-    await prisma.user.update({ where: { id: user.id }, data: { discordUserId: discordUser.id } });
-    await createAuditLog({
-      societyId,
-      userId: user.id,
-      action: "UPDATE",
-      entityType: "User",
-      entityId: user.id,
-      metadata: { discordLinked: "by the username in the member import", discordUsername: discordUser.username },
-    });
-    // A username match was never confirmed by the member: a typo in the import, or a name
-    // someone else used to have, links the wrong person. So tell them, where they'd notice.
-    await createNotification({
-      societyId,
-      userId: user.id,
-      type: "STATUS_CHANGE",
-      title: `Your portal account was linked to the Discord user ${discordUser.username}`,
-      body: "That lets them use /print and /claim as you. If that isn't you, tell an executive straight away.",
-      link: "/account",
-    });
+    // Autocomplete calls this on every keystroke, in parallel: only the call that really
+    // changed the row audits and notifies. A loser is fine if the winner linked this same account.
+    const linked = await prisma.user.updateMany({ where: { id: user.id, discordUserId: null }, data: { discordUserId: discordUser.id } });
+    if (!linked.count) {
+      if (!(await prisma.user.findFirst({ where: { id: user.id, discordUserId: discordUser.id }, select: { id: true } }))) return null;
+    } else {
+      await createAuditLog({
+        societyId,
+        userId: user.id,
+        action: "UPDATE",
+        entityType: "User",
+        entityId: user.id,
+        metadata: { discordLinked: "by the username in the member import", discordUsername: discordUser.username },
+      });
+      // A username match was never confirmed by the member: a typo in the import, or a name
+      // someone else used to have, links the wrong person. So tell them, where they'd notice.
+      await createNotification({
+        societyId,
+        userId: user.id,
+        type: "STATUS_CHANGE",
+        title: `Your portal account was linked to the Discord user ${discordUser.username}`,
+        body: "That lets them use /print and /claim as you. If that isn't you, tell an executive straight away.",
+        link: "/account",
+      });
+    }
   }
   return { ...user, societyId };
 }
