@@ -39,7 +39,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     appId: bot?.appId ?? own?.discordAppId ?? "",
     publicKey: bot?.publicKey ?? own?.discordPublicKey ?? "",
     guildId: bot?.guildId ?? own?.discordGuildId ?? "",
-    tokenSet: !!bot?.token || !!own?.discordBotToken,
+    // Only a token stored in the app: one from the env file is not kept by a blank box, the route refuses it.
+    tokenSet: !!own?.discordBotToken,
     interactionsUrl: `${base}/api/discord/interactions`,
   });
 }
