@@ -20,6 +20,9 @@ export const PASSPHRASE_WORDS = 4;
 
 export const WORDS: readonly string[] = wordlist;
 
+/** When a temporary passphrase issued now stops working at sign-in. */
+export const tempPassphraseExpiry = () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
 /** A hyphenated passphrase, e.g. "canyon-oblige-thumb-velvet". */
 export function generatePassphrase(words = PASSPHRASE_WORDS): string {
   return Array.from({ length: words }, () => WORDS[randomInt(WORDS.length)]).join("-");

@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest) {
     const passwordHash = await hashPassword(data.newPassword);
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, mustChangePassword: false, sessionVersion: { increment: 1 } },
+      data: { passwordHash, mustChangePassword: false, tempPasswordExpires: null, sessionVersion: { increment: 1 } },
     });
 
     await auditAccountChange(user.id, "Password");

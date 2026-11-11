@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership, blockDemoAccountWrite, blockForeignAccountWrite } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
-import { generatePassphrase } from "@/lib/passphrase";
+import { generatePassphrase, tempPassphraseExpiry } from "@/lib/passphrase";
 import { emailPassphrase } from "@/lib/email";
 
 type Params = { society: string; membershipId: string };
@@ -36,7 +36,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
   const tempPassword = generatePassphrase();
   await prisma.user.update({
     where: { id: target.userId },
-    data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true, sessionVersion: { increment: 1 } },
+    data: { passwordHash: await hashPassword(tempPassword), mustChangePassword: true, tempPasswordExpires: tempPassphraseExpiry(), sessionVersion: { increment: 1 } },
   });
   // An imported member's first passphrase is their invitation.
   if (target.inviteStatus === "NOT_INVITED") {

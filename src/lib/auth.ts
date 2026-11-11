@@ -76,6 +76,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           recordFailure(limits);
           return null;
         }
+        // An emailed temporary passphrase only works for a week. Only while it is still
+        // the temporary one: a password the member chose never expires.
+        if (user.mustChangePassword && user.tempPasswordExpires && user.tempPasswordExpires < new Date()) {
+          return null;
+        }
         clearFailures(limits);
 
         await prisma.user.update({

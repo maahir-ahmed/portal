@@ -4,7 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
 import { portfolioForTitle } from "@/lib/titles";
-import { generatePassphrase } from "@/lib/passphrase";
+import { generatePassphrase, tempPassphraseExpiry } from "@/lib/passphrase";
 import { emailPassphrase } from "@/lib/email";
 import { z } from "zod";
 
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           name: body.name,
           passwordHash: await hashPassword(tempPassword),
           mustChangePassword: true,
+          tempPasswordExpires: tempPassphraseExpiry(),
         },
       });
     }

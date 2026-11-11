@@ -80,7 +80,7 @@ export async function emailPassphrase(to: string, name: string, society: string,
     `Hi ${name},\n\n` +
     (reset ? "An executive has reset your password. " : `${society} has made you an account on its portal. `) +
     `Sign in with this email address and this temporary passphrase:\n\n${passphrase}\n\n` +
-    "You'll choose your own password straight after.";
+    "You'll choose your own password straight after. The passphrase stops working in 7 days; ask an executive for a new one if it does.";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   try {
     await sendEmail({ to, subject: title, html: notificationEmail(title, body, "/login", "Sign in"), text: `${body}\n\n${appUrl}/login` }, settings);

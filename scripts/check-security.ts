@@ -9,6 +9,7 @@ import { debugToolsEnabled } from "../src/lib/debugTools";
 import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
+import { tempPassphraseExpiry } from "../src/lib/passphrase";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
 // Member-typed text in an executive's notification email stays text.
@@ -118,5 +119,15 @@ assert.ok(sameHost("https://secsoc.maahir.dev", "secsoc.maahir.dev"));
 assert.ok(sameHost("http://localhost:8080", "localhost"), "nginx drops the port from Host");
 assert.ok(!sameHost("https://evil.maahir.dev", "secsoc.maahir.dev"), "a sibling subdomain is another site");
 assert.ok(!sameHost("null", "secsoc.maahir.dev"));
+
+// A temporary passphrase expires in about a week, and sign-in enforces it only while the
+// passphrase is still the temporary one.
+const days = (tempPassphraseExpiry().getTime() - Date.now()) / 864e5;
+assert.ok(days > 6.9 && days <= 7, "a temporary passphrase lasts about 7 days");
+assert.match(
+  readFileSync("src/lib/auth.ts", "utf8"),
+  /mustChangePassword && user\.tempPasswordExpires && user\.tempPasswordExpires < new Date\(\)/,
+  "authorize must refuse an expired temporary passphrase",
+);
 
 console.log("✅ security: audit fixes still in place");

@@ -301,6 +301,9 @@ model User {
   // Set when an executive issues a temporary passphrase (new member, or a reset).
   // The app blocks on a change-password dialog until the user picks their own.
   mustChangePassword Boolean @default(false)
+  // When that temporary passphrase stops working (about 7 days after it was issued).
+  // Null means no expiry: accounts issued before this column existed.
+  tempPasswordExpires DateTime?
   // Bumped on a password change or reset and on removal. Sessions carry the value
   // they were issued with, and stop working once it no longer matches.
   sessionVersion   Int       @default(0)
