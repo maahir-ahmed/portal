@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { z } from "zod";
 import { syncEventToDiscord } from "@/lib/discordEvents";
+import { createAuditLog } from "@/lib/audit";
+import { httpUrl } from "@/lib/schemas";
 
 // The Rubric submitEvent call itself goes through the server proxy
 // (/rubric/call, allowlisted and executive-only). This route only stamps the
@@ -10,7 +12,7 @@ import { syncEventToDiscord } from "@/lib/discordEvents";
 const schema = z.object({
   contentRequestId: z.string().optional(),
   rubricEventId: z.string().optional(),
-  rubricEventLink: z.string().optional(),
+  rubricEventLink: httpUrl.optional(),
   // false when linking an already-existing Rubric event (assignment, not submission)
   markSubmitted: z.boolean().optional().default(true),
 });
@@ -40,6 +42,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       },
     });
     if (!count) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await createAuditLog({
+      societyId: membership!.societyId,
+      userId: session!.user.id,
+      action: "UPDATE",
+      entityType: "ContentRequest",
+      entityId: parsed.data.contentRequestId,
+      metadata: { rubricEventId: parsed.data.rubricEventId ?? null, submitted: parsed.data.markSubmitted },
+    });
     await syncEventToDiscord(
       parsed.data.contentRequestId,
       `${session!.user.name} ${parsed.data.markSubmitted ? "submitted the event to Rubric" : "linked the Rubric event"}.`

@@ -7,6 +7,7 @@ import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { canViewRequest, statusLabel, isPlausibleDate } from "@/lib/utils";
+import { UPLOADED_FILE } from "@/lib/uploads";
 
 
 // What the edit form, the status picker and the marketing panel send. Types only, with
@@ -31,7 +32,7 @@ const patchSchema = z
     rubricRequired: z.boolean(),
     otherNotes: text(20000),
     finishedBlurb: text(20000),
-    addDeliverables: z.array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().max(2000).optional() })),
+    addDeliverables: z.array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Graphics must be files uploaded here").optional() })),
     removeDeliverableIds: z.array(z.string()),
   })
   .partial();

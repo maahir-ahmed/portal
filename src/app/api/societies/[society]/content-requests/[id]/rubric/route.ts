@@ -5,12 +5,13 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { createAuditLog } from "@/lib/audit";
+import { httpUrl } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
 const schema = z.object({
-  rubricEventLink: z.string().max(2000).nullable().optional(),
-  rubricQrCodeUrl: z.string().max(2000).nullable().optional(),
+  rubricEventLink: httpUrl.or(z.literal("")).nullable().optional(),
+  rubricQrCodeUrl: httpUrl.or(z.literal("")).nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<Params> }) {

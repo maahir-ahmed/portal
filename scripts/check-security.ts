@@ -10,6 +10,8 @@ import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
 import { tempPassphraseExpiry } from "../src/lib/passphrase";
+import { httpUrl } from "../src/lib/schemas";
+import { UPLOADED_FILE } from "../src/lib/uploads";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
 // Member-typed text in an executive's notification email stays text.
@@ -42,6 +44,12 @@ assert.equal(safeCallback("/requests/treasury?x=1"), "/requests/treasury?x=1", "
 // Typed-in dates: real ones between 2000 and 2100, nothing a year picker can't lay out.
 for (const ok of ["2026-11-04", "2026-11-04T18:00", "2026-11-04T07:00:00.000Z", "2100-12-31"]) assert.ok(isPlausibleDate(ok), ok);
 for (const bad of ["20255-01-01", "+275760-09-13", "1999-12-31", "not a date", ""]) assert.ok(!isPlausibleDate(bad), bad);
+
+// Links shown to members or encoded in a QR code: http(s) only. Deliverables: our own uploads only.
+for (const ok of ["https://rubric.example/e/1", "http://x.test/a?b=1"]) assert.ok(httpUrl.safeParse(ok).success, ok);
+for (const bad of ["javascript:alert(1)", "data:text/html,x", "//evil.example", "/uploads/a.png", "https://a b", ""]) assert.ok(!httpUrl.safeParse(bad).success, bad);
+assert.ok(UPLOADED_FILE.test("/uploads/0f8fad5b-d9cb-469f-a165-70867728950e.png"));
+for (const bad of ["https://evil.example/x.png", "javascript:alert(1)", "/uploads/../x.png"]) assert.ok(!UPLOADED_FILE.test(bad), bad);
 
 // /print: a signed request is only good for a few minutes, so a captured one can't be replayed.
 const now = Date.UTC(2026, 10, 4, 12, 0, 0);
