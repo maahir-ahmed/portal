@@ -9,6 +9,9 @@ import { createNotification } from "@/lib/notifications";
 
 type Params = { society: string; id: string };
 
+// The statuses bookingDecided() answers true for, as the enum type a Prisma where needs.
+const DECIDED: RoomBookingStatus[] = ["APPROVED", "REJECTED", "COMPLETED"];
+
 // What the edit form, the status picker and the booked-room card send. Types only, and
 // as forgiving as the code below (which already skips empty strings and nulls): a wrong
 // type, an unknown status or type, an impossible date or a fractional count is a 400
@@ -175,6 +178,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   const isExec = membership!.role === "EXECUTIVE";
   const isOwner = booking.submittedById === session!.user.id;
   if (!isExec && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Once Arc has decided, the booking is a record of what Arc approved or refused, so
+  // the submitter can't delete it (they can't edit it either); an executive still can.
+  if (!isExec && bookingDecided(booking.status)) {
+    return NextResponse.json({ error: "Arc has decided on this booking. Ask an executive to delete it." }, { status: 403 });
+  }
 
   // The where clause IS the authorization check, re-enforced atomically at delete
   // time. The thread's FK would only be nulled out, so remove it explicitly;
@@ -182,14 +190,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   const deleteWhere = {
     id,
     societyId: membership!.societyId,
-    ...(isExec ? {} : { submittedById: session!.user.id }),
+    ...(isExec ? {} : { submittedById: session!.user.id, status: { notIn: DECIDED } }),
   };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.thread.deleteMany({ where: { roomBooking: { is: deleteWhere } } });
-    await tx.roomBooking.deleteMany({ where: deleteWhere });
-    await tx.notification.deleteMany({ where: { link: `/requests/room-booking/${id}` } });
-  });
+  // A delete that matched nothing (decided or removed in the meantime) rolls the thread
+  // delete back and writes no audit entry.
+  const deleted = await prisma
+    .$transaction(async (tx) => {
+      await tx.thread.deleteMany({ where: { roomBooking: { is: deleteWhere } } });
+      const { count } = await tx.roomBooking.deleteMany({ where: deleteWhere });
+      if (!count) throw new Error("nothing deleted");
+      await tx.notification.deleteMany({ where: { link: `/requests/room-booking/${id}` } });
+      return true;
+    })
+    .catch(() => false);
+  if (!deleted) return NextResponse.json({ error: "This booking changed. Reload and try again." }, { status: 409 });
 
   await createAuditLog({
     societyId: membership!.societyId,
