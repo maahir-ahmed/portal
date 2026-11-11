@@ -13,6 +13,7 @@ interface SocietyTitle {
   name: string;
   roleLevel: "EXECUTIVE" | "DIRECTOR" | "SUBCOMMITTEE";
   sortOrder: number;
+  holders: number;
   portfolio: { id: string; name: string } | null;
 }
 
@@ -115,8 +116,9 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
     }
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete title "${name}"?`)) return;
+  async function handleDelete(id: string, name: string, holders: number) {
+    const held = holders ? ` ${holders} member${holders === 1 ? "" : "s"} hold${holders === 1 ? "s" : ""} it and will be left with no title or portfolio.` : "";
+    if (!confirm(`Delete title "${name}"?${held}`)) return;
     const res = await fetch(`/api/societies/${societySlug}/titles/${id}`, { method: "DELETE" }).catch(offline);
     if (res.ok) {
       toast.success("Title removed");
@@ -189,7 +191,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
                       </Button>
                       <Button
                         size="icon" variant="ghost" className="h-7 w-7 text-red-500 hover:text-red-600"
-                        onClick={() => handleDelete(t.id, t.name)}
+                        onClick={() => handleDelete(t.id, t.name, t.holders)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

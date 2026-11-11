@@ -27,7 +27,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
     include: { portfolio: { select: { id: true, name: true } } },
   });
 
-  return NextResponse.json(titles);
+  // How many active members hold each title, so deleting one can say what it affects.
+  const held = await prisma.societyMembership.groupBy({
+    by: ["title", "role"],
+    where: { societyId: membership!.societyId, isActive: true, title: { not: null } },
+    _count: true,
+  });
+  const count = new Map(held.map((h) => [`${h.role}|${h.title}`, h._count]));
+  return NextResponse.json(titles.map((t) => ({ ...t, holders: count.get(`${t.roleLevel}|${t.name}`) ?? 0 })));
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {

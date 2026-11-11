@@ -88,7 +88,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<Par
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.societyTitle.delete({ where: { id: titleId } });
+  // Holders keep the title as text, and the marketing check reads that text, so clear it
+  // (and the portfolio it gave them) in the same step as the delete.
+  await prisma.$transaction([
+    prisma.societyMembership.updateMany({
+      where: { societyId: membership!.societyId, title: title.name, role: title.roleLevel },
+      data: { title: null, portfolioId: null },
+    }),
+    prisma.societyTitle.delete({ where: { id: titleId } }),
+  ]);
   await createAuditLog({
     societyId: membership!.societyId, userId: session!.user.id, action: "DELETE", entityType: "SocietyTitle",
     entityId: titleId, metadata: { name: title.name },
