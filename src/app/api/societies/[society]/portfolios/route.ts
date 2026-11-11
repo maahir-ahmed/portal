@@ -25,7 +25,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
     portfolios.map((p) => ({
       id: p.id,
       name: p.name,
-      discordRoleId: p.discordRoleId,
+      // Only the Discord settings (executives) read this.
+      ...(membership!.role === "EXECUTIVE" && { discordRoleId: p.discordRoleId }),
       // Extra links never repeat the title's portfolio, so the two never double count.
       memberCount: p._count.memberships + p._count.extraMembers,
       titleCount: p._count.titles,
