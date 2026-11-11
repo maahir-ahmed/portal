@@ -7,9 +7,10 @@ import { z } from "zod";
 import { isPlausibleDate } from "@/lib/utils";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import type { ContentRequestStatus } from "@prisma/client";
+import { notDemo } from "@/lib/schemas";
 
 const createSchema = z.object({
-  eventName: z.string().min(1).max(200),
+  eventName: notDemo(z.string().min(1).max(200)),
   startDate: z.string().refine(isPlausibleDate, "Enter a real date"),
   endDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable().optional(),
   location: z.string().min(1).max(200),

@@ -2,6 +2,7 @@
 // change can't quietly undo one.
 //   npx tsx scripts/check-security.ts
 import assert from "node:assert/strict";
+import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
@@ -10,7 +11,7 @@ import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
 import { tempPassphraseExpiry } from "../src/lib/passphrase";
-import { httpUrl, money, plainDate, plausibleDate, time24 } from "../src/lib/schemas";
+import { httpUrl, money, notDemo, plainDate, plausibleDate, time24 } from "../src/lib/schemas";
 import { UPLOADED_FILE } from "../src/lib/uploads";
 import { clearFailures, isLimited, passwordLimits, recordFailure } from "../src/lib/rateLimit";
 
@@ -61,6 +62,10 @@ assert.equal(money.parse(12.345), 12.35);
 assert.equal(money.parse(99_999_999.99), 99_999_999.99);
 for (const bad of [1e8, -1, Infinity, NaN]) assert.ok(!money.safeParse(bad).success, String(bad));
 assert.ok(time24.safeParse("09:30").success && !time24.safeParse("9:30").success && !time24.safeParse("24:00").success);
+
+// The tour's demo marker can't be typed into a real record.
+assert.ok(!notDemo(z.string()).safeParse("[Tutorial demo] Posters").success);
+assert.ok(notDemo(z.string()).safeParse("Posters [Tutorial demo]").success);
 
 // /print: a signed request is only good for a few minutes, so a captured one can't be replayed.
 const now = Date.UTC(2026, 10, 4, 12, 0, 0);

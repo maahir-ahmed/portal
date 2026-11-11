@@ -7,6 +7,7 @@ import { z } from "zod";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
 import { money } from "@/lib/schemas";
+import { notDemo } from "@/lib/schemas";
 
 // More than any claim has; keeps one request from writing thousands of rows.
 const MAX_RECEIPTS = 20;
@@ -17,7 +18,7 @@ const schema = z.object({
   contactEmail: z.union([z.string().email().max(320), z.literal("")]).optional(),
   expenseDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").optional(),
   locationSupplier: z.string().max(500).optional(),
-  description: z.string().max(10000).optional(),
+  description: notDemo(z.string().max(10000)).optional(),
   amount: money.optional(),
   useExistingBank: z.boolean(),
   // The same limits as saving bank details on the Account page.

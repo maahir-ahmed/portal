@@ -9,6 +9,7 @@ import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
 import { money } from "@/lib/schemas";
 import type { TreasuryStatus } from "@prisma/client";
+import { notDemo } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
@@ -27,7 +28,7 @@ const patchSchema = z.object({
   // new Date() would turn into an Invalid Date.
   expenseDate: z.string().refine(isPlausibleDate, "Enter a real date").optional(),
   locationSupplier: z.string().min(1).max(500).optional(),
-  description: z.string().min(1).max(10000).optional(),
+  description: notDemo(z.string().min(1).max(10000)).optional(),
   // Rounded to cents here, so the "more than $0" checks see what is stored: 0.004 is $0.
   amount: money.optional(),
   addReceipts: z

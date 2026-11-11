@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isPlausibleDate } from "@/lib/utils";
+import { TUTORIAL_MARKER } from "@/lib/tutorial";
 
 /** A link to another site: http(s) only, so it can't be javascript: or data: in an href or QR code. */
 export const httpUrl = z
@@ -20,3 +21,11 @@ export const MAX_MONEY = 99_999_999.99;
 export const money = z.number().finite().min(0).max(MAX_MONEY).transform((n) => Math.round(n * 100) / 100);
 /** A time of day as the booking form's time select sends it. */
 export const time24 = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter a time like 14:30");
+
+/**
+ * Refuses text that starts with the guided tour's marker. Demo records are told apart
+ * from real ones by that prefix alone, so a real record carrying it would be hidden
+ * from the executives' queue and the printing allowance.
+ */
+export const notDemo = (s: z.ZodString) =>
+  s.refine((v) => !v.startsWith(TUTORIAL_MARKER), `Names can't start with ${TUTORIAL_MARKER}`);

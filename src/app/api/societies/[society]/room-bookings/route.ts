@@ -7,10 +7,11 @@ import { isLateArcSubmission, isPlausibleDate } from "@/lib/utils";
 import { EVENT_TYPES } from "@/lib/utils";
 import { z } from "zod";
 import { time24 } from "@/lib/schemas";
+import { notDemo } from "@/lib/schemas";
 
 const MAX_PEOPLE = 10000;
 const schema = z.object({
-  eventName: z.string().min(1).max(200),
+  eventName: notDemo(z.string().min(1).max(200)),
   eventType: z.enum(EVENT_TYPES.map((t) => t.value)),
   preferredDate: z.string().refine(isPlausibleDate, "Enter a real date"),
   startTime: time24,

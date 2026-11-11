@@ -7,6 +7,7 @@ import { UPLOADED_FILE } from "@/lib/uploads";
 import { refreshArcTier } from "@/lib/rubric";
 import { z } from "zod";
 import { plausibleDate } from "@/lib/schemas";
+import { notDemo } from "@/lib/schemas";
 
 // Contact details (club, name, email, phone) are derived server-side from the
 // logged-in user + society (createPrintingRequest), so the form doesn't ask for them.
@@ -20,7 +21,7 @@ const schema = z.object({
   sided: z.enum(["SINGLE", "DOUBLE_SHORT", "DOUBLE_LONG"]),
   colour: z.enum(["BW", "COLOUR"]),
   fileUrl: z.string().regex(UPLOADED_FILE, "The file has to be uploaded here"),
-  fileName: z.string().min(1).max(500),
+  fileName: notDemo(z.string().min(1).max(500)),
   additionalDetails: z.string().max(10000).optional(),
 });
 

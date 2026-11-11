@@ -8,6 +8,7 @@ import { createNotification, notifyExecs } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { canViewRequest, statusLabel, isPlausibleDate } from "@/lib/utils";
 import { UPLOADED_FILE } from "@/lib/uploads";
+import { notDemo } from "@/lib/schemas";
 
 
 // What the edit form, the status picker and the marketing panel send. Types only, with
@@ -20,7 +21,7 @@ const patchSchema = z
   .object({
     status: z.enum(ContentRequestStatus),
     activityGrantStatus: z.string(),
-    eventName: z.string().max(1000),
+    eventName: notDemo(z.string().max(1000)),
     startDate: date.nullable(),
     endDate: date.nullable(),
     deadline: date.nullable(),

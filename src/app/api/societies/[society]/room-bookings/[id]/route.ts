@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
+import { notDemo } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
@@ -20,7 +21,7 @@ const text = (max: number) => z.string().max(max).nullable();
 const patchSchema = z
   .object({
     status: z.enum(RoomBookingStatus),
-    eventName: text(1000),
+    eventName: notDemo(z.string().max(1000)).nullable(),
     eventType: z.union([z.enum(EventType), z.literal("")]).nullable(),
     preferredDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable(),
     startTime: text(50),
