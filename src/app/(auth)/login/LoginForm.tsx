@@ -18,6 +18,9 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = safeCallback(searchParams.get("callbackUrl"));
+  // Sent back here with a reason (e.g. no-membership): show it, and don't sign the demo
+  // account straight back in, which would hide the message and loop.
+  const error = searchParams.get("error");
   const [loading, setLoading] = useState(false);
 
   // Demo deployments have no login step: sign in with the shared demo account on
@@ -29,7 +32,7 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
   const [demoFailed, setDemoFailed] = useState(false);
 
   useEffect(() => {
-    if (!demoEmail || !demoPassword) return;
+    if (!demoEmail || !demoPassword || error) return;
     let cancelled = false;
     signIn("credentials", { email: demoEmail, password: demoPassword, redirect: false })
       .then((result) => {
@@ -43,7 +46,7 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
     return () => {
       cancelled = true;
     };
-  }, [demoEmail, demoPassword, callbackUrl, router]);
+  }, [demoEmail, demoPassword, error, callbackUrl, router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -66,7 +69,7 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
     }
   }
 
-  const signingInToDemo = !!demoEmail && !demoFailed;
+  const signingInToDemo = !!demoEmail && !demoFailed && !error;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -87,6 +90,13 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
           </p>
         ) : (
           <>
+            {error && (
+              <p role="alert" className="text-center text-sm text-destructive">
+                {error === "no-membership"
+                  ? "Your account isn't a member of this society (any more). Ask an exec to add you."
+                  : "Sign in didn't work. Try again."}
+              </p>
+            )}
             <Card className="shadow-[0_4px_24px_-8px_rgba(16,16,20,0.12)]">
               <CardContent className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
