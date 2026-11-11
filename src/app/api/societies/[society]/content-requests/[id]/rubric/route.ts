@@ -34,12 +34,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Attaching the link starts the work only on a request still waiting for it; fixing
+  // the link on a draft, an in-progress, completed or cancelled one leaves its status alone.
+  const startsWork = request.status === "SUBMITTED" || request.status === "AWAITING_INFORMATION";
   const updated = await prisma.contentRequest.update({
     where: { id },
     data: {
       rubricEventLink: body.rubricEventLink,
       rubricQrCodeUrl: body.rubricQrCodeUrl || null,
-      status: "IN_PROGRESS",
+      ...(startsWork ? { status: "IN_PROGRESS" as const } : {}),
     },
   });
 
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     action: "UPDATE",
     entityType: "ContentRequest",
     entityId: id,
-    metadata: { rubricAttached: true },
+    metadata: { rubricAttached: true, ...(startsWork ? { from: request.status, to: "IN_PROGRESS" } : {}) },
   });
 
   await createNotification({
