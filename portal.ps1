@@ -394,8 +394,16 @@ function Restore([string]$file) {
   Say "Backing up what's there now first, in case you want it back..."
   Backup
   Compose stop app
-  Compose run --rm -T backup restore "/backups/$name"
-  if ($LASTEXITCODE -eq 0) { Say "Restored." } else { Say "The restore failed and the database was left as it was." }
+  # The script prints its own verdict as its one line of stdout when it fails: whether the
+  # database was changed depends on how far it got, so say what it says.
+  $out = Compose run --rm -T backup restore "/backups/$name" | Select-Object -Last 1
+  if ($LASTEXITCODE -eq 0) {
+    Say "Restored."
+  } elseif ($out) {
+    Say "The restore failed: $out"
+  } else {
+    Say "The restore failed: see the messages above."
+  }
   Compose up -d --no-build app
   Wait-Ready | Out-Null
 }

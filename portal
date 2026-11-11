@@ -324,7 +324,7 @@ cmd_backup() {
 }
 
 cmd_restore() {
-  local file="${1:-}" dir name
+  local file="${1:-}" dir name out
   [ -n "$file" ] || die "say which backup: ./portal restore <file.tar.gz>"
   [ -f "$file" ] || die "no such file: $file"
   dir="$(get BACKUP_DIR)"
@@ -340,10 +340,12 @@ cmd_restore() {
   say "Backing up what's there now first, in case you want it back..."
   cmd_backup
   compose stop app
-  if compose run --rm -T backup restore "/backups/$name" </dev/null; then
+  # The script prints its own verdict as its one line of stdout when it fails: whether the
+  # database was changed depends on how far it got, so say what it says.
+  if out="$(compose run --rm -T backup restore "/backups/$name" </dev/null)"; then
     say "Restored."
   else
-    say "The restore failed and the database was left as it was."
+    say "The restore failed: ${out:-see the messages above.}"
   fi
   compose up -d --no-build app
   wait_ready

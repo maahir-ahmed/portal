@@ -192,6 +192,11 @@ validate() {
   unpack_and_check "$1" "$tmp"
 }
 
+# A failure while restoring: logged like die, and also printed alone on stdout (which a
+# restore otherwise leaves empty) so the installers can show it as the last word on whether
+# the database was changed, without having to read the log on stderr.
+restore_fail() { echo "$*"; die "$*"; }
+
 restore() {
   [ "$(basename "$UPLOADS")" = uploads ] || die "UPLOADS_DIR must be a directory named uploads, not $UPLOADS"
   tmp="$OUT/.restore-$$"
@@ -219,15 +224,15 @@ restore() {
     echo 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;'
     grep -Ev '^\\(restrict|unrestrict) ' "$tmp/database.sql"; } |
     PGOPTIONS="-c client_min_messages=warning" psql -q -v ON_ERROR_STOP=1 --single-transaction -f - "$PGURL" > /dev/null ||
-    die "database restore failed; the database is unchanged"
+    restore_fail "database restore failed; the database is unchanged"
 
   # The directory may be a mount point, which cannot be swapped by rename, so its
   # contents are replaced. The database is already restored by now; if this fails,
   # the backup taken before the restore still has the old uploads.
   log "restoring uploads"
   mkdir -p "$UPLOADS"
-  find "$UPLOADS" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || die "could not clear $UPLOADS"
-  cp -a "$tmp/uploads/." "$UPLOADS/" || die "could not copy uploads into $UPLOADS; the database IS restored"
+  find "$UPLOADS" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || restore_fail "could not clear $UPLOADS; the database IS restored"
+  cp -a "$tmp/uploads/." "$UPLOADS/" || restore_fail "could not copy uploads into $UPLOADS; the database IS restored"
   log "restore complete"
 }
 
