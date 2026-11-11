@@ -7,6 +7,10 @@ import { decryptSecret } from "./secrets";
 // hosted stacks and older self-hosted ones are set up. One society per deployment, so
 // the settings are that society's row (SOCIETY_SLUG, or the first society).
 
+/** The settings routes exist only on a single-society stack, and only under its own slug:
+ *  they read the deployment's one row, so another society's executive must not write it. */
+export const ownsServerSettings = (society: string) => !!process.env.SOCIETY_SLUG && society === process.env.SOCIETY_SLUG;
+
 async function settingsRow() {
   const slug = process.env.SOCIETY_SLUG;
   try {

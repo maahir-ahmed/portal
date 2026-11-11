@@ -4,7 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { encryptSecret, NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
 import { demoEnabled } from "@/lib/rubricDemo";
-import { emailSettings } from "@/lib/serverSettings";
+import { ownsServerSettings, emailSettings } from "@/lib/serverSettings";
 import { notificationEmail, sendEmail } from "@/lib/email";
 import { z } from "zod";
 
@@ -15,6 +15,8 @@ import { z } from "zod";
 type Params = { params: Promise<{ society: string }> };
 
 async function exec(society: string) {
+  // Not found rather than forbidden, as for backups: another society's slug gets no confirmation.
+  if (!ownsServerSettings(society)) return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   const { session, error } = await requireAuth();
   if (error) return { error };
   const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");

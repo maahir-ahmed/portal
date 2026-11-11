@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { escapeHtml, notificationEmail } from "../src/lib/email";
 import { debugToolsEnabled } from "../src/lib/debugTools";
+import { ownsServerSettings } from "../src/lib/serverSettings";
 import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
 import { csvCell } from "../src/lib/csv";
@@ -35,6 +36,13 @@ assert.equal(debugToolsEnabled(), false, "debug tools must be off on a multi-soc
 env({ SOCIETY_SLUG: "secsoc", DEMO_MODE: "1" });
 assert.equal(debugToolsEnabled(), false, "debug tools must be off on the demo");
 env({ ENABLE_DEBUG_TOOLS: undefined, DEMO_MODE: undefined, SOCIETY_SLUG: undefined });
+
+// The email and bot settings are one row per deployment: only the stack's own slug may reach them.
+assert.equal(ownsServerSettings("secsoc"), false, "no SOCIETY_SLUG: the settings routes are refused");
+env({ SOCIETY_SLUG: "secsoc" });
+assert.equal(ownsServerSettings("secsoc"), true);
+assert.equal(ownsServerSettings("other"), false, "another society's slug must not reach the settings");
+env({ SOCIETY_SLUG: undefined });
 
 // After sign-in, only ever a path on this site.
 for (const evil of ["https://evil.example/login", "//evil.example", "/\\evil.example", "javascript:alert(1)", "", null]) {
