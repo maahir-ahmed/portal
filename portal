@@ -448,7 +448,7 @@ cmd_update() {
 check_in() { # check_in [result] [detail] [version]
   local body="{}" clean
   # These go into JSON: keep them to characters that need no escaping.
-  clean() { printf '%s' "$1" | tr -d '"\\' | tr '\n\t' '  ' | cut -c1-400; }
+  clean() { printf '%s' "$1" | tr -d '"\\' | tr '[:cntrl:]' ' ' | cut -c1-400; }
   [ -z "${1:-}" ] || body="{\"result\":\"$1\",\"detail\":\"$(clean "${2:-}")\",\"version\":\"$(clean "${3:-}")\"}"
   compose exec -T web wget -q -O - -T 20 \
     --header "Authorization: Bearer $(get UPDATE_TOKEN)" --header "Content-Type: application/json" \
