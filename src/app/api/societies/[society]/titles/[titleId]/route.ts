@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
       // rather than leaving them on a title that no longer exists.
       if (t.name !== title.name) {
         await tx.societyMembership.updateMany({
-          where: { societyId: membership!.societyId, title: title.name },
+          where: { societyId: membership!.societyId, title: title.name, role: title.roleLevel },
           data: { title: t.name },
         });
       }
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
     // Members holding this title follow it to its new portfolio.
     await prisma.societyMembership.updateMany({
-      where: { societyId: membership!.societyId, title: updated.name, role: { not: "EXECUTIVE" } },
+      where: { societyId: membership!.societyId, title: updated.name, role: updated.roleLevel },
       data: { portfolioId: updated.portfolioId },
     });
 

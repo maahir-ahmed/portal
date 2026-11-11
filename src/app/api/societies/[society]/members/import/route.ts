@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { checkImport, type ImportContext } from "@/lib/memberImport";
+import { checkImport, titleKey, type ImportContext } from "@/lib/memberImport";
 import { readTable } from "@/lib/xlsx";
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -61,7 +61,7 @@ export async function POST(
   ]);
   const ctx: ImportContext = {
     members: new Set(members.map((m) => m.user.email.toLowerCase())),
-    titles: new Map(titles.map((t) => [t.name.toLowerCase(), t])),
+    titles: new Map(titles.map((t) => [titleKey(t.roleLevel, t.name), t])),
     portfolios: new Map(portfolios.map((p) => [p.name.toLowerCase(), p])),
   };
   const check = checkImport(table, ctx);
@@ -105,7 +105,7 @@ export async function POST(
             role === "EXECUTIVE"
               ? null
               : (row.title &&
-                  ctx.titles.get(row.title.toLowerCase())?.portfolioId) ||
+                  ctx.titles.get(titleKey(role, row.title))?.portfolioId) ||
                 null;
           const extras = row.portfolios
             .map((p) => portfolioIds.get(p)!)

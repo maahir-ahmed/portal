@@ -34,7 +34,12 @@ assert.deepEqual(readTable(Buffer.from("name,email\n")), [["name", "email"]]);
 
 const ctx: ImportContext = {
   members: new Set(["old@example.com"]),
-  titles: new Map([["events director", { name: "Events Director", roleLevel: "DIRECTOR", portfolioId: "p-events" }]]),
+  titles: new Map([
+    ["DIRECTOR|events director", { name: "Events Director", roleLevel: "DIRECTOR", portfolioId: "p-events" }],
+    // Same name at two levels: each row must resolve at its own.
+    ["DIRECTOR|coordinator", { name: "Coordinator", roleLevel: "DIRECTOR", portfolioId: "p-events" }],
+    ["SUBCOMMITTEE|coordinator", { name: "Coordinator", roleLevel: "SUBCOMMITTEE", portfolioId: null }],
+  ]),
   portfolios: new Map([["events", { id: "p-events", name: "Events" }]]),
 };
 const run = (csv: string) => checkImport(parseCsv(csv), ctx);
@@ -46,6 +51,13 @@ assert.equal(t.rows[0].status, "add");
 assert.deepEqual(t.rows[0].portfolios, ["Events", "Marketing"]);
 assert.deepEqual(t.newPortfolios, ["Marketing"]);
 assert.equal(t.rows[0].title, "Events Director");
+
+const dup = checkImport(
+  parseCsv("name,email,role,title\nA,a@example.com,Director,Coordinator\nB,b@example.com,Subcommittee,Coordinator"),
+  ctx,
+);
+assert.deepEqual(dup.rows.map((r) => r.status), ["add", "add"]);
+assert.deepEqual(dup.rows.map((r) => r.title), ["Coordinator", "Coordinator"]);
 
 // Headers are matched loosely; required columns must be there.
 assert.match(run("Name,E-mail,role\n").error!, /Missing: email/);
