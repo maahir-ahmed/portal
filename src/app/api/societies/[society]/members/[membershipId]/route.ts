@@ -120,6 +120,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<Par
     return NextResponse.json({ error: "You cannot remove yourself" }, { status: 400 });
   }
 
+  // Same guard as PATCH and reset-password: on the demo, a visitor could otherwise
+  // add themselves as an exec and remove the shared account everyone signs in with.
+  const demoBlocked = await blockDemoAccountWrite(target.userId);
+  if (demoBlocked) return demoBlocked;
+
   await prisma.societyMembership.update({
     where: { id: membershipId },
     data: { isActive: false },
