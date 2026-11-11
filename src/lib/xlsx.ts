@@ -14,8 +14,9 @@ import { parseCsv } from "./csv";
 type ZipEntries = Map<string, Buffer>;
 
 // Uploads are read with this too (member import), so a small hostile file must not
-// expand without limit: each entry inflates to at most this, and only the entries the
-// caller asks for are inflated at all (a zip can list one huge entry thousands of times).
+// expand without limit: each entry inflates to at most this, only the entries the
+// caller asks for are inflated at all, and a name the directory lists twice is read
+// once (a zip can list one huge entry thousands of times).
 const MAX_ENTRY_BYTES = 50 * 1024 * 1024;
 
 export function readZip(buf: Buffer, only?: Set<string>): ZipEntries {
@@ -41,7 +42,7 @@ export function readZip(buf: Buffer, only?: Set<string>): ZipEntries {
     // The local header repeats the name and extra fields at its own lengths.
     const dataStart =
       localOffset + 30 + buf.readUInt16LE(localOffset + 26) + buf.readUInt16LE(localOffset + 28);
-    if (!only || only.has(name)) {
+    if ((!only || only.has(name)) && !entries.has(name)) {
       const raw = buf.subarray(dataStart, dataStart + compSize);
       entries.set(name, method === 0 ? Buffer.from(raw) : inflateRawSync(raw, { maxOutputLength: MAX_ENTRY_BYTES }));
     }
@@ -189,14 +190,30 @@ export function readTable(buf: Buffer): string[][] {
   return buf.subarray(0, 2).toString("latin1") === "PK" ? readSheet(buf) : parseCsv(buf.toString("utf8"));
 }
 
+// A real member list is a few thousand rows. These caps stop a crafted sheet
+// ballooning in memory: the column cap alone still allows 16,384 cells per row,
+// which adds up long before the inflate cap does.
+const MAX_ROWS = 20_000;
+const MAX_CELLS = 200_000;
+
 function readSheet(buf: Buffer): string[][] {
   const zip = readZip(buf, new Set(["xl/worksheets/sheet1.xml", "xl/sharedStrings.xml"]));
   const sheet = zip.get("xl/worksheets/sheet1.xml")?.toString("utf8");
   if (!sheet) throw new Error("no worksheet found");
+  // Linear pre-checks before any backtracking regex sees the sheet: too many rows,
+  // or open rows that never close, which would make each lazy [\s\S]*? scan below
+  // run to the end of the string.
+  const opens = sheet.match(/<row\b[^>]*>/g) ?? [];
+  if (opens.length > MAX_ROWS) throw new Error(`the sheet has more than ${MAX_ROWS} rows`);
+  const selfClosed = opens.filter((t) => t.endsWith("/>")).length;
+  if ((sheet.match(/<\/row>/g)?.length ?? 0) < opens.length - selfClosed) {
+    throw new Error("malformed sheet: a row never closes");
+  }
   const shared = [...(zip.get("xl/sharedStrings.xml")?.toString("utf8") ?? "").matchAll(/<si>([\s\S]*?)<\/si>/g)].map(
     (m) => textOf(m[1])
   );
   const rows: string[][] = [];
+  let cells = 0;
   for (const [, body = ""] of sheet.matchAll(/<row\b[^>]*?(?:\/>|>([\s\S]*?)<\/row>)/g)) {
     const row: string[] = [];
     for (const [, attrs, inner = ""] of body.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
@@ -206,6 +223,10 @@ function readSheet(buf: Buffer): string[][] {
       const value = type === "s" ? shared[Number(v)] ?? "" : type === "inlineStr" ? textOf(inner) : decodeXml(v);
       row[ref ? columnIndex(ref) : row.length] = value;
     }
+    // Sparse length is what Array.from is about to allocate: a row claiming only
+    // cell XFD1 still costs 16,384 entries, so the cap is on that, not on cells seen.
+    cells += row.length;
+    if (cells > MAX_CELLS) throw new Error("the sheet is too large to read");
     rows.push(Array.from(row, (x) => x ?? ""));
   }
   return rows;

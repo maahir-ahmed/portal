@@ -96,5 +96,20 @@ assert.throws(
   /past the last column/,
   "a cell past column XFD must be refused, not padded out"
 );
+// Every row claiming the LAST legal column would still densify to 16,384 cells a row.
+const wide = Buffer.from(
+  `<worksheet><sheetData>${'<row><c r="XFD1" t="inlineStr"><is><t>x</t></is></c></row>'.repeat(200)}</sheetData></worksheet>`
+);
+assert.throws(
+  () => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml", wide]]))),
+  /too large/,
+  "rows padded out to the last column must be refused before they densify"
+);
+assert.throws(
+  () => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml",
+    Buffer.from(`<worksheet><sheetData>${"<row>".repeat(30_000)}</sheetData></worksheet>`)]]))),
+  /more than|never closes/,
+  "a flood of unclosed rows must be refused before the row regex runs"
+);
 
 console.log("check-import: ok");
