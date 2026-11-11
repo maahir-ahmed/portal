@@ -42,6 +42,9 @@ export function anonymisePeople(value: unknown, counter = { n: 0 }): unknown {
   const isPerson =
     keys.includes("fullname") || keys.includes("accepted") || keys.some((k) => k.includes("email"));
 
+  // Rubric can return a student number or phone as a JSON number. A number of 7+ digits is an
+  // identifier, not a count, so "studentsAttending: 12" survives and a zID does not.
+  const longNumber = (v: unknown) => typeof v === "number" && Math.abs(v) >= 1e6;
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     const key = k.toLowerCase();
@@ -50,10 +53,10 @@ export function anonymisePeople(value: unknown, counter = { n: 0 }): unknown {
       out[k] = `${FIRST[i % FIRST.length]} ${LAST[(i * 7) % LAST.length]}`;
     } else if (typeof v === "string" && key.includes("email")) {
       out[k] = `member${++counter.n}@example.com`;
-    } else if (typeof v === "string" && (key.includes("student") || key === "zid")) {
+    } else if ((typeof v === "string" || longNumber(v)) && (key.includes("student") || key === "zid")) {
       // "student number", "studentnumber" (ticket lists), "Student ID" (form answers).
-      out[k] = `z${5000000 + ++counter.n}`;
-    } else if (typeof v === "string" && (key.includes("phone") || key.includes("mobile"))) {
+      out[k] = typeof v === "number" ? 5000000 + ++counter.n : `z${5000000 + ++counter.n}`;
+    } else if ((typeof v === "string" || longNumber(v)) && (key.includes("phone") || key.includes("mobile"))) {
       // "phone", "phonenumber" (ticket lists), "Phone Number" (form answers).
       out[k] = "";
     } else if (typeof v === "string" && ["firstname", "lastname", "preferredname", "full name"].includes(key)) {

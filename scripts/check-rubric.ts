@@ -151,6 +151,12 @@ assert.equal(t["Phone Number"], "", "phone answers must be blanked");
 assert.notEqual(t.studentnumber, "z9999999", "student numbers must be replaced");
 assert.notEqual(t["Student ID"], "z8888888", "student ID answers must be replaced");
 
+// A student number or phone Rubric returns as a JSON number is replaced too.
+const numeric = anonymisePeople({ rows: [{ studentnumber: 9999999, phone: 412345678, studentsAttending: 12, email: "a@b.c" }] }) as { rows: Record<string, unknown>[] };
+assert.notEqual(numeric.rows[0].studentnumber, 9999999, "numeric student numbers must be replaced");
+assert.equal(numeric.rows[0].phone, "", "numeric phone numbers must be blanked");
+assert.equal(numeric.rows[0].studentsAttending, 12, "a small count under a student key must survive");
+
 // The committed snapshot holds no credential under any spelling.
 const credentialKeys: string[] = [];
 const walkKeys = (v: unknown): void => {
@@ -163,6 +169,21 @@ assert.deepEqual(credentialKeys, [], "the demo snapshot must not contain a Rubri
 // The committed fixture itself must already be clean.
 const fixture = JSON.stringify(snapshot);
 assert.equal(/unsw\.edu\.au|@gmail|@outlook/i.test(fixture), false, "the demo snapshot contains a real-looking address");
+
+// No run of seven or more digits anywhere in the committed snapshot: that is a zID or a phone
+// number. The anonymiser's own placeholders (z5000001 and up) and fields that are never about a
+// person (ids, timestamps, money) are exempt; anything else means a real capture slipped through.
+const SAFE_NUMERIC = /(^id|id$|time|date|created|updated|price|total|amount|grant)/i;
+const PERSON_KEY = /student|zid|phone|mobile/i;
+const digitRuns: string[] = [];
+const walkDigits = (v: unknown, key = ""): void => {
+  if (Array.isArray(v)) return v.forEach((x) => walkDigits(x, key));
+  if (v && typeof v === "object") return Object.entries(v).forEach(([k, x]) => walkDigits(x, k));
+  if (SAFE_NUMERIC.test(key) && !PERSON_KEY.test(key)) return;
+  if (/\d{7,}/.test(String(v).replace(/z5\d{6}/g, ""))) digitRuns.push(key);
+};
+walkDigits(snapshot);
+assert.deepEqual(digitRuns, [], "the demo snapshot contains a long digit run (a student number or phone?)");
 
 const writes = Object.entries(RUBRIC_CALLS).filter(([, s]) => s.write).length;
 console.log(
