@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatCurrency, canViewRequest } from "@/lib/utils";
+import { formatDate, formatCurrency, requestVisibility } from "@/lib/utils";
 import {
   FileText, Building2, Wallet, AlertCircle, Plus
 } from "lucide-react";
@@ -35,7 +35,7 @@ export default async function DashboardPage({ params }: Props) {
   const modules = flagsFrom(membership.society);
   // Recent events and bookings, limited to what this member could open (canViewRequest).
   const me = session.user.id;
-  const visible = canViewRequest(membership, me, { submittedById: "" }) ? {} : { OR: [{ submittedById: me }, { assignedToId: me }] };
+  const visible = requestVisibility(membership, me);
 
   const [
     contentPending,
@@ -46,10 +46,10 @@ export default async function DashboardPage({ params }: Props) {
     recentTreasury,
   ] = await Promise.all([
     prisma.contentRequest.count({
-      where: { societyId, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+      where: { societyId, status: { notIn: ["COMPLETED", "CANCELLED"] }, ...visible },
     }),
     prisma.roomBooking.count({
-      where: { societyId, status: { notIn: ["COMPLETED", "REJECTED"] } },
+      where: { societyId, status: { notIn: ["COMPLETED", "REJECTED"] }, ...visible },
     }),
     prisma.treasuryRequest.count({
       // Claims are private to their submitter; only execs see everyone's.

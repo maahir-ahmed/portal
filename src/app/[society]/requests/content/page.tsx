@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { YearPicker } from "@/components/shared/YearPicker";
 import { eventYearRange, parseYear, yearOptions } from "@/lib/years";
-import { formatDate, formatTimeRange, statusLabel, cn } from "@/lib/utils";
+import { formatDate, formatTimeRange, statusLabel, cn, requestVisibility } from "@/lib/utils";
 import { urgency, STAGE_CLASSES, societyToday } from "@/lib/urgency";
 import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, Clock, MapPin } from "lucide-react";
 import type { ContentRequestStatus } from "@prisma/client";
@@ -42,11 +42,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
   if (!membership) redirect("/");
   const now = new Date();
 
-  const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
-  const owner = {
-    societyId: membership.societyId,
-    ...(!canSeeAll ? { submittedById: session.user.id } : {}),
-  };
+  const owner = { societyId: membership.societyId, ...requestVisibility(membership, session.user.id) };
 
   // Events go by calendar year (src/lib/years.ts). The picker offers every year from the
   // first event to whichever is later of this year and the furthest-out event.

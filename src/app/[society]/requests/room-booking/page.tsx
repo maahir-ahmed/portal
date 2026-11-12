@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { cn, formatDate, isLateArcSubmission } from "@/lib/utils";
+import { cn, formatDate, isLateArcSubmission, requestVisibility } from "@/lib/utils";
 import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users, DoorOpen } from "lucide-react";
 
 // Finished bookings sink below the active ones and grey out, same as content requests.
@@ -27,12 +27,10 @@ export default async function RoomBookingsPage({ params }: Props) {
   });
   if (!membership) redirect("/");
 
-  const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
-
   const rows = await prisma.roomBooking.findMany({
     where: {
       societyId: membership.societyId,
-      ...(!canSeeAll ? { submittedById: session.user.id } : {}),
+      ...requestVisibility(membership, session.user.id),
     },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true } },

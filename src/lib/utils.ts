@@ -132,6 +132,16 @@ export function canViewRequest(
   );
 }
 
+/**
+ * The where-clause form of canViewRequest, for lists and counts of event requests and room
+ * bookings: nothing to narrow for those who see all, else the member's own and assigned.
+ */
+export function requestVisibility(m: { role: string; title: string | null }, userId: string) {
+  return canViewRequest(m, userId, { submittedById: "" })
+    ? {}
+    : { OR: [{ submittedById: userId }, { assignedToId: userId }] };
+}
+
 /** Arc has approved or refused it: from here the submitter may only record the room. */
 export const bookingDecided = (status: string) => ["APPROVED", "REJECTED", "COMPLETED"].includes(status);
 
