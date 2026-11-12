@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { TUTORIAL_MARKER as MARK, demoCategoryName } from "@/lib/tutorial";
 import { financialYearOf } from "@/lib/years";
 
@@ -49,11 +49,9 @@ async function wipe(societyId: string, userId: string) {
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const societyId = membership!.societyId;
   const userId = session!.user.id;
@@ -191,11 +189,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<Para
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   await wipe(membership!.societyId, session!.user.id);
   return NextResponse.json({ ok: true });

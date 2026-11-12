@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { AHEGS_CATEGORIES } from "@/lib/ahegs";
 import { buildMinutes } from "@/lib/ahegsMinutes";
@@ -13,12 +13,9 @@ import type { AhegsCategory } from "@prisma/client";
 //
 // Executive-only, like the list export next to it: minutes name who attended what.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const category = req.nextUrl.searchParams.get("category") as AhegsCategory | null;
   const kind = req.nextUrl.searchParams.get("kind");

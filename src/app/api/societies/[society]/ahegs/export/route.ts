@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { join } from "node:path";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { AHEGS_CATEGORIES, CATEGORY_LABELS, TEMPLATES, resolveRow } from "@/lib/ahegs";
 import { fillTemplate, type Cell } from "@/lib/xlsx";
@@ -9,12 +9,9 @@ import type { AhegsCategory } from "@prisma/client";
 
 // Downloads one category's list as Arc's own .xlsx, filled in and ready to upload.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const category = req.nextUrl.searchParams.get("category") as AhegsCategory | null;
   const year = Number(req.nextUrl.searchParams.get("year"));

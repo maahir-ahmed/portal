@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification, notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
@@ -56,12 +56,9 @@ const otherExecs = (m: { societyId: string; userId: string }) =>
   prisma.societyMembership.count({ where: { societyId: m.societyId, role: "EXECUTIVE", isActive: true, userId: { not: m.userId } } });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -259,12 +256,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const request = await prisma.treasuryRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership!.societyId) {

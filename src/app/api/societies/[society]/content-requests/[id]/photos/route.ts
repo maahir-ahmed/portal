@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, serverError } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import type { SocietyMembership } from "@prisma/client";
@@ -37,12 +37,9 @@ async function findManageableEvent(id: string, membership: SocietyMembership, us
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const body = createSchema.parse(await req.json());
@@ -78,12 +75,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const { photoId } = deleteSchema.parse({ photoId: req.nextUrl.searchParams.get("photoId") });

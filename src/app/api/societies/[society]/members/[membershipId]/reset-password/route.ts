@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, blockDemoAccountWrite, blockForeignAccountWrite } from "@/lib/api";
+import { blockDemoAccountWrite, blockForeignAccountWrite, requireRole } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import { generatePassphrase, tempPassphraseExpiry } from "@/lib/passphrase";
@@ -13,12 +13,9 @@ type Params = { society: string; membershipId: string };
 // change-password dialog until they pick their own.
 // Note: doesn't invalidate existing sessions; add if a reset must force logout
 export async function POST(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, membershipId } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const target = await prisma.societyMembership.findUnique({
     where: { id: membershipId },

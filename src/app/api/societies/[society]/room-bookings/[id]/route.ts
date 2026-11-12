@@ -3,7 +3,7 @@ import { z } from "zod";
 import { bookingDecided, isPlausibleDate } from "@/lib/utils";
 import { EventType, PreferredLocation, RoomBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import { notDemo } from "@/lib/schemas";
@@ -41,12 +41,9 @@ const patchSchema = z
   .partial();
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -161,12 +158,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
 // Deletable by the submitter or any exec, same permission as editing.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const booking = await prisma.roomBooking.findUnique({ where: { id } });
   if (!booking || booking.societyId !== membership!.societyId) {

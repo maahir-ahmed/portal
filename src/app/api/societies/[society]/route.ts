@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, serverError } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { MODULE_SELECT } from "@/lib/modules";
 import { botSettings, emailSettings, remindersDefault } from "@/lib/serverSettings";
@@ -54,12 +54,9 @@ function validTimeZone(tz: string) {
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   // Explicit field list, never the whole row: rubricSessionId and
   // rubricUnionSessionId are credentials and must not leave the server. Their
@@ -101,12 +98,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     // The settings form posts every field. Empty strings on the always-present

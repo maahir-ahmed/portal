@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, serverError } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { allocationData, allocationSchema, serialiseCategory } from "@/lib/budget";
@@ -18,11 +18,9 @@ const patchSchema = z.object({
 
 // Edit a category (exec only), and its figures for the year being viewed.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const target = await prisma.budgetCategory.findUnique({ where: { id } });
   if (!target || target.societyId !== membership!.societyId) {
@@ -72,11 +70,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 // treasury claims keep their history but become unclassified (categoryId set null via
 // the schema relation).
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const target = await prisma.budgetCategory.findUnique({ where: { id } });
   if (!target || target.societyId !== membership!.societyId) {

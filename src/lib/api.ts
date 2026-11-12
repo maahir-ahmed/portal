@@ -58,6 +58,19 @@ export async function requireMembership(
   return { membership, error: null };
 }
 
+/**
+ * The preamble of every society route: a signed-in session, then an active membership of
+ * the society in the URL (at least `minRole`, if given). Takes the slug, not `params`, so
+ * a handler can still read its own ids from `params`.
+ */
+export async function requireRole(societySlug: string, minRole?: Role) {
+  const { session, error } = await requireAuth();
+  if (error) return { session: null, membership: null, error };
+  const { membership, error: memErr } = await requireMembership(session.user.id, societySlug, minRole);
+  if (memErr) return { session: null, membership: null, error: memErr };
+  return { session, membership, error: null };
+}
+
 // DEMO_MODE (the public showcase stack) signs every visitor in as one shared
 // account, so any write that changes that account's password or role locks the
 // demo out for everyone until the next reseed. Refuse those, and only those —

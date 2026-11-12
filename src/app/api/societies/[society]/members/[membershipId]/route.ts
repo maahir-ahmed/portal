@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, blockDemoAccountWrite, blockForeignAccountWrite, serverError } from "@/lib/api";
+import { blockDemoAccountWrite, blockForeignAccountWrite, serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { portfolioForTitle } from "@/lib/titles";
 import { z } from "zod";
@@ -16,12 +16,9 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, membershipId } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const target = await prisma.societyMembership.findUnique({ where: { id: membershipId } });
   if (!target || target.societyId !== membership!.societyId) {
@@ -106,12 +103,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, membershipId } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const target = await prisma.societyMembership.findUnique({ where: { id: membershipId } });
   if (!target || target.societyId !== membership!.societyId) {

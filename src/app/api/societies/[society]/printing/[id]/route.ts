@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
 import type { PrintingStatus } from "@prisma/client";
@@ -21,11 +21,9 @@ const TRANSITIONS: Record<z.infer<typeof schema>["action"], { from: PrintingStat
 // Exec advances a printing request through its lifecycle. Budget is deducted
 // from approval onward (the GET endpoint sums approved-and-beyond costs).
 export async function POST(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -92,11 +90,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
 
 // Requests are deletable by the submitter while still awaiting approval, and by execs.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const request = await prisma.printingRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership!.societyId) {

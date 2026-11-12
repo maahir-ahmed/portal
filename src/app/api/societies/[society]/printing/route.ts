@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership, serverError } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { allowanceSpendWhere, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { createPrintingRequest } from "@/lib/printingServer";
 import { UPLOADED_FILE } from "@/lib/uploads";
@@ -37,11 +37,9 @@ async function budgetFor(societyId: string, tier: keyof typeof SECRETARIAL_ALLOW
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   await refreshArcTier(membership!.societyId);
   const soc = await prisma.society.findUnique({
@@ -68,11 +66,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const body = schema.parse(await req.json());
