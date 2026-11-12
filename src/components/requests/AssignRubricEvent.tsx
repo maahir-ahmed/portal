@@ -104,7 +104,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
             {events.map((e) => (
               <option key={String(e.eventid)} value={String(e.eventid)}>
                 {e.eventname ?? `Event ${e.eventid}`}
-                {e.eventTime ? `, ${new Date(e.eventTime).toLocaleDateString("en-AU")}` : ""}
+                {e.eventTime ? `, ${new Date(e.eventTime.replace(" ", "T")).toLocaleDateString("en-AU")}` : ""}
               </option>
             ))}
           </select>

@@ -429,7 +429,7 @@ function ClaimsTable({ categories, transactions, onReclassify, societySlug, year
                 <tbody>
                   {shown.map((t) => (
                     <tr key={t.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{formatDate(t.date)}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{formatDate(t.date.slice(0, 19))}</td>
                       <td className="py-2 pr-3">
                         <Link href={`/${societySlug}/requests/treasury/${t.id}`} className="hover:underline">{t.description}</Link>
                       </td>

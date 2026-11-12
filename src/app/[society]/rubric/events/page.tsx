@@ -25,6 +25,8 @@ export default function RubricEventsPage() {
     (session?.user as { memberships?: { society: { slug: string }; role: string }[] } | undefined)
       ?.memberships?.find((m) => m.society.slug === params.society)?.role === "EXECUTIVE";
   const rubric = useRubricClient(params.society);
+  // Now on the browser's clock, in the stored wall-clock-as-UTC shape the dialog reads.
+  const [startNow] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000));
   const [events, setEvents] = useState<RubricEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -171,7 +173,7 @@ export default function RubricEventsPage() {
             defaultEventName=""
             defaultDescription=""
             defaultAddress=""
-            defaultStartDate={new Date()}
+            defaultStartDate={startNow}
           />
         )}
       </div>

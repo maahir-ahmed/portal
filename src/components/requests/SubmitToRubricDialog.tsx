@@ -29,9 +29,11 @@ interface SubmitToRubricDialogProps {
   alreadySubmitted?: Date | null;
 }
 
+// Typed-in times are wall-clock stored as UTC, so read them with the UTC getters: the
+// browser's own zone would move them.
 function toDatetimeLocal(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
 // Rubric expects "YYYY-MM-DD HH:MM:SS" wall-clock time (paired with the timezone field).
@@ -216,7 +218,7 @@ export function SubmitToRubricDialog({
 
         {alreadySubmitted && step === 1 && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-            Previously submitted on {alreadySubmitted.toLocaleDateString()}. Submitting again will create a new event on Rubric.
+            Previously submitted on {alreadySubmitted.toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}. Submitting again will create a new event on Rubric.
           </div>
         )}
 
