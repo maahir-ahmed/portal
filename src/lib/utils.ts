@@ -132,6 +132,15 @@ export function canViewRequest(
   );
 }
 
+/** A query-string value as one string: Next hands back an array when a key is repeated. */
+export const firstParam = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
+
+/** A list page number from the query string: a whole number from 1 to `max`, else 1. */
+export function pageParam(v: string | string[] | undefined, max = 10_000): number {
+  const n = Number(firstParam(v));
+  return Number.isInteger(n) ? Math.min(max, Math.max(1, n)) : 1;
+}
+
 /**
  * The where-clause form of canViewRequest, for lists and counts of event requests and room
  * bookings: nothing to narrow for those who see all, else the member's own and assigned.

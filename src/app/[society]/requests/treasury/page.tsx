@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatDate, formatCurrency, firstParam } from "@/lib/utils";
 import { Calendar, Plus, Search, Store, Wallet } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { YearPicker } from "@/components/shared/YearPicker";
@@ -16,7 +16,7 @@ import { FIRST_YEAR, financialYearOf, financialYearRange, parseYear, yearOptions
 
 interface Props {
   params: Promise<{ society: string }>;
-  searchParams: Promise<{ q?: string; year?: string }>;
+  searchParams: Promise<{ q?: string | string[]; year?: string | string[] }>;
 }
 
 // Free-text search over what a claim says, where it was spent and who made it, plus an
@@ -36,7 +36,8 @@ function searchWhere(q: string): Prisma.TreasuryRequestWhereInput {
 export default async function TreasuryPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
   const sp = await searchParams;
-  const q = (sp.q ?? "").trim();
+  const q = (firstParam(sp.q) ?? "").trim();
+  const yearParam = firstParam(sp.year);
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
@@ -60,7 +61,7 @@ export default async function TreasuryPage({ params, searchParams }: Props) {
     prisma.treasuryRequest.aggregate({ where: owner, _min: { expenseDate: true }, _max: { expenseDate: true } }),
   ]);
   const thisYear = financialYearOf(calendar, new Date(wallClockNow(membership.society.timezone)));
-  const year = sp.year === "all" ? null : parseYear(sp.year) ?? thisYear;
+  const year = yearParam === "all" ? null : parseYear(yearParam) ?? thisYear;
   const range = year === null ? null : financialYearRange(calendar, year);
   const years = yearOptions(
     span._min.expenseDate ? financialYearOf(calendar, span._min.expenseDate) : null,
