@@ -155,7 +155,7 @@ export function SpendingBudgetClient({
           {yearSet ? (
             <CurrentYearView year={year} isCurrent={year === currentYear} categories={categories} onEdit={setEditing} canEdit={isExec} />
           ) : isExec ? (
-            <SetBudgetForm base={base} year={year} pastYears={comparisonYears.filter((y) => y < year)}
+            <SetBudgetForm key={year} base={base} year={year} pastYears={comparisonYears.filter((y) => y < year)}
               categories={categories} onSaved={() => router.refresh()} />
           ) : (
             <Card data-tour="budget-setup">
