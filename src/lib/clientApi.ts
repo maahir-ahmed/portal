@@ -20,9 +20,14 @@ export async function runJob<T>(url: string, init: RequestInit, base: string, he
     await new Promise((r) => setTimeout(r, 1500));
     const res = await fetch(`${base}/jobs/${job}`, { cache: "no-store", headers }).catch(() => null);
     if (!res || res.status === 502 || res.status === 503 || res.status === 504) continue;
-    // Signed out by a restore that replaced the account: the reload sorts that out.
-    if (res.status === 401 || res.status === 403) throw Object.assign(new Error("signed out"), { signedOut: true });
-    const s = await res.json();
+    // Signed out by a restore that replaced the account: the reload sorts that out. The
+    // proxy answers a signed-out poll with a redirect to the login page, so a redirected
+    // or non-JSON answer counts too.
+    if (res.status === 401 || res.status === 403 || res.redirected || !res.headers.get("content-type")?.includes("json")) {
+      throw Object.assign(new Error("signed out"), { signedOut: true });
+    }
+    const s = await res.json().catch(() => null);
+    if (!s) throw Object.assign(new Error("signed out"), { signedOut: true });
     if (s.state === "done") return s.result as T;
     if (s.state === "failed") throw Object.assign(new Error(s.error), { data: s.result ?? {} });
   }
