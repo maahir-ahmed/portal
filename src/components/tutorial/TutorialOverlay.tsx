@@ -59,6 +59,9 @@ export function TutorialOverlay() {
   const [waiting, setWaiting] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigatedFor = useRef<string | null>(null);
+  // The welcome step's demo POST while it is in flight: a cleanup must wait for it, or
+  // its DELETE can run first and the records created after it survive as orphans.
+  const creating = useRef<Promise<unknown> | null>(null);
 
   const slug = params?.society;
   const role = (
@@ -82,6 +85,7 @@ export function TutorialOverlay() {
   // creating them too.
   const wipeDemo = useCallback(async () => {
     if (!slug) return;
+    await creating.current;
     await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "DELETE" }).catch(() => {});
     router.refresh();
   }, [slug, router]);
@@ -247,7 +251,10 @@ export function TutorialOverlay() {
     if (!step || busy) return; // arrow keys repeat: a second press must not POST the demo twice
     if (step.kind === "welcome" && slug) {
       setBusy(true);
-      const res = await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
+      const request = fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
+      creating.current = request;
+      const res = await request;
+      creating.current = null;
       setBusy(false);
       if (res?.ok) {
         setIds(await res.json());
