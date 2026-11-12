@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auditAccountChange } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { requireAuth, serverError } from "@/lib/api";
+import { checkBank } from "@/lib/bank";
 import { z } from "zod";
 
 export async function GET() {
@@ -35,8 +36,14 @@ export async function PUT(req: NextRequest) {
   try {
     const body = schema.parse(await req.json());
 
-    await prisma.bankAccount.updateMany({ where: { userId }, data: { isDefault: false } });
-    const account = await prisma.bankAccount.create({ data: { userId, ...body, payId: body.payId || null, isDefault: true } });
+    const bank = checkBank(body.accountName, body.bsb, body.accountNumber, body.payId ?? "");
+    if ("error" in bank) return NextResponse.json({ error: bank.error }, { status: 400 });
+
+    // One transaction, so a failed create cannot leave the member with no default account.
+    const account = await prisma.$transaction(async (tx) => {
+      await tx.bankAccount.updateMany({ where: { userId }, data: { isDefault: false } });
+      return tx.bankAccount.create({ data: { userId, ...bank, isDefault: true } });
+    });
 
     // Which account a reimbursement is paid into: worth knowing it changed, and when.
     await auditAccountChange(userId, "BankAccount", { accountName: body.accountName });
