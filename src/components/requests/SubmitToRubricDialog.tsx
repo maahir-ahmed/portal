@@ -77,6 +77,8 @@ export function SubmitToRubricDialog({
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<RubricAnswers>({});
+  // Publishing without the affiliation form (it failed to load) has to be chosen on purpose.
+  const [publishWithoutForm, setPublishWithoutForm] = useState(false);
 
   const [eventName, setEventName] = useState(defaultEventName);
   const [description, setDescription] = useState(defaultDescription);
@@ -92,6 +94,7 @@ export function SubmitToRubricDialog({
   async function loadForm() {
     setFormLoading(true);
     setFormError(null);
+    setPublishWithoutForm(false);
     try {
       const data = await rubric.call({ type: "getSocietyEventCreatePage" });
       const f = extractForm(data);
@@ -121,14 +124,20 @@ export function SubmitToRubricDialog({
     if (!next) setStep(1);
   }
 
+  // Run before any publish, whichever button got us here.
+  function checkDetails(): boolean {
+    if (!eventName.trim()) { toast.error("Event name is required"); return false; }
+    if (!endDate) { toast.error("End date is required"); return false; }
+    return true;
+  }
+
   function goToStep2() {
-    if (!eventName.trim()) { toast.error("Event name is required"); return; }
-    if (!endDate) { toast.error("End date is required"); return; }
-    setStep(2);
+    if (checkDetails()) setStep(2);
   }
 
   async function handleSubmit() {
     if (submitting) return; // the dialog can be closed mid-submit and reopened
+    if (!checkDetails()) return;
     if (form) {
       const validationError = validateAnswers(form, answers);
       if (validationError) { toast.error(validationError); return; }
@@ -223,6 +232,26 @@ export function SubmitToRubricDialog({
           </div>
         )}
 
+        {step === 1 && formError && !formLoading && (
+          <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>{formError}</p>
+            {!form && (
+              <>
+                <Button type="button" size="sm" variant="outline" onClick={loadForm}>Try loading the form again</Button>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={publishWithoutForm}
+                    onChange={(e) => setPublishWithoutForm(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  Publish without the affiliation form
+                </label>
+              </>
+            )}
+          </div>
+        )}
+
         {step === 1 && (
           <div className="space-y-4 py-1">
             <div className="space-y-2">
@@ -306,7 +335,7 @@ export function SubmitToRubricDialog({
                   Next: Affiliation Form <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={submitting}>
+                <Button onClick={handleSubmit} disabled={submitting || (!!formError && !publishWithoutForm)}>
                   {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting…</> : "Publish to Rubric"}
                 </Button>
               )}
