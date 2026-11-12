@@ -274,6 +274,13 @@ export function TutorialOverlay() {
   useEffect(() => {
     if (!active) return;
     function onKey(e: KeyboardEvent) {
+      // The overlay lets clicks through, so people type in real fields mid-tour: arrows
+      // there move the caret, and Escape belongs to whatever dropdown or dialog is open
+      // (Radix marks the keys it handled as defaultPrevented).
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")) return;
+      if (e.key === "Escape" && document.querySelector('[role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"]')) return;
       if (e.key === "Escape") close(page === null);
       else if (e.key === "ArrowRight") void next();
       else if (e.key === "ArrowLeft") back();
