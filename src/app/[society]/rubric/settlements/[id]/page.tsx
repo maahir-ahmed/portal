@@ -1,28 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowLeft, DollarSign } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 
 export default function RubricSettlementDetailPage() {
   const params = useParams<{ society: string; id: string }>();
-  const rubric = useRubricClient(params.society);
-  const [data, setData] = useState<Record<string, unknown> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    rubric.call({ type: "getSocietyPortalSettlementDetail", sid: Number(params.id) })
-      .then((d) => setData(d))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load"))
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society, params.id]);
+  const { data, error, loading } = useRubricQuery(
+    params.society,
+    (call) => call({ type: "getSocietyPortalSettlementDetail", sid: Number(params.id) }),
+    [params.id]
+  );
 
   const subSettlements = (data?.allSettlements ?? []) as Record<string, unknown>[];
 

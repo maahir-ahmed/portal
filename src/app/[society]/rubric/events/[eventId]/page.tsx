@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Rubric serves these images from hosts we do not
    know ahead of time; next/image would need a wildcard remotePattern to render them. */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { RubricShell } from "@/components/rubric/RubricShell";
@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, ArrowLeft, ExternalLink, Ticket, MapPin, Calendar, Users, DollarSign, Download, Search } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 import { csvCell } from "@/lib/csv";
 
 interface EventDetail {
@@ -53,25 +53,20 @@ const parseBill = (v: unknown) => {
 
 export default function RubricEventDetailPage() {
   const params = useParams<{ society: string; eventId: string }>();
-  const rubric = useRubricClient(params.society);
-  const [details, setDetails] = useState<EventDetail | null>(null);
-  const [tickets, setTickets] = useState<TicketData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, loading } = useRubricQuery(
+    params.society,
+    async (call) => {
+      const [d, t] = await Promise.all([
+        call({ type: "getEventDetails", eventid: params.eventId }),
+        call({ type: "getSocietyPortalEventTicketList", eventid: Number(params.eventId) }),
+      ]);
+      return { details: d as EventDetail, tickets: t as TicketData };
+    },
+    [params.eventId]
+  );
+  const details = data?.details ?? null;
+  const tickets = data?.tickets ?? null;
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    Promise.all([
-      rubric.call({ type: "getEventDetails", eventid: params.eventId }),
-      rubric.call({ type: "getSocietyPortalEventTicketList", eventid: Number(params.eventId) }),
-    ]).then(([d, t]) => {
-      setDetails(d as EventDetail);
-      setTickets(t as TicketData);
-    }).catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "Failed to load");
-    }).finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society, params.eventId]);
 
   const allTickets = (tickets?.allTickets ?? []) as Record<string, unknown>[];
 
