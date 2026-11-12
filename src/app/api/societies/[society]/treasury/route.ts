@@ -8,6 +8,7 @@ import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
 import { money, notDemo } from "@/lib/schemas";
 import { checkBank } from "@/lib/bank";
+import { societyToday } from "@/lib/urgency";
 
 // More than any claim has; keeps one request from writing thousands of rows.
 const MAX_RECEIPTS = 20;
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           societyId: membership!.societyId,
           submittedById: session!.user.id,
           contactEmail: body.contactEmail || "",
-          expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
+          expenseDate: body.expenseDate ? new Date(body.expenseDate) : societyToday(membership!.society.timezone),
           locationSupplier: body.locationSupplier || "",
           description: body.description || "",
           amount: body.amount ?? 0,

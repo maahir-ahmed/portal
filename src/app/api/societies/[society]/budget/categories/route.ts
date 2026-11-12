@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     const created = await prisma.budgetCategory.create({
       data: {
         societyId: membership!.societyId, sortOrder: count, ...body,
-        ...(allocation && { allocations: { create: await allocationData(membership!.societyId, allocation) } }),
+        ...(allocation && { allocations: { create: await allocationData(membership!.societyId, allocation, membership!.society.timezone) } }),
       },
     });
     await createAuditLog({

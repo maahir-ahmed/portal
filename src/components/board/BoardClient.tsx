@@ -30,11 +30,10 @@ const LANES: { id: Lane; label: string }[] = [
 
 // Whether a due date wants attention: red once the day is over, amber inside a week.
 // Due dates are stored as UTC midnight of the typed date, so compare with today's date
-// on this browser's clock, stored the same way.
-function dueTone(due: string | null, lane: Lane): string {
+// on the society's clock (`today`, from the server), stored the same way.
+function dueTone(due: string | null, lane: Lane, today: string): string {
   if (!due || lane === "DONE") return "text-muted-foreground";
-  const n = new Date();
-  const days = (new Date(due).getTime() - Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())) / 86_400_000;
+  const days = (new Date(due).getTime() - new Date(today).getTime()) / 86_400_000;
   if (days < 0) return "text-red-600 font-medium";
   if (days < 7) return "text-amber-600 font-medium";
   return "text-muted-foreground";
@@ -46,9 +45,12 @@ function dueTone(due: string | null, lane: Lane): string {
 export function BoardClient({
   societySlug,
   initialCards,
+  today,
 }: {
   societySlug: string;
   initialCards: BoardCard[];
+  /** The society's date today (UTC midnight, ISO), so "overdue" follows its clock, not the browser's. */
+  today: string;
 }) {
   const [cards, setCards] = useState(initialCards);
   const [addingTo, setAddingTo] = useState<Lane | null>(null);
@@ -188,7 +190,7 @@ export function BoardClient({
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{card.notes}</p>
                   )}
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className={cn("text-xs", dueTone(card.dueDate, card.lane))}>
+                    <span className={cn("text-xs", dueTone(card.dueDate, card.lane, today))}>
                       {card.dueDate ? formatDate(card.dueDate) : ""}
                     </span>
                     <UserAvatar name={card.authorName} avatarUrl={card.authorAvatar} size="sm" />

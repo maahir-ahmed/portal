@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { financialYearOf } from "@/lib/years";
+import { societyToday } from "@/lib/urgency";
 import { money } from "@/lib/schemas";
 
 // Statuses that represent money the society has actually committed. Drafts aren't
@@ -68,8 +69,8 @@ export const allocationSchema = z.object({
 
 // The current year's spending is worked out from claims, never typed, so a typed-in
 // actual is only kept for years that have already closed.
-export async function allocationData(societyId: string, a: z.infer<typeof allocationSchema>) {
+export async function allocationData(societyId: string, a: z.infer<typeof allocationSchema>, timeZone: string) {
   const rows = await prisma.societyYear.findMany({ where: { societyId } });
-  const closed = a.year < financialYearOf(rows, new Date());
+  const closed = a.year < financialYearOf(rows, societyToday(timeZone));
   return { ...a, actualUsage: closed ? a.actualUsage : undefined };
 }

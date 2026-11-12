@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { wallClockNow } from "@/lib/urgency";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
 import { formatDate, formatDateTime, EVENT_TYPE_LABELS, ACTIVITY_GRANT_DAYS } from "@/lib/utils";
@@ -13,7 +14,7 @@ import { ExternalLink } from "lucide-react";
 const RUBRIC_URL = "https://portal.hellorubric.com/";
 
 // Past the claim window the grant is dead, so the event stops being offered here.
-const grantCutoff = () => new Date(Date.now() - ACTIVITY_GRANT_DAYS * 86_400_000);
+const grantCutoff = (now: Date) => new Date(now.getTime() - ACTIVITY_GRANT_DAYS * 86_400_000);
 
 const pretty = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 const SIDED: Record<string, string> = {
@@ -37,11 +38,14 @@ export default async function RubricWebPage({
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: society }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   // Execs only: this tab isn't shown to anyone else, and the guard blocks direct access.
   if (!membership || membership.role !== "EXECUTIVE") notFound();
 
   const societyId = membership.societyId;
+  // Event dates are typed-in wall-clock times, so compare them with the society's clock.
+  const now = new Date(wallClockNow(membership.society.timezone));
   const [rooms, prints, grantEvents] = await Promise.all([
     prisma.roomBooking.findMany({
       // Only bookings still to be lodged on the portal; once marked submitted to
@@ -68,7 +72,7 @@ export default async function RubricWebPage({
         OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
         status: { not: "CANCELLED" },
         activityGrantStatus: "NOT_SUBMITTED",
-        startDate: { gte: grantCutoff() },
+        startDate: { lte: now, gte: grantCutoff(now) },
       },
       orderBy: { startDate: "desc" },
       take: 25,

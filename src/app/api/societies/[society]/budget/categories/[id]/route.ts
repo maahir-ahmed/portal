@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
   try {
     const { allocation, ...body } = patchSchema.parse(await req.json());
-    const figures = allocation && await allocationData(membership!.societyId, allocation);
+    const figures = allocation && await allocationData(membership!.societyId, allocation, membership!.society.timezone);
     const updated = await prisma.budgetCategory.update({
       where: { id },
       data: {

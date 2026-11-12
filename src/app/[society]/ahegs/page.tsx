@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { wallClockNow } from "@/lib/urgency";
+import { wallClockNow, societyToday } from "@/lib/urgency";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { EXTRA_PORTFOLIOS, memberPortfolioIds } from "@/lib/titles";
@@ -138,6 +138,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
 
       <AhegsClient
         societySlug={societySlug}
+        today={societyToday(membership.society.timezone).toISOString().slice(0, 10)}
         year={year}
         years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2].filter((y) => y >= FIRST_YEAR)}
         scope={scope}
