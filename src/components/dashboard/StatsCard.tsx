@@ -7,8 +7,6 @@ interface StatsCardProps {
   subtitle?: string;
   icon: LucideIcon;
   trend?: { value: number; label: string };
-  // kept for call-site compatibility; the design is intentionally monochrome
-  color?: "blue" | "green" | "yellow" | "red" | "purple";
 }
 
 export function StatsCard({ title, value, subtitle, icon: Icon, trend }: StatsCardProps) {

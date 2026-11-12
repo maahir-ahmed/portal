@@ -118,11 +118,11 @@ export default async function DashboardPage({ params }: Props) {
 
       {/* Stats */}
       <div data-tour="dash-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {modules.events && <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} color="blue" />}
-        {modules.roomBookings && <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />}
-        <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} color="green" />
+        {modules.events && <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} />}
+        {modules.roomBookings && <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} />}
+        <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} />
         {isExec && (
-          <StatsCard title="Awaiting Reimbursement" value={awaitingReimbursement} icon={AlertCircle} color="yellow" />
+          <StatsCard title="Awaiting Reimbursement" value={awaitingReimbursement} icon={AlertCircle} />
         )}
       </div>
 

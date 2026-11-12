@@ -30,8 +30,6 @@ export default async function MembersPage({ params }: Props) {
   const { society: societySlug } = await params;
   const { membership } = await requirePageMember(societySlug, undefined, true);
 
-  const isExec = membership.role === "EXECUTIVE";
-
   const [members, portfolios] = await Promise.all([
     prisma.societyMembership.findMany({
       where: { societyId: membership.societyId, isActive: true },
@@ -88,17 +86,15 @@ export default async function MembersPage({ params }: Props) {
           <h1 className="text-2xl font-bold">Members</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{members.length} active members</p>
         </div>
-        {isExec && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Link
-              href={`/${societySlug}/settings/members`}
-              className="text-sm font-medium underline-offset-4 hover:underline"
-            >
-              Import from a spreadsheet
-            </Link>
-            <InviteMemberDialog societySlug={societySlug} />
-          </div>
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href={`/${societySlug}/settings/members`}
+            className="text-sm font-medium underline-offset-4 hover:underline"
+          >
+            Import from a spreadsheet
+          </Link>
+          <InviteMemberDialog societySlug={societySlug} />
+        </div>
       </div>
 
       {/* Role totals across the whole committee */}
@@ -135,18 +131,16 @@ export default async function MembersPage({ params }: Props) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-1">
                         <p className="font-semibold truncate">{m.user.name}</p>
-                        {isExec && (
-                          <EditMemberDialog
-                            societySlug={societySlug}
-                            membershipId={m.id}
-                            memberName={m.user.name}
-                            memberPhone={m.user.phone ?? null}
-                            currentRole={m.role}
-                            currentTitle={m.title}
-                            extraPortfolioIds={m.extraPortfolios.map((e) => e.portfolioId)}
-                            notInvited={m.inviteStatus === "NOT_INVITED"}
-                          />
-                        )}
+                        <EditMemberDialog
+                          societySlug={societySlug}
+                          membershipId={m.id}
+                          memberName={m.user.name}
+                          memberPhone={m.user.phone ?? null}
+                          currentRole={m.role}
+                          currentTitle={m.title}
+                          extraPortfolioIds={m.extraPortfolios.map((e) => e.portfolioId)}
+                          notInvited={m.inviteStatus === "NOT_INVITED"}
+                        />
                       </div>
                       {m.title && <p className="text-xs text-muted-foreground">{m.title}</p>}
                       <p className="text-xs text-muted-foreground truncate">{m.user.email}</p>
