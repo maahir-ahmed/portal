@@ -682,7 +682,7 @@ export const TOUR_STEPS: TourStep[] = [
     minRole: "EXECUTIVE",
     title: "Adding a member",
     body:
-      "Enter their name, email, role and title. You don't choose a portfolio, because the title decides it: “Creative Subcom” goes in Creatives, and the dialog shows which portfolio your chosen title belongs to. A new account gets a four-word temporary passphrase, shown in a message that stays until you close it. They choose their own password the first time they sign in.",
+      "Enter their name, email, role and title. You don't choose a portfolio, because the title decides it: “Creative Subcom” goes in Creatives, and the dialog shows which portfolio your chosen title belongs to. A new account gets a four-word temporary passphrase, shown in the dialog until you close it. They choose their own password the first time they sign in.",
   },
   {
     id: "member-edit",
