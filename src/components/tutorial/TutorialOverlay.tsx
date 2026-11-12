@@ -25,6 +25,14 @@ import {
 
 const SAVE_KEY = "society-tutorial";
 
+// Storage access throws where cookies are blocked (and in some webviews). This mounts in
+// the society layout, so an unguarded read would take every authenticated page down.
+const store = {
+  get: () => { try { return localStorage.getItem(SAVE_KEY); } catch { return null; } },
+  set: (v: string) => { try { localStorage.setItem(SAVE_KEY, v); } catch { /* the tour just won't resume after a reload */ } },
+  remove: () => { try { localStorage.removeItem(SAVE_KEY); } catch { /* nothing stored */ } },
+};
+
 interface Saved {
   stepId: string;
   ids: DemoIds;
@@ -83,7 +91,7 @@ export function TutorialOverlay() {
       setActive(false);
       setPage(null);
       setRect(null);
-      localStorage.removeItem(SAVE_KEY);
+      store.remove();
       if (cleanup) {
         void wipeDemo();
         setIds({});
@@ -96,8 +104,8 @@ export function TutorialOverlay() {
   useEffect(() => {
     function start(event: Event) {
       const scope = (event as CustomEvent<{ scope?: "page" }>).detail?.scope;
-      const saved = localStorage.getItem(SAVE_KEY);
-      localStorage.removeItem(SAVE_KEY);
+      const saved = store.get();
+      store.remove();
       setIds({});
       setIndex(0);
       setPage(scope === "page" ? normalisePage(pathname, slug) : null);
@@ -117,7 +125,7 @@ export function TutorialOverlay() {
 
   // Restores tour position from localStorage, which only exists on the client.
   useEffect(() => {
-    const saved = localStorage.getItem(SAVE_KEY);
+    const saved = store.get();
     // Wait for the feature flags too: the saved step is found by its place in the list.
     if (!saved || !modules) return;
     try {
@@ -130,14 +138,14 @@ export function TutorialOverlay() {
         setActive(true);
       }
     } catch {
-      localStorage.removeItem(SAVE_KEY);
+      store.remove();
     }
     // role arrives with the session and modules with a fetch; resume once both have
   }, [role, modules]);
 
   useEffect(() => {
     if (active && step && page === null) {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ stepId: step.id, ids } satisfies Saved));
+      store.set(JSON.stringify({ stepId: step.id, ids } satisfies Saved));
     }
   }, [active, step, ids, page]);
 
