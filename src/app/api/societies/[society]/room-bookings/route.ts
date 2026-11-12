@@ -67,10 +67,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         safetyOfficerPhone: body.safetyOfficerPhone,
         roomRequirements: body.roomRequirements,
         status: "SUBMITTED",
+        thread: { create: {} },
       },
     });
-
-    await prisma.thread.create({ data: { roomBookingId: booking.id } });
 
     await createAuditLog({
       societyId: membership!.societyId,

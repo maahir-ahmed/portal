@@ -82,11 +82,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         otherNotes: body.otherNotes,
         portfolioId: body.portfolioId || null,
         status: body.status,
+        thread: { create: {} },
       },
     });
-
-    // Create discussion thread
-    await prisma.thread.create({ data: { contentRequestId: request.id } });
 
     await createAuditLog({
       societyId: membership!.societyId,
