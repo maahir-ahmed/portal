@@ -56,7 +56,10 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
         body: JSON.stringify({
           contentRequestId,
           rubricEventId: String(event.eventid),
-          rubricEventLink: event.purchaseurl,
+          // null, not undefined: JSON drops undefined and the route would keep the
+          // previous event's link and QR beside the new event id.
+          rubricEventLink: event.purchaseurl ?? null,
+          rubricQrCodeUrl: null,
           markSubmitted: false,
         }),
       }).catch(offline);

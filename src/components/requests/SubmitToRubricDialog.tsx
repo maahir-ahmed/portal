@@ -179,13 +179,13 @@ export function SubmitToRubricDialog({
 
       const eventDetails = res.eventDetails as Record<string, unknown> | undefined;
       const rubricEventId = eventDetails?.eventId != null ? String(eventDetails.eventId) : undefined;
-      const rubricEventLink = eventDetails?.eventURL as string | undefined;
+      const rubricEventLink = (eventDetails?.eventURL as string | undefined) ?? null;
 
       // Record on our DB
       await fetch(`/api/societies/${societySlug}/rubric/submit-event`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...(contentRequestId ? { contentRequestId } : {}), rubricEventId, rubricEventLink }),
+        body: JSON.stringify({ ...(contentRequestId ? { contentRequestId } : {}), rubricEventId, rubricEventLink, rubricQrCodeUrl: null }),
       }).catch(offline);
 
       toast.success(
