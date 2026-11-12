@@ -32,13 +32,15 @@ interface Props {
   // The currently linked event, passed in so it stays selectable even once it falls
   // outside what /events lists (older than its window, or since cancelled).
   linkedEvent: LinkableEvent | null;
+  /** A draft may keep a blank supplier or email; the submit check enforces the full claim. */
+  isDraft?: boolean;
 }
 
 function toDateInput(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, linkedEvent }: Props) {
+export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, linkedEvent, isDraft = false }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -105,12 +107,20 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
       toast.error("Description and a positive amount are required");
       return;
     }
+    if (!isDraft && !locationSupplier.trim()) {
+      toast.error("Supplier / location is required");
+      return;
+    }
+    if (!isDraft && !contactEmail.trim()) {
+      toast.error("Contact email is required");
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        description, amount: Number(amount), expenseDate, locationSupplier, contactEmail,
+        description, amount: Number(amount), expenseDate, locationSupplier: locationSupplier.trim(), contactEmail: contactEmail.trim(),
         contentRequestId: eventId === NO_EVENT ? null : eventId,
         addReceipts: newFiles,
         removeReceiptIds: removedIds,

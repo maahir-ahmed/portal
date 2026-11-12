@@ -22,11 +22,12 @@ const patchSchema = z.object({
   budgetCategoryId: z.string().min(1).nullable().optional(),
   // The event this was spent on. null = unlink.
   contentRequestId: z.string().min(1).nullable().optional(),
-  contactEmail: z.string().email().optional(),
+  // Blank is allowed while the claim is a draft (checked below); submit enforces completeness.
+  contactEmail: z.union([z.string().email().max(320), z.literal("")]).optional(),
   // Accepts "YYYY-MM-DD" from the date input or a full ISO string; rejects anything
   // new Date() would turn into an Invalid Date.
   expenseDate: z.string().refine(isPlausibleDate, "Enter a real date").optional(),
-  locationSupplier: z.string().min(1).max(500).optional(),
+  locationSupplier: z.string().max(500).optional(),
   description: notDemo(z.string().min(1).max(10000)).optional(),
   // Rounded to cents here, so the "more than $0" checks see what is stored: 0.004 is $0.
   amount: money.optional(),
@@ -71,6 +72,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
   const request = await prisma.treasuryRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership!.societyId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Only a draft may hold a blank supplier or email.
+  if (request.status !== "DRAFT") {
+    if (body.locationSupplier !== undefined && !body.locationSupplier.trim()) {
+      return NextResponse.json({ error: "Supplier / location can't be blank" }, { status: 400 });
+    }
+    if (body.contactEmail === "") {
+      return NextResponse.json({ error: "Contact email can't be blank" }, { status: 400 });
+    }
   }
 
   const isExec = membership!.role === "EXECUTIVE";

@@ -115,6 +115,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
                 locationSupplier: request.locationSupplier,
                 contactEmail: request.contactEmail,
               }}
+              isDraft={request.status === "DRAFT"}
               receipts={request.receipts.map((r) => ({ id: r.id, fileName: r.fileName, fileUrl: r.fileUrl }))}
               linkedEvent={
                 request.contentRequest
