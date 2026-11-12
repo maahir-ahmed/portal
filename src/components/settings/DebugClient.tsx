@@ -6,7 +6,7 @@ import { AlertTriangle, Database, FileCode, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { ConfirmName, size } from "./BackupsClient";
+import { ConfirmName, size, useStopOnUnmount } from "./BackupsClient";
 import { api, runJob } from "@/lib/clientApi";
 
 // Settings > Debugging. Everything here acts on the live database, so the whole tab
@@ -54,6 +54,7 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
   const [file, setFile] = useState<{ name: string; text: string } | null>(null);
   const [confirm, setConfirm] = useState("");
   const [running, setRunning] = useState(false);
+  const stop = useStopOnUnmount();
   const [outcome, setOutcome] = useState<
     { ok: true; results: SqlResult[]; backup: string } | { ok: false; error: string; line?: number; backup?: string } | null
   >(null);
@@ -75,10 +76,13 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileName: file.name, sql: file.text, confirm }),
         },
-        base
+        base,
+        {},
+        stop()
       );
       setOutcome({ ok: true, ...r });
     } catch (e) {
+      if (stop().aborted) return;
       const err = e as Error & { data?: { line?: number; backup?: string } };
       setOutcome({ ok: false, error: err.message, ...err.data });
     }

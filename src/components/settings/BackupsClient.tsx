@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Download, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,19 @@ const CHUNK = 16 * 1024 * 1024;
 
 export const size = (n: number) =>
   n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
+
+/**
+ * A getter for a signal that aborts when the component unmounts, so a job poll stops with
+ * the page. Created in the effect, not during render, so React's dev remount gets a live one.
+ */
+export function useStopOnUnmount() {
+  const ref = useRef<AbortController | null>(null);
+  useEffect(() => {
+    ref.current = new AbortController();
+    return () => ref.current?.abort();
+  }, []);
+  return () => ref.current!.signal;
+}
 
 export function ConfirmName({ societyName, value, onChange }: { societyName: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -44,6 +57,7 @@ const taken = (iso: string) =>
 export function Backups({ base }: { base: string }) {
   const [files, setFiles] = useState<BackupFile[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const stop = useStopOnUnmount();
 
   const load = useCallback(() => {
     api<BackupFile[]>(base).then(setFiles).catch((e) => toast.error(e.message));
@@ -53,12 +67,13 @@ export function Backups({ base }: { base: string }) {
   async function create() {
     setBusy(true);
     try {
-      const r = await runJob<{ name: string; bytes: number }>(base, { method: "POST" }, base);
+      const r = await runJob<{ name: string; bytes: number }>(base, { method: "POST" }, base, {}, stop());
       toast.success(`Backed up: ${r.name} (${size(r.bytes)})`);
       // Straight to the browser's download bar: the point of pressing it is the file.
       Object.assign(document.createElement("a"), { href: `${base}/${r.name}`, download: r.name }).click();
       load();
     } catch (e) {
+      if (stop().aborted) return;
       toast.error((e as Error).message);
     }
     setBusy(false);
@@ -135,6 +150,7 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
   const [problem, setProblem] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
   const [phase, setPhase] = useState<"idle" | "uploading" | "checking" | "restoring" | "restarting">("idle");
+  const stop = useStopOnUnmount();
 
   function reset(f: File | null) {
     setFile(f);
@@ -169,10 +185,12 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
           `${base}/restore`,
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: uploadId, action: "validate" }) },
           base,
-          headers
+          headers,
+          stop()
         )
       );
     } catch (e) {
+      if (stop().aborted) return;
       setProblem((e as Error).message);
     }
     setPhase("idle");
@@ -186,7 +204,8 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
         `${base}/restore`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "restore", confirm }) },
         base,
-        headers
+        headers,
+        stop()
       );
       if (!r.restarting) {
         toast.success("Restored. Restart the dev server and run npm run db:push.");
@@ -208,6 +227,7 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
       else window.location.reload();
     } catch (e) {
       const err = e as Error & { data?: { safetyBackup?: string }; signedOut?: boolean };
+      if (stop().aborted) return;
       if (err.signedOut) return window.location.reload();
       setProblem(err.message + (err.data?.safetyBackup ? ` A backup from just before is on this page: ${err.data.safetyBackup}` : ""));
       setPhase("idle");
