@@ -107,6 +107,14 @@ export function SubmitToRubricDialog({
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
+    if (next) {
+      // Start from the request as it is now (it may have changed since the page loaded).
+      setEventName(defaultEventName);
+      setDescription(defaultDescription);
+      setAddress(defaultAddress);
+      setStartDate(toDatetimeLocal(defaultStartDate));
+      setEndDate(defaultEndDate ? toDatetimeLocal(defaultEndDate) : "");
+    }
     if (next && !form && !formLoading) loadForm();
     if (!next) setStep(1);
   }

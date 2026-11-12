@@ -61,7 +61,19 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
   const [eventsLoaded, setEventsLoaded] = useState(false);
   function onOpenChange(next: boolean) {
     setOpen(next);
-    if (!next || eventsLoaded) return;
+    if (!next) return;
+    // Every open starts from the saved claim: abandoned edits (a receipt marked for
+    // removal) are dropped, and receipts added by the last save now show.
+    setDescription(initial.description);
+    setAmount(String(initial.amount));
+    setExpenseDate(toDateInput(initial.expenseDate));
+    setLocationSupplier(initial.locationSupplier);
+    setContactEmail(initial.contactEmail);
+    setEventId(linkedEvent?.id ?? NO_EVENT);
+    setExisting(receipts);
+    setRemovedIds([]);
+    setNewFiles([]);
+    if (eventsLoaded) return;
     setEventsLoaded(true);
     fetch(`/api/societies/${societySlug}/events`)
       .then((r) => (r.ok ? r.json() : []))

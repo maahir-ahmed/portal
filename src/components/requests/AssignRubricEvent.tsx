@@ -35,6 +35,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
     rubric.call({ type: "getSocietyPortalTicketingHomePage" })
       .then((d) => {
         const evs = flattenEvents(d);
+        setError(null); // a failure on an earlier open must not outlive a successful retry
         setEvents(evs);
         if (evs[0]?.eventid != null) setSelected(String(evs[0].eventid));
       })
