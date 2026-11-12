@@ -236,7 +236,7 @@ export function TutorialOverlay() {
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
   const next = useCallback(async () => {
-    if (!step) return;
+    if (!step || busy) return; // arrow keys repeat: a second press must not POST the demo twice
     if (step.kind === "welcome" && slug) {
       setBusy(true);
       const res = await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
@@ -261,7 +261,7 @@ export function TutorialOverlay() {
       return;
     }
     setIndex((i) => Math.min(steps.length - 1, i + 1));
-  }, [step, slug, steps.length, wipeDemo, close, page, index, router]);
+  }, [step, busy, slug, steps.length, wipeDemo, close, page, index, router]);
 
   useEffect(() => {
     if (!active) return;

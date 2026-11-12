@@ -128,6 +128,7 @@ export function SubmitToRubricDialog({
   }
 
   async function handleSubmit() {
+    if (submitting) return; // the dialog can be closed mid-submit and reopened
     if (form) {
       const validationError = validateAnswers(form, answers);
       if (validationError) { toast.error(validationError); return; }

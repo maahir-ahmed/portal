@@ -58,7 +58,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
   useEffect(() => { load(); }, [societySlug]);
 
   async function handleAdd(roleLevel: string) {
-    if (!newTitle.trim()) return;
+    if (loading || !newTitle.trim()) return;
     setLoading(true);
     const res = await fetch(`/api/societies/${societySlug}/titles`, {
       method: "POST",
@@ -83,7 +83,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
   }
 
   async function handleRename(id: string) {
-    if (!editValue.trim()) return;
+    if (loading || !editValue.trim()) return;
     setLoading(true);
     const res = await fetch(`/api/societies/${societySlug}/titles/${id}`, {
       method: "PATCH",
@@ -118,8 +118,10 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
 
   async function handleDelete(id: string, name: string, holders: number) {
     const held = holders ? ` ${holders} member${holders === 1 ? "" : "s"} hold${holders === 1 ? "s" : ""} it and will be left with no title or portfolio.` : "";
-    if (!confirm(`Delete title "${name}"?${held}`)) return;
+    if (loading || !confirm(`Delete title "${name}"?${held}`)) return;
+    setLoading(true);
     const res = await fetch(`/api/societies/${societySlug}/titles/${id}`, { method: "DELETE" }).catch(offline);
+    setLoading(false);
     if (res.ok) {
       toast.success("Title removed");
       load();

@@ -87,13 +87,15 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
       }
     ).catch(offline);
 
-    setLoading(false);
     if (res.ok) {
+      // Left disabled on success: a second click before the navigation lands would
+      // create a duplicate (and its notifications).
       const data = await res.json();
       toast.success(editing ? "Changes saved!" : "Room booking submitted!");
       router.push(`/${societySlug}/requests/room-booking/${editing ? initial!.id : data.id}`);
       router.refresh();
     } else {
+      setLoading(false);
       const data = await res.json().catch(() => ({}));
       toast.error(data.error ?? "Failed to save booking");
     }

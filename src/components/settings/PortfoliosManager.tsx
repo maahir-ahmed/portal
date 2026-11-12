@@ -46,7 +46,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   }
 
   async function add() {
-    if (!newName.trim()) return;
+    if (busy || !newName.trim()) return;
     const ok = await send(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -60,7 +60,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   }
 
   async function rename(id: string) {
-    if (!editValue.trim()) return;
+    if (busy || !editValue.trim()) return;
     const ok = await send(`${base}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -76,7 +76,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
     const warning = p.memberCount > 0 || p.titleCount > 0
       ? `Delete "${p.name}"? ${p.memberCount} member${p.memberCount === 1 ? "" : "s"} and ${p.titleCount} title${p.titleCount === 1 ? "" : "s"} will be left unassigned.`
       : `Delete "${p.name}"?`;
-    if (!confirm(warning)) return;
+    if (busy || !confirm(warning)) return;
     if (await send(`${base}/${p.id}`, { method: "DELETE" }, "Could not delete portfolio")) {
       toast.success("Portfolio removed");
     }

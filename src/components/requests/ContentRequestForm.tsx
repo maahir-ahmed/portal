@@ -85,13 +85,15 @@ export function ContentRequestForm({ societySlug, initial }: { societySlug: stri
       body: JSON.stringify(body),
     }).catch(offline);
 
-    setLoading(false);
     if (res.ok) {
+      // Left disabled on success: a second click before the navigation lands would
+      // create a duplicate (and its notifications).
       const data = await res.json();
       toast.success(editing ? "Changes saved!" : "Content request created!");
       router.push(`/${societySlug}/requests/content/${editing ? initial!.id : data.id}`);
       router.refresh();
     } else {
+      setLoading(false);
       const data = await res.json().catch(() => ({}));
       toast.error(data.error ?? "Failed to save request");
     }
