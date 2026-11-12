@@ -22,7 +22,9 @@ export default async function EditContentRequestPage({ params }: Props) {
 
   const isOwner = request.submittedById === session.user.id;
   const canManage = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
-  if (!isOwner && !canManage) redirect(`/${societySlug}/requests/content/${id}`);
+  // As the detail page offers Edit: not on a finished or cancelled request, which a save refuses.
+  const finished = ["COMPLETED", "CANCELLED"].includes(request.status);
+  if ((!isOwner && !canManage) || finished) redirect(`/${societySlug}/requests/content/${id}`);
 
   return (
     <ContentRequestForm

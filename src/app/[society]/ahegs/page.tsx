@@ -140,7 +140,7 @@ export default async function AhegsPage({ params, searchParams }: Props) {
         societySlug={societySlug}
         today={societyToday(membership.society.timezone).toISOString().slice(0, 10)}
         year={year}
-        years={[defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2].filter((y) => y >= FIRST_YEAR)}
+        years={[...new Set([defaultYear + 1, defaultYear, defaultYear - 1, defaultYear - 2, year])].filter((y) => y >= FIRST_YEAR).sort((a, b) => b - a)}
         scope={scope}
         ownMembershipId={membership.id}
         rows={rows}

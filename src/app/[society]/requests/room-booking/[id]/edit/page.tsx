@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { bookingDecided } from "@/lib/utils";
 import { RoomBookingForm } from "@/components/requests/RoomBookingForm";
 
 interface Props {
@@ -21,7 +22,11 @@ export default async function EditRoomBookingPage({ params }: Props) {
   if (!booking || booking.societyId !== membership.societyId) notFound();
 
   const isOwner = booking.submittedById === session.user.id;
-  if (!isOwner && membership.role !== "EXECUTIVE") redirect(`/${societySlug}/requests/room-booking/${id}`);
+  const isExec = membership.role === "EXECUTIVE";
+  // As the detail page offers Edit: an owner can't edit once Arc has decided, which a save refuses.
+  if ((!isOwner && !isExec) || (!isExec && bookingDecided(booking.status))) {
+    redirect(`/${societySlug}/requests/room-booking/${id}`);
+  }
 
   return (
     <RoomBookingForm
