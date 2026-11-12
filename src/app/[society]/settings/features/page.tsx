@@ -1,11 +1,8 @@
-"use client";
+import { requireExecPage } from "@/lib/pageAccess";
+import { FeaturesClient } from "./FeaturesClient";
 
-import { useParams, useRouter } from "next/navigation";
-import { FeaturesForm } from "@/components/settings/FeaturesForm";
-
-export default function FeaturesSettingsPage() {
-  const params = useParams<{ society: string }>();
-  const router = useRouter();
-  // refresh() re-reads the layout, so the Rubric tab follows the Rubric toggle.
-  return <FeaturesForm societySlug={params.society} onSaved={() => router.refresh()} />;
+export default async function FeaturesSettingsPage({ params }: { params: Promise<{ society: string }> }) {
+  const { society } = await params;
+  await requireExecPage(society);
+  return <FeaturesClient societySlug={society} />;
 }

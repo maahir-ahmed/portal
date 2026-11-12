@@ -2,11 +2,12 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { backupsEnabled } from "@/lib/debugTools";
 import { Backups, Restore } from "@/components/settings/BackupsClient";
+import { requireExecPage } from "@/lib/pageAccess";
 
 export default async function BackupsPage({ params }: { params: Promise<{ society: string }> }) {
   if (!backupsEnabled()) notFound();
   const { society } = await params;
-  // The settings layout has already checked this is an executive of this society.
+  await requireExecPage(society);
   const s = await prisma.society.findUnique({ where: { slug: society }, select: { name: true } });
   if (!s) notFound();
   const base = `/api/societies/${society}/backups`;
