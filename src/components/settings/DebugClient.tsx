@@ -6,7 +6,8 @@ import { AlertTriangle, Database, FileCode, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { ConfirmName, api, runJob, size } from "./BackupsClient";
+import { ConfirmName, size } from "./BackupsClient";
+import { api, runJob } from "@/lib/clientApi";
 
 // Settings > Debugging. Everything here acts on the live database, so the whole tab
 // sits in one red panel, and running SQL asks for the society's name and takes a
