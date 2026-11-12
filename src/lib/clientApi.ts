@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { offline } from "@/lib/utils";
 
 // Fetch helpers for client components (shared by Settings > Backups and Debugging).
@@ -41,5 +42,18 @@ export async function runJob<T>(
     if (!s) throw Object.assign(new Error("signed out"), { signedOut: true });
     if (s.state === "done") return s.result as T;
     if (s.state === "failed") throw Object.assign(new Error(s.error), { data: s.result ?? {} });
+  }
+}
+
+/**
+ * Copies to the clipboard and says what happened. On a plain-http address there is no
+ * clipboard API at all, so the failure is a toast rather than an unhandled throw.
+ */
+export async function copyText(value: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(`Copied ${label}`, { duration: 1500 });
+  } catch {
+    toast.error("Copy failed: select and copy manually");
   }
 }

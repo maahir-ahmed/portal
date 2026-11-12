@@ -192,7 +192,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
                   <a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 min-w-0 hover:underline">
                     <FileText className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">{r.fileName}</span>
                   </a>
-                  <button type="button" onClick={() => { setExisting((p) => p.filter((x) => x.id !== r.id)); setRemovedIds((p) => [...p, r.id]); }} className="text-muted-foreground hover:text-red-600">
+                  <button type="button" onClick={() => { setExisting((p) => p.filter((x) => x.id !== r.id)); setRemovedIds((p) => [...p, r.id]); }} aria-label={`Remove ${r.fileName}`} className="text-muted-foreground hover:text-red-600">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -200,7 +200,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
               {newFiles.map((f, i) => (
                 <div key={`new-${i}`} className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
                   <span className="inline-flex items-center gap-2 min-w-0"><Upload className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">{f.fileName}</span> <span className="text-xs text-muted-foreground">(unsaved)</span></span>
-                  <button type="button" onClick={() => setNewFiles((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-600">
+                  <button type="button" onClick={() => setNewFiles((p) => p.filter((_, j) => j !== i))} aria-label={`Remove ${f.fileName}`} className="text-muted-foreground hover:text-red-600">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
