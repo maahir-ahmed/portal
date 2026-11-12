@@ -8,7 +8,7 @@
 # stack, which is what compose called them before these settings existed.
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: society_user
@@ -182,7 +182,7 @@ services:
   # it works behind home and university networks. The tunnel's public hostname points at
   # http://web:80, set where the token was made (docs/SELF_HOSTING.md).
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.11.0
     container_name: ${STACK}_cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run
@@ -195,7 +195,7 @@ services:
   # Self-hosting, domain method 2: Caddy, for a server with a public IP. Gets and renews
   # the HTTPS certificate itself; needs ports 80 and 443 open and DOMAIN pointing here.
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.9-alpine
     container_name: ${STACK}_caddy
     restart: unless-stopped
     # nginx takes the client's address from CF-Connecting-IP. Here nothing but Caddy
