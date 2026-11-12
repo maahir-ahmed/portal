@@ -659,6 +659,11 @@ function CategoryDialog({ base, category, year, yearSet, pastYear, onClose, onSa
 
   async function remove() {
     if (!editing) return;
+    // The delete cascades: every year's figures, the reasoning and the notes go with it,
+    // and its claims become unclassified. Say which years, once, before it happens.
+    const years = Object.keys(category!.allocations).sort();
+    const lost = years.length ? `its budget figures for ${years.join(", ")}` : "its budget figures";
+    if (!confirm(`Delete "${category!.name}"? This erases ${lost}, its reasoning and its notes, and leaves its claims unclassified. This can't be undone.`)) return;
     setBusy(true);
     const res = await fetch(`${base}/${category!.id}`, { method: "DELETE" }).catch(offline);
     setBusy(false);
