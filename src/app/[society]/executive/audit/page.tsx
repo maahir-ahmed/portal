@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,15 +49,7 @@ export default async function AuditLogPage({ params, searchParams }: Props) {
   const actionValue = firstParam(sp.action);
   const action = Object.values(AuditAction).find((x) => x === actionValue);
   const type = firstParam(sp.type);
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
-  if (membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
+  const { membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } }, true);
 
   const page = pageParam(sp.page);
   const where = {

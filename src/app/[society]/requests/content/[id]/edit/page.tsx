@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requirePageMember } from "@/lib/pageAccess";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { ContentRequestForm } from "@/components/requests/ContentRequestForm";
@@ -9,13 +9,7 @@ interface Props {
 
 export default async function EditContentRequestPage({ params }: Props) {
   const { society: societySlug, id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug);
 
   const request = await prisma.contentRequest.findUnique({ where: { id } });
   if (!request || request.societyId !== membership.societyId) notFound();

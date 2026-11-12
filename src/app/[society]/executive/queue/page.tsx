@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { wallClockNow } from "@/lib/urgency";
@@ -21,14 +20,7 @@ interface Props {
 
 export default async function ExecutiveQueuePage({ params }: Props) {
   const { society: societySlug } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership || membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } }, true);
 
   const societyId = membership.societyId;
 

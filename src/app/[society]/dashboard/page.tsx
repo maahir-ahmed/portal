@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { flagsFrom } from "@/lib/modules";
+import { flagsFrom, MODULE_SELECT } from "@/lib/modules";
 import Link from "next/link";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -25,7 +25,8 @@ export default async function DashboardPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: true },
+    // Only what this page reads: the full row would carry the Rubric credentials.
+    include: { society: { select: { setupCompletedAt: true, ...MODULE_SELECT } } },
   });
   if (!membership) redirect("/");
 

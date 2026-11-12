@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requirePageMember } from "@/lib/pageAccess";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { bookingDecided } from "@/lib/utils";
@@ -10,13 +10,7 @@ interface Props {
 
 export default async function EditRoomBookingPage({ params }: Props) {
   const { society: societySlug, id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug);
 
   const booking = await prisma.roomBooking.findUnique({ where: { id } });
   if (!booking || booking.societyId !== membership.societyId) notFound();

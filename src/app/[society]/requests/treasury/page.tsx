@@ -1,7 +1,6 @@
 import { wallClockNow } from "@/lib/urgency";
 import { othersDemo } from "@/lib/tutorial";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -39,14 +38,7 @@ export default async function TreasuryPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const q = (firstParam(sp.q) ?? "").trim();
   const yearParam = firstParam(sp.year);
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
 
   // Treasury claims are private to their submitter; only execs see everyone's.
   const canSeeAll = membership.role === "EXECUTIVE";

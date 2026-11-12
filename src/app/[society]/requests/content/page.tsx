@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -37,14 +36,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
   const statusValue = firstParam(sp.status);
   const status = Object.values(ContentRequestStatus).find((s) => s === statusValue);
   const yearParam = firstParam(sp.year);
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
   const now = new Date();
 
   const owner = {
