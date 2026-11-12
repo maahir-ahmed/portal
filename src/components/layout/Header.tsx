@@ -132,11 +132,6 @@ export function Header({ societySlug, onMobileMenuToggle, mobileMenuOpen }: Head
               </DropdownMenuItem>
             ))
           )}
-          {notifications.length > 0 && (
-            <Link href={`/${societySlug}/notifications`} className="block text-center text-xs font-medium py-2.5 border-t border-border text-muted-foreground hover:text-foreground transition-colors">
-              View all notifications
-            </Link>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
