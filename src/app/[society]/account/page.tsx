@@ -33,16 +33,15 @@ export default function AccountPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingBank, setSavingBank] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [linkCode, setLinkCode] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then(setMe);
-    fetch("/api/me/bank-account")
-      .then((r) => r.json())
-      .then(setBank)
-      .catch(() => setBank(null));
+    // An error body is not a profile: only a 2xx answer is used, and a failed load says so.
+    const load = (url: string) =>
+      fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
+    load("/api/me").then(setMe).catch(() => setLoadFailed(true));
+    load("/api/me/bank-account").then(setBank).catch(() => setLoadFailed(true));
   }, []);
 
   async function handleProfile(e: React.FormEvent<HTMLFormElement>) {
@@ -142,6 +141,13 @@ export default function AccountPage() {
     }
   }
 
+  if (loadFailed) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground">
+        Couldn&apos;t load your account. Check your connection and reload the page.
+      </div>
+    );
+  }
   if (!me || bank === undefined) {
     return <div className="flex items-center justify-center h-32 text-muted-foreground">Loading...</div>;
   }

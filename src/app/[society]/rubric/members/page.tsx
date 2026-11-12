@@ -46,6 +46,7 @@ export default function RubricMembersPage() {
       const memberships = (list.allMemberships ?? []) as RubricMember[];
       setMembers(memberships);
       setHomeData(home as Record<string, unknown>);
+      setError(null);
     }).catch((err: unknown) => {
       if (mine !== latest.current) return;
       const msg = err instanceof Error ? err.message : String(err);

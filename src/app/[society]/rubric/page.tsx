@@ -67,6 +67,11 @@ export default function RubricOverviewPage() {
         setError("not_configured");
         return;
       }
+      // Every call failed for some other reason: say so rather than show a page of dashes.
+      if (results.every((r) => r.status === "rejected")) {
+        setError(reason(results[0]) ?? "Could not reach Rubric");
+        return;
+      }
       setData({
         membership: membership.status === "fulfilled" ? membership.value : null,
         ticketing: ticketing.status === "fulfilled" ? ticketing.value : null,

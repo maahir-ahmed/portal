@@ -61,7 +61,7 @@ export default function NewTreasuryPage() {
   // Fetch the user's bank account on mount
   useEffect(() => {
     fetch("/api/me/bank-account")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null)) // an error body is not saved bank details
       .then((data) => {
         setSavedAccount(data);
         // If no account on file, default to manual entry
