@@ -1,3 +1,4 @@
+import { serverError } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
@@ -74,6 +75,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

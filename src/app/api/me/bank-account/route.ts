@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auditAccountChange } from "@/lib/audit";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/api";
+import { requireAuth, serverError } from "@/lib/api";
 import { z } from "zod";
 
 export async function GET() {
@@ -45,6 +45,6 @@ export async function PUT(req: NextRequest) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

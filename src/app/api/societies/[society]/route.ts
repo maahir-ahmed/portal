@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, serverError } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { MODULE_SELECT } from "@/lib/modules";
 import { botSettings, emailSettings, remindersDefault } from "@/lib/serverSettings";
@@ -160,6 +160,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ so
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

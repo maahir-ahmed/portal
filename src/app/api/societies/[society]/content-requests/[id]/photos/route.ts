@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, serverError } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import type { SocietyMembership } from "@prisma/client";
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }
 
@@ -112,6 +112,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<Par
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

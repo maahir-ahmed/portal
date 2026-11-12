@@ -1,12 +1,22 @@
 import { auth } from "./auth";
 import { prisma } from "./db";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import type { Role, SocietyMembership, Society } from "@prisma/client";
 import type { Session } from "next-auth";
 
 export type RouteContext<T = Record<string, string>> = {
   params: Promise<T>;
 };
+
+/** The catch-all for a route handler: logs the error, a unique-constraint clash is a 409, anything else a 500. */
+export function serverError(err: unknown) {
+  console.error(err);
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    return NextResponse.json({ error: "That already exists" }, { status: 409 });
+  }
+  return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+}
 
 type AuthResult =
   | { session: Session & { user: { id: string; name: string; email: string } }; error: null }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, serverError } from "@/lib/api";
 import { subMonths } from "date-fns";
 
 // The events a reimbursement claim can be linked to. Any member may link their own
@@ -28,7 +28,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
     });
 
     return NextResponse.json(events);
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

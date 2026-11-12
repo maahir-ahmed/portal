@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, serverError } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { allocationData, allocationSchema, serialiseCategory } from "@/lib/budget";
@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "A category with that name already exists" }, { status: 409 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }
 

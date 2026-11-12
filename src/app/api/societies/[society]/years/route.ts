@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, serverError } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { ahegsYearOf, FIRST_YEAR } from "@/lib/years";
@@ -94,7 +94,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    console.error(err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }
