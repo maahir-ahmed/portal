@@ -56,7 +56,7 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
   const [running, setRunning] = useState(false);
   const stop = useStopOnUnmount();
   const [outcome, setOutcome] = useState<
-    { ok: true; results: SqlResult[]; backup: string } | { ok: false; error: string; line?: number; backup?: string } | null
+    { ok: true; results: SqlResult[]; backup: string } | { ok: false; error: string; unchanged: boolean; line?: number; backup?: string } | null
   >(null);
 
   async function pick(f: File | undefined) {
@@ -83,8 +83,15 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
       setOutcome({ ok: true, ...r });
     } catch (e) {
       if (stop().aborted) return;
-      const err = e as Error & { data?: { line?: number; backup?: string } };
-      setOutcome({ ok: false, error: err.message, ...err.data });
+      const err = e as Error & { data?: { line?: number; backup?: string }; signedOut?: boolean };
+      // Only a job that itself failed (or never started) rolled back. A lost session or
+      // a lost job says nothing about whether the statement committed.
+      setOutcome({
+        ok: false,
+        error: err.signedOut ? "You were signed out before the result came back, so it is not known whether the file ran. Check the audit log." : err.message,
+        unchanged: err.data !== undefined,
+        ...err.data,
+      });
     }
     setRunning(false);
   }
@@ -131,7 +138,7 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
         {outcome && !outcome.ok && (
           <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-900 break-words">
             {outcome.line ? `Line ${outcome.line}: ` : ""}
-            {outcome.error} Nothing was changed.
+            {outcome.error}{outcome.unchanged && " Nothing was changed."}
           </p>
         )}
         {outcome?.ok && (
@@ -180,7 +187,7 @@ function Records({ columns, rows, masked = [] }: { columns: string[]; rows: unkn
             const v = row[j];
             const text = v === null || v === undefined ? "null" : typeof v === "object" ? JSON.stringify(v) : String(v);
             return (
-              <div key={c} className="contents">
+              <div key={j} className="contents">
                 <dt className={cn("truncate font-medium text-muted-foreground", masked[j] && "text-red-700")}>{c}</dt>
                 <dd className={cn("break-all font-mono", v === null && "text-muted-foreground/60")} title={text.length > 300 ? text : undefined}>
                   {text.length > 300 ? `${text.slice(0, 300)}…` : text}
