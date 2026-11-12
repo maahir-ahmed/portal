@@ -100,7 +100,8 @@ export default async function AhegsPage({ params, searchParams }: Props) {
         },
         overrides.get(m.id),
         year,
-        attendance
+        attendance,
+        membership.society.timezone
       )
     )
     // A director sees only their own portfolio. Filtering here, on the server, means

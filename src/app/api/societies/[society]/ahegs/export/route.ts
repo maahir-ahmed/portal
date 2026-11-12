@@ -22,12 +22,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
     return NextResponse.json({ error: "Unknown category or year" }, { status: 400 });
   }
 
-  const [memberships, entries] = await Promise.all([
+  const [memberships, entries, soc] = await Promise.all([
     prisma.societyMembership.findMany({
       where: { societyId: membership!.societyId },
       include: { user: { select: { name: true, email: true, zId: true } } },
     }),
     prisma.ahegsEntry.findMany({ where: { societyId: membership!.societyId, year } }),
+    prisma.society.findUnique({ where: { id: membership!.societyId }, select: { timezone: true } }),
   ]);
 
   const overrides = new Map(entries.map((e) => [e.membershipId, e]));
@@ -46,7 +47,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
           zId: m.user.zId,
         },
         overrides.get(m.id),
-        year
+        year,
+        [],
+        soc?.timezone ?? "Etc/UTC"
       )
     )
     .filter((r) => r.included && r.category === category)

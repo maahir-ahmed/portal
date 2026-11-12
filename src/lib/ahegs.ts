@@ -1,4 +1,5 @@
 import type { AhegsCategory, AhegsEvidenceKind, Role } from "@prisma/client";
+import { wallClockNow } from "./urgency";
 
 // Arc's Clubs Contributing Members Recognition, once a year. Arc offers four lists;
 // this club submits two. Volunteers doesn't apply, and directors go forward as
@@ -89,6 +90,13 @@ export function groupLabel(g: ContributionGroup, portfolios: { id: string; name:
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+// joinedAt is a real instant, but the roster's dates are calendar days: take the day it
+// was on the society's clock, or a Sydney-morning join shows as the previous day in UTC.
+const dayOf = (instant: Date, timeZone: string) => {
+  const w = wallClockNow(timeZone, instant);
+  return new Date(w - (w % 86_400_000));
+};
+
 const normaliseCategory = (c: AhegsCategory | null | undefined): AhegsCategory | null =>
   !c ? null : AHEGS_CATEGORIES.includes(c) ? c : "SUBCOMMITTEE";
 
@@ -171,13 +179,15 @@ export function resolveRow(
   m: RosterSource,
   o: RosterEntryOverride | undefined,
   year: number,
-  meetings: MeetingAttendance[] = []
+  meetings: MeetingAttendance[] = [],
+  timeZone = "Etc/UTC"
 ): RosterRow {
   // Arc wants the period inside the academic year being recognised, so a member who
   // joined in an earlier year starts on 1 January rather than their join date.
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEnd = new Date(Date.UTC(year, 11, 31));
-  const joined = m.joinedAt > yearStart ? m.joinedAt : yearStart;
+  const joinedDay = dayOf(m.joinedAt, timeZone);
+  const joined = joinedDay > yearStart ? joinedDay : yearStart;
 
   const { meetingCount, meetingHours } = hoursFromMeetings(m.membershipId, meetings);
   const hoursAdjustment = o?.hoursAdjustment ?? null;
