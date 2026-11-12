@@ -18,6 +18,14 @@ import { offline } from "@/lib/utils";
 import { api, reason } from "@/lib/clientApi";
 import { LoadFailed } from "@/components/settings/LoadFailed";
 
+// The fields this form reads from GET /api/societies/[society], which returns a subset of the row.
+type SocietySettings = Pick<
+  Society,
+  | "name" | "description" | "contactEmail" | "logoUrl" | "bannerUrl" | "primaryColor" | "secondaryColor"
+  | "website" | "facebookUrl" | "instagramUrl" | "discordUrl" | "linkedinUrl"
+  | "secretarialTier" | "arcMemberCount" | "arcMemberCountAt" | "timezone"
+>;
+
 const SELECT_CLASS =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
@@ -35,13 +43,13 @@ export function GeneralForm({
   submitLabel?: string;
 }) {
   const [saving, setSaving] = useState(false);
-  const [society, setSociety] = useState<Society | null>(null);
+  const [society, setSociety] = useState<SocietySettings | null>(null);
   const [primaryColor, setPrimaryColor] = useState("");
   const modules = useModules(societySlug);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = () =>
-    api<Society>(`/api/societies/${societySlug}`).then((data) => {
+    api<SocietySettings>(`/api/societies/${societySlug}`).then((data) => {
       setSociety(data);
       setPrimaryColor(data.primaryColor ?? "");
     });
