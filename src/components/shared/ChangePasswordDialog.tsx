@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ export function ChangePasswordDialog() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
+  // The password changed but signing back in did not work: the session is already gone.
+  const [signInFailed, setSignInFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,8 +78,14 @@ export function ChangePasswordDialog() {
 
     if (res.ok) {
       // The change signed out every session, this one included, so sign back in.
-      await signIn("credentials", { email, password: newPassword, redirect: false });
+      const signedIn = await signIn("credentials", { email, password: newPassword, redirect: false })
+        .then((r) => !!r && !r.error && r.ok !== false)
+        .catch(() => false);
       setSaving(false);
+      if (!signedIn) {
+        setSignInFailed(true);
+        return;
+      }
       toast.success("Password set. You're all set.");
       setOpen(false);
     } else {
@@ -108,6 +117,16 @@ export function ChangePasswordDialog() {
           </DialogDescription>
         </DialogHeader>
 
+        {signInFailed ? (
+          <div className="space-y-3">
+            <p className="text-sm">
+              Your password was changed, but we couldn&apos;t sign you back in. Sign in again with your new password.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/login">Go to sign in</Link>
+            </Button>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="cpd-current">Temporary passphrase</Label>
@@ -156,6 +175,7 @@ export function ChangePasswordDialog() {
             )}
           </Button>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );
