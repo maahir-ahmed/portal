@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { wallClockNow } from "@/lib/urgency";
-import { TUTORIAL_MARKER } from "@/lib/tutorial";
+import { othersDemo as othersDemoFor } from "@/lib/tutorial";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,11 +39,8 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   const otherExecs = await prisma.societyMembership.count({
     where: { societyId, role: "EXECUTIVE", isActive: true, userId: { not: session.user.id } },
   });
-  // Someone else's tour records are theirs to see, not work for this exec. One's own
-  // stay, so the tour's queue step has something to show.
-  const othersDemo = (field: string) => ({
-    NOT: { [field]: { startsWith: TUTORIAL_MARKER }, submittedById: { not: session.user.id } },
-  });
+  // Someone else's tour records are theirs to see, not work for this exec.
+  const othersDemo = (field: string) => othersDemoFor(field, session.user.id);
   const [rubricAll, roomAll, reimbursementPending, printingAll, grantsAll] = await Promise.all([
     prisma.contentRequest.findMany({
       where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] }, ...othersDemo("eventName") },

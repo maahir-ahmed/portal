@@ -1,4 +1,5 @@
 import { wallClockNow } from "@/lib/urgency";
+import { othersDemo } from "@/lib/tutorial";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -55,6 +56,7 @@ export default async function TreasuryPage({ params, searchParams }: Props) {
   const owner = {
     societyId: membership.societyId,
     ...(!canSeeAll ? { submittedById: session.user.id } : {}),
+    ...othersDemo("description", session.user.id),
   };
   const [calendar, span] = await Promise.all([
     prisma.societyYear.findMany({ where: { societyId: membership.societyId } }),

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { othersDemo } from "@/lib/tutorial";
 import { cn, formatDate, isLateArcSubmission, requestVisibility } from "@/lib/utils";
 import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users, DoorOpen } from "lucide-react";
 
@@ -31,6 +32,7 @@ export default async function RoomBookingsPage({ params }: Props) {
     where: {
       societyId: membership.societyId,
       ...requestVisibility(membership, session.user.id),
+      ...othersDemo("eventName", session.user.id),
     },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true } },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership } from "@/lib/api";
-import { TUTORIAL_MARKER as MARK } from "@/lib/tutorial";
+import { TUTORIAL_MARKER as MARK, demoCategoryName } from "@/lib/tutorial";
 import { financialYearOf } from "@/lib/years";
 
 // Demo records for the guided tour. Everything created here is prefixed with the
@@ -17,12 +17,6 @@ function at(days: number, hour: number) {
   d.setHours(hour, 0, 0, 0);
   return d;
 }
-
-// Budget categories have no owner column, so the owner goes in the name: one exec
-// finishing a tour must not delete another exec's in-progress demo category (and
-// two execs on the same name would collide on the unique societyId+name).
-// The id, not the name, because a rename mid-tour would orphan the row.
-const demoCategoryName = (userId: string) => `${MARK} Events (${userId.slice(-6)})`;
 
 async function wipe(societyId: string, userId: string) {
   const mine = { societyId, submittedById: userId };

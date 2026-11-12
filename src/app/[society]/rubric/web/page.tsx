@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { wallClockNow } from "@/lib/urgency";
+import { othersDemo } from "@/lib/tutorial";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
@@ -54,7 +55,7 @@ export default async function RubricWebPage({
     !modules.roomBookings ? [] : prisma.roomBooking.findMany({
       // Only bookings still to be lodged on the portal; once marked submitted to
       // Arc they drop off this list, same as printing jobs.
-      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"] } },
+      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"] }, ...othersDemo("eventName", session.user.id) },
       orderBy: { createdAt: "desc" },
       take: 25,
       include: { submittedBy: { select: { name: true } } },
@@ -62,7 +63,7 @@ export default async function RubricWebPage({
     !modules.printing ? [] : prisma.printingRequest.findMany({
       // Only jobs waiting to be submitted on the portal; once marked submitted
       // they drop off this list (but stay in the exec queue until pickup-ready).
-      where: { societyId, status: "PENDING_ARC_SUBMISSION" },
+      where: { societyId, status: "PENDING_ARC_SUBMISSION", ...othersDemo("fileName", session.user.id) },
       orderBy: { createdAt: "desc" },
       take: 25,
       include: { submittedBy: { select: { name: true } } },
@@ -76,6 +77,7 @@ export default async function RubricWebPage({
         OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
         status: { not: "CANCELLED" },
         activityGrantStatus: "NOT_SUBMITTED",
+        ...othersDemo("eventName", session.user.id),
         startDate: { lte: now, gte: grantCutoff(now) },
       },
       orderBy: { startDate: "desc" },

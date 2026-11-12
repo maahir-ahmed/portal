@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { othersDemo } from "@/lib/tutorial";
 import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export default async function PrintingRequestsPage({ params }: Props) {
 
   const [requests, approvedSum] = await Promise.all([
     prisma.printingRequest.findMany({
-      where: { societyId },
+      where: { societyId, ...othersDemo("fileName", session.user.id) },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { createdAt: "desc" },
     }),

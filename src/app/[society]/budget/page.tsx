@@ -1,4 +1,5 @@
 import { wallClockNow } from "@/lib/urgency";
+import { othersDemo, othersDemoCategory } from "@/lib/tutorial";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -37,12 +38,12 @@ export default async function BudgetPage({ params, searchParams }: Props) {
   const [yearRows, categoriesRaw, treasuryRaw] = await Promise.all([
     prisma.societyYear.findMany({ where: { societyId } }),
     prisma.budgetCategory.findMany({
-      where: { societyId },
+      where: { societyId, ...othersDemoCategory(session.user.id) },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: { allocations: true },
     }),
     prisma.treasuryRequest.findMany({
-      where: { societyId, status: { not: "DRAFT" } },
+      where: { societyId, status: { not: "DRAFT" }, ...othersDemo("description", session.user.id) },
       orderBy: { expenseDate: "desc" },
       include: { submittedBy: { select: { name: true } } },
     }),

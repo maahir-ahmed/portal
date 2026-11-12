@@ -15,6 +15,26 @@ export const ROLE_RANK: Record<TourRole, number> = {
 // Demo records the tour creates are prefixed with this and deleted on exit.
 export const TUTORIAL_MARKER = "[Tutorial demo]";
 
+/**
+ * A where-clause hiding other people's tour records (a text field starting with the
+ * marker, owned by someone else) from a list or count. One's own stay, so the tour's
+ * pages have something to show; an abandoned tour's leftovers drop out for everyone else.
+ */
+export const othersDemo = (field: string, userId: string) => ({
+  NOT: { [field]: { startsWith: TUTORIAL_MARKER }, submittedById: { not: userId } },
+});
+
+// Budget categories have no owner column, so the owner goes in the name: one exec
+// finishing a tour must not delete another exec's in-progress demo category (and
+// two execs on the same name would collide on the unique societyId+name).
+// The id, not the name, because a rename mid-tour would orphan the row.
+export const demoCategoryName = (userId: string) => `${TUTORIAL_MARKER} Events (${userId.slice(-6)})`;
+
+/** Hides every tour budget category except the viewer's own (the name's suffix says whose). */
+export const othersDemoCategory = (userId: string) => ({
+  NOT: { name: { startsWith: TUTORIAL_MARKER }, AND: { NOT: { name: { endsWith: `(${userId.slice(-6)})` } } } },
+});
+
 export interface DemoIds {
   contentId?: string;
   roomId?: string;
