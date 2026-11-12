@@ -219,9 +219,11 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                     </Link>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <StatusBadge status={b.status} />
-                      <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
-                        <Link href={`/${societySlug}/rubric/web?type=room&id=${b.id}`}>Submit on Rubric →</Link>
-                      </Button>
+                      {modules.ticketing && (
+                        <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
+                          <Link href={`/${societySlug}/rubric/web?type=room&id=${b.id}`}>Submit on Rubric →</Link>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -263,7 +265,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                           <Link href={`/${societySlug}/requests/printing/${p.id}`}>Review</Link>
                         </Button>
                       )}
-                      {p.status === "PENDING_ARC_SUBMISSION" && (
+                      {p.status === "PENDING_ARC_SUBMISSION" && modules.ticketing && (
                         <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
                           <Link href={`/${societySlug}/rubric/web?type=printing&id=${p.id}`}>Submit on Rubric →</Link>
                         </Button>

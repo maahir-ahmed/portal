@@ -20,6 +20,7 @@ export interface CopyRecord {
 }
 
 type Tab = "room" | "printing" | "grants";
+const ALL_TABS: readonly Tab[] = ["room", "printing", "grants"];
 
 // Room-booking statuses that haven't reached Arc yet. Past these, the booking is
 // already lodged (or dead) and the button would only walk the status backwards.
@@ -33,17 +34,21 @@ export function RubricCopyPanel({
   bookings,
   printing,
   grants,
-  initialTab = "room",
+  tabs = ALL_TABS,
+  initialTab: wantedTab = "room",
   initialId,
 }: {
   societySlug: string;
   bookings: CopyRecord[];
   printing: CopyRecord[];
   grants: CopyRecord[];
+  /** The tabs to offer: those of a switched-off module are left out. */
+  tabs?: readonly Tab[];
   initialTab?: Tab;
   initialId?: string;
 }) {
   const router = useRouter();
+  const initialTab = tabs.includes(wantedTab) ? wantedTab : (tabs[0] ?? wantedTab);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [savingStatus, setSavingStatus] = useState(false);
 
@@ -142,7 +147,7 @@ export function RubricCopyPanel({
   return (
     <div className="flex w-full flex-col overflow-hidden rounded-lg border bg-card lg:w-[360px] lg:flex-shrink-0">
       <div className="flex border-b">
-        {(["room", "printing", "grants"] as const).map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             onClick={() => switchTab(t)}

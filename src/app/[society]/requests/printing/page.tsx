@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +29,8 @@ export default async function PrintingRequestsPage({ params }: Props) {
   if (!membership) redirect("/");
 
   const societyId = membership.societyId;
-  await refreshArcTier(societyId);
+  // The tier comes from a Rubric call, so it is only asked for while Rubric is on.
+  if ((await modulesForSociety(societyId)).ticketing) await refreshArcTier(societyId);
   const { secretarialTier: tier, arcMemberCount } = await prisma.society.findUniqueOrThrow({
     where: { id: societyId },
     select: { secretarialTier: true, arcMemberCount: true },

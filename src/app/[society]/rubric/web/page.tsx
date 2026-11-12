@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { wallClockNow } from "@/lib/urgency";
+import { modulesForSociety } from "@/lib/modulesServer";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
 import { formatDate, formatDateTime, EVENT_TYPE_LABELS, ACTIVITY_GRANT_DAYS } from "@/lib/utils";
@@ -46,8 +47,11 @@ export default async function RubricWebPage({
   const societyId = membership.societyId;
   // Event dates are typed-in wall-clock times, so compare them with the society's clock.
   const now = new Date(wallClockNow(membership.society.timezone));
+  // A switched-off module's records stay in the database but leave its tab here.
+  const modules = await modulesForSociety(societyId);
+  const showGrants = modules.events && modules.grants;
   const [rooms, prints, grantEvents] = await Promise.all([
-    prisma.roomBooking.findMany({
+    !modules.roomBookings ? [] : prisma.roomBooking.findMany({
       // Only bookings still to be lodged on the portal; once marked submitted to
       // Arc they drop off this list, same as printing jobs.
       where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"] } },
@@ -55,7 +59,7 @@ export default async function RubricWebPage({
       take: 25,
       include: { submittedBy: { select: { name: true } } },
     }),
-    prisma.printingRequest.findMany({
+    !modules.printing ? [] : prisma.printingRequest.findMany({
       // Only jobs waiting to be submitted on the portal; once marked submitted
       // they drop off this list (but stay in the exec queue until pickup-ready).
       where: { societyId, status: "PENDING_ARC_SUBMISSION" },
@@ -63,7 +67,7 @@ export default async function RubricWebPage({
       take: 25,
       include: { submittedBy: { select: { name: true } } },
     }),
-    prisma.contentRequest.findMany({
+    !showGrants ? [] : prisma.contentRequest.findMany({
       // Events with a Rubric event attached: the pool activity grants are submitted for.
       // An activity grant can only be claimed within 30 days of the event, so anything
       // older is past claiming and drops off the list, as does anything already lodged.
@@ -167,6 +171,11 @@ export default async function RubricWebPage({
             bookings={bookings}
             printing={printing}
             grants={grants}
+            tabs={[
+              ...(modules.roomBookings ? (["room"] as const) : []),
+              ...(modules.printing ? (["printing"] as const) : []),
+              ...(showGrants ? (["grants"] as const) : []),
+            ]}
             initialTab={sp.type === "printing" ? "printing" : sp.type === "grants" ? "grants" : "room"}
             initialId={sp.id}
           />
