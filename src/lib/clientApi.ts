@@ -57,3 +57,9 @@ export async function copyText(value: string, label: string) {
     toast.error("Copy failed: select and copy manually");
   }
 }
+
+/** The server's own explanation for a failed response (a reason it gives, such as "no secret key"), else the fallback. */
+export async function reason(res: Response, fallback: string): Promise<string> {
+  const data = await res.json().catch(() => null);
+  return typeof data?.error === "string" && data.error ? data.error : fallback;
+}

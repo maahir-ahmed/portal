@@ -8,6 +8,8 @@ import { MODULES_CHANGED } from "@/hooks/useModules";
 import type { ModuleColumns } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import { offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 type Toggle = Exclude<keyof ModuleColumns, "treasuryMode">;
 
@@ -63,11 +65,11 @@ export function FeaturesForm({
   const [values, setValues] = useState<ModuleColumns | null>(null);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState({ on: false, smtp: false });
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/societies/${societySlug}`)
-      .then((r) => r.json())
-      .then((s: ModuleColumns & { emailNotifications: boolean; smtpConfigured: boolean }) => {
+  const load = () =>
+    api<ModuleColumns & { emailNotifications: boolean; smtpConfigured: boolean }>(`/api/societies/${societySlug}`)
+      .then((s) => {
         setEmail({ on: s.emailNotifications, smtp: s.smtpConfigured });
         setValues({
           moduleEvents: s.moduleEvents,
@@ -80,6 +82,9 @@ export function FeaturesForm({
           treasuryMode: s.treasuryMode,
         });
       });
+  useEffect(() => {
+    load().catch((e: Error) => setLoadError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only changes with the society
   }, [societySlug]);
 
   async function save() {
@@ -92,7 +97,7 @@ export function FeaturesForm({
     }).catch(offline);
     setSaving(false);
     if (!res.ok) {
-      toast.error("Couldn't save. Try again.");
+      toast.error(await reason(res, "Couldn't save. Try again."));
       return;
     }
     toast.success("Saved");
@@ -100,6 +105,7 @@ export function FeaturesForm({
     onSaved?.();
   }
 
+  if (loadError) return <LoadFailed message={loadError} onRetry={() => { setLoadError(null); load().catch((e: Error) => setLoadError(e.message)); }} />;
   if (!values) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   const set = (patch: Partial<ModuleColumns>) => setValues({ ...values, ...patch });

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Upload, Download, X, Loader2, CheckCircle2, Megaphone, Check } from "lucide-react";
 import { offline } from "@/lib/utils";
+import { reason } from "@/lib/clientApi";
 
 interface Deliverable {
   id: string;
@@ -67,7 +68,7 @@ export function MarketingContentPanel({
         const { url } = await res.json();
         setNewFiles((prev) => [...prev, { fileName: file.name, fileUrl: url }]);
       } else {
-        toast.error(`Upload failed: ${file.name}`);
+        toast.error(`Upload failed: ${file.name}. ${await reason(res, "Try again.")}`);
       }
     }
     setUploading(false);
@@ -82,7 +83,7 @@ export function MarketingContentPanel({
     }).catch(offline);
     setBusy(null);
     if (!res.ok) {
-      toast.error("Failed to save");
+      toast.error(await reason(res, "Failed to save"));
       return false;
     }
     router.refresh();

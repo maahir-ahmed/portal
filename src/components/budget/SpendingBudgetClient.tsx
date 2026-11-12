@@ -19,6 +19,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { offline } from "@/lib/utils";
+import { reason } from "@/lib/clientApi";
 
 /** One category's figures for one financial year. */
 export interface YearFigures {
@@ -86,7 +87,7 @@ export function SpendingBudgetClient({
       body: JSON.stringify({ budgetCategoryId: categoryId }),
     }).catch(offline);
     if (res.ok) router.refresh();
-    else toast.error("Could not update category");
+    else toast.error(await reason(res, "Could not update category"));
   }
 
   return (
@@ -668,7 +669,7 @@ function CategoryDialog({ base, category, year, yearSet, pastYear, onClose, onSa
     const res = await fetch(`${base}/${category!.id}`, { method: "DELETE" }).catch(offline);
     setBusy(false);
     if (res.ok) onSaved();
-    else toast.error("Could not delete category");
+    else toast.error(await reason(res, "Could not delete category"));
   }
 
   const numField = (k: keyof typeof form, label: string) => (

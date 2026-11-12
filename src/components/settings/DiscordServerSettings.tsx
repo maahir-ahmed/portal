@@ -7,17 +7,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn, offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 // Settings > Discord: the two Discord features that used to need the server's env file.
 
 /** Deadline reminders under each event request's Discord post (src/lib/reminders.ts). */
 export function DiscordReminders({ societySlug }: { societySlug: string }) {
   const [on, setOn] = useState<boolean | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  const fetchOn = () =>
+    api<{ discordReminders: boolean | null; remindersDefault: boolean }>(`/api/societies/${societySlug}`).then((s) =>
+      setOn(s.discordReminders ?? s.remindersDefault)
+    );
   useEffect(() => {
-    fetch(`/api/societies/${societySlug}`)
-      .then((r) => r.json())
-      .then((s: { discordReminders: boolean | null; remindersDefault: boolean }) => setOn(s.discordReminders ?? s.remindersDefault));
+    fetchOn().catch((e: Error) => setLoadError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchOn only changes with the society
   }, [societySlug]);
 
   async function change(next: boolean) {
@@ -29,7 +35,7 @@ export function DiscordReminders({ societySlug }: { societySlug: string }) {
     }).catch(offline);
     if (!res.ok) {
       setOn(!next);
-      toast.error("Couldn't save. Try again.");
+      toast.error(await reason(res, "Couldn't save. Try again."));
     } else toast.success(next ? "Reminders on" : "Reminders off");
   }
 
@@ -43,7 +49,9 @@ export function DiscordReminders({ societySlug }: { societySlug: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {on === null ? (
+        {loadError ? (
+          <LoadFailed message={loadError} onRetry={() => { setLoadError(null); fetchOn().catch((e: Error) => setLoadError(e.message)); }} />
+        ) : on === null ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-secondary/50">
@@ -65,12 +73,14 @@ export function DiscordBot({ societySlug }: { societySlug: string }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
-  const fetchSaved = (slug: string): Promise<Bot> => fetch(`/api/societies/${slug}/discord-bot`).then((r) => r.json());
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchSaved = (slug: string) => api<Bot>(`/api/societies/${slug}/discord-bot`);
   function show(b: Bot) {
     setSaved(b);
     setF({ appId: b.appId, publicKey: b.publicKey, guildId: b.guildId, token: "" });
   }
-  useEffect(() => { fetchSaved(societySlug).then(show); }, [societySlug]);
+  useEffect(() => { fetchSaved(societySlug).then(show).catch((e: Error) => setLoadError(e.message)); }, [societySlug]);
 
   async function put(body: object) {
     setBusy(true);
@@ -85,9 +95,10 @@ export function DiscordBot({ societySlug }: { societySlug: string }) {
     if (!res.ok) return toast.error(data.error ?? "Couldn't save. Try again.");
     setProblem(data.problem ?? null);
     if (!data.problem) toast.success("Saved");
-    fetchSaved(societySlug).then(show);
+    fetchSaved(societySlug).then(show).catch((e: Error) => toast.error(e.message));
   }
 
+  if (loadError) return <LoadFailed message={loadError} onRetry={() => { setLoadError(null); fetchSaved(societySlug).then(show).catch((e: Error) => setLoadError(e.message)); }} />;
   if (!saved) return null;
   const invite = /^\d{17,20}$/.test(f.appId)
     ? `https://discord.com/oauth2/authorize?client_id=${f.appId}&scope=applications.commands`

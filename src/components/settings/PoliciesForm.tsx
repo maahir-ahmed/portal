@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useModules } from "@/hooks/useModules";
 import { BASE_POLICY, POLICY_KINDS, type PolicyKind } from "@/lib/policies";
 import { offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 // Settings > Policies, and the first-run setup's policy step. The base rules are
 // shown read-only for context; only the society's own lines are editable.
@@ -24,14 +26,16 @@ export function PoliciesForm({
   const [saved, setSaved] = useState<Record<string, string> | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  const load = () =>
+    api<Record<string, string>>(`/api/societies/${societySlug}/policies`).then((a) => {
+      setSaved(a);
+      setDraft(a);
+    });
   useEffect(() => {
-    fetch(`/api/societies/${societySlug}/policies`)
-      .then((r) => r.json())
-      .then((a: Record<string, string>) => {
-        setSaved(a);
-        setDraft(a);
-      });
+    load().catch((e: Error) => setLoadError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only changes with the society
   }, [societySlug]);
 
   async function save() {
@@ -46,7 +50,7 @@ export function PoliciesForm({
       }).catch(offline);
       if (!res.ok) {
         setSaving(false);
-        toast.error("Couldn't save. Try again.");
+        toast.error(await reason(res, "Couldn't save. Try again."));
         return;
       }
     }
@@ -56,6 +60,7 @@ export function PoliciesForm({
     onSaved?.();
   }
 
+  if (loadError) return <LoadFailed message={loadError} onRetry={() => { setLoadError(null); load().catch((e: Error) => setLoadError(e.message)); }} />;
   if (!saved || !modules) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   const shown = POLICY_KINDS.filter((k) => !k.module || modules[k.module]);

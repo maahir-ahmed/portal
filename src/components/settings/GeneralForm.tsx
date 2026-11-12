@@ -15,6 +15,8 @@ import { useModules } from "@/hooks/useModules";
 import { TIMEZONES, formatDate } from "@/lib/utils";
 import type { Society } from "@prisma/client";
 import { offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 const SELECT_CLASS =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -36,14 +38,16 @@ export function GeneralForm({
   const [society, setSociety] = useState<Society | null>(null);
   const [primaryColor, setPrimaryColor] = useState("");
   const modules = useModules(societySlug);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  const load = () =>
+    api<Society>(`/api/societies/${societySlug}`).then((data) => {
+      setSociety(data);
+      setPrimaryColor(data.primaryColor ?? "");
+    });
   useEffect(() => {
-    fetch(`/api/societies/${societySlug}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setSociety(data);
-        setPrimaryColor(data.primaryColor ?? "");
-      });
+    load().catch((e: Error) => setLoadError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only changes with the society
   }, [societySlug]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -64,10 +68,11 @@ export function GeneralForm({
       toast.success("Settings saved!");
       onSaved?.();
     } else {
-      toast.error("Failed to save settings");
+      toast.error(await reason(res, "Failed to save settings"));
     }
   }
 
+  if (loadError) return <LoadFailed message={loadError} onRetry={() => { setLoadError(null); load().catch((e: Error) => setLoadError(e.message)); }} />;
   if (!society) {
     return <div className="flex items-center justify-center h-32 text-muted-foreground">Loading...</div>;
   }

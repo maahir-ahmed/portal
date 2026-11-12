@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { offline } from "@/lib/utils";
+import { api } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 interface Portfolio {
   id: string;
@@ -19,15 +21,17 @@ export function PortfolioRoles({ societySlug }: { societySlug: string }) {
   const [portfolios, setPortfolios] = useState<Portfolio[] | null>(null);
   const [roles, setRoles] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // A failed load is an error with a retry, not "No portfolios yet".
+  const load = () =>
+    api<Portfolio[]>(base).then((list) => {
+      setPortfolios(list);
+      setRoles(Object.fromEntries(list.map((p) => [p.id, p.discordRoleId ?? ""])));
+    });
   useEffect(() => {
-    fetch(base)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: Portfolio[]) => {
-        setPortfolios(list);
-        setRoles(Object.fromEntries(list.map((p) => [p.id, p.discordRoleId ?? ""])));
-      })
-      .catch(() => setPortfolios([]));
+    load().catch((e: Error) => setLoadError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only changes with the society
   }, [base]);
 
   async function save(p: Portfolio) {
@@ -56,7 +60,9 @@ export function PortfolioRoles({ societySlug }: { societySlug: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        {portfolios === null ? (
+        {loadError ? (
+          <LoadFailed message={loadError} onRetry={() => { setLoadError(null); load().catch((e: Error) => setLoadError(e.message)); }} />
+        ) : portfolios === null ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : portfolios.length === 0 ? (
           <p className="text-sm text-muted-foreground">

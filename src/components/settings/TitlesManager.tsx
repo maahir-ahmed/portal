@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
 import { offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 interface SocietyTitle {
   id: string;
@@ -45,13 +47,20 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
   const [newTitle, setNewTitle] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   async function load() {
-    const [titleRes, portfolioRes] = await Promise.all([
-      fetch(`/api/societies/${societySlug}/titles`),
-      fetch(`/api/societies/${societySlug}/portfolios`),
-    ]);
-    if (titleRes.ok) setTitles(await titleRes.json());
-    if (portfolioRes.ok) setPortfolios(await portfolioRes.json());
+    try {
+      const [t, p] = await Promise.all([
+        api<SocietyTitle[]>(`/api/societies/${societySlug}/titles`),
+        api<Portfolio[]>(`/api/societies/${societySlug}/portfolios`),
+      ]);
+      setTitles(t);
+      setPortfolios(p);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError((e as Error).message);
+    }
   }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load-on-mount; re-runs only when the society changes
@@ -77,8 +86,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
       setAddingRole(null);
       load();
     } else {
-      const d = await res.json();
-      toast.error(d.error ?? "Failed to add title");
+      toast.error(await reason(res, "Failed to add title"));
     }
   }
 
@@ -96,7 +104,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
       setEditingId(null);
       load();
     } else {
-      toast.error("Failed to rename");
+      toast.error(await reason(res, "Failed to rename"));
     }
   }
 
@@ -112,7 +120,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
       toast.success("Portfolio updated, members holding this title moved with it");
       load();
     } else {
-      toast.error("Failed to set portfolio");
+      toast.error(await reason(res, "Failed to set portfolio"));
     }
   }
 
@@ -126,7 +134,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
       toast.success("Title removed");
       load();
     } else {
-      toast.error("Failed to delete");
+      toast.error(await reason(res, "Failed to delete"));
     }
   }
 
@@ -143,6 +151,7 @@ export function TitlesManager({ societySlug }: { societySlug: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {loadError && <LoadFailed message={loadError} onRetry={() => { load(); }} />}
         {(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"] as const).map((role) => (
           <div key={role} className={`rounded-lg border p-4 space-y-3 ${ROLE_COLORS[role]}`}>
             <p className="text-sm font-semibold">{ROLE_LABELS[role]}</p>

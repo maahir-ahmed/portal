@@ -17,6 +17,7 @@ import { RubricFormQuestions } from "@/components/requests/RubricFormQuestions";
 import { buildQuestionsPayload, validateAnswers } from "@/lib/rubricForm";
 import type { RubricEventForm, RubricAnswers, RubricFormQuestion } from "@/types/rubric";
 import { offline } from "@/lib/utils";
+import { reason } from "@/lib/clientApi";
 
 interface SubmitToRubricDialogProps {
   societySlug: string;
@@ -182,11 +183,22 @@ export function SubmitToRubricDialog({
       const rubricEventLink = (eventDetails?.eventURL as string | undefined) ?? null;
 
       // Record on our DB
-      await fetch(`/api/societies/${societySlug}/rubric/submit-event`, {
+      const stamp = await fetch(`/api/societies/${societySlug}/rubric/submit-event`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...(contentRequestId ? { contentRequestId } : {}), rubricEventId, rubricEventLink, rubricQrCodeUrl: null }),
       }).catch(offline);
+      if (!stamp.ok) {
+        // The event exists on Rubric now: submitting again would create a second one.
+        toast.error(
+          `The event was created on Rubric, but linking it to this request failed: ${await reason(stamp, "unknown error")}. Use "Assign existing Rubric event" to link it rather than submitting again.`,
+          { duration: 15000 }
+        );
+        setOpen(false);
+        setStep(1);
+        router.refresh();
+        return;
+      }
 
       toast.success(
         isDraft
