@@ -24,7 +24,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: |
+          npm run lint
+          npm run check:tutorial
+          npm run check:rubric
+          npm run check:passphrase
+          npm run check:ahegs
+          npm run check:bookings
+          npm run check:years
+          npm run check:modules
+          npm run check:debug
+          npm run check:import
+          npm run check:urgency
+          npm run check:discord
+          npm run check:updates
+          npm run check:security
+
   build:
+    needs: checks
     strategy:
       fail-fast: false
       matrix:
