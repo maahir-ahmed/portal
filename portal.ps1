@@ -254,6 +254,9 @@ function Write-Settings {
   if (-not (Has-Setting "TZ")) { Ensure "TZ" (Host-Timezone) }
   # Forward slashes: Docker Desktop takes them, and nothing has to be escaped.
   Ensure "BACKUP_DIR" ((Join-Path $Root "backups") -replace "\\", "/")
+  # The backups folder's group on Linux (compose file). Docker Desktop's file sharing
+  # doesn't carry Windows ownership into the container, so any value works; this is the default.
+  Ensure "BACKUP_GID" "1000"
   # The `1` channel: every 1.x release, never a 2.0 that might need you (images.yml).
   Ensure "APP_IMAGE" "$Images-app:1"
   Ensure "WEB_IMAGE" "$Images-web:1"

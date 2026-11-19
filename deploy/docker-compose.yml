@@ -123,6 +123,11 @@ services:
       # The backup service's nightly archives, listed and downloadable in Settings >
       # Backups. Read-only: the app never writes or prunes them.
       - ${BACKUP_DIR:-../../rubric-backups}:/app/nightly-backups:ro
+    # backup.sh writes the nightly archives mode 640, owned by whoever owns the backups
+    # folder, and the app runs as uid 1001. Joining the folder's group lets it read them
+    # without opening them to every account on the host (SOC-BUG-001). 1000 is the first
+    # account on a Linux box; the installer records the real one.
+    group_add: ["${BACKUP_GID:-1000}"]
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]

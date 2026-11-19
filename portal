@@ -164,6 +164,8 @@ write_settings() {
   ensure DISCORD_REMINDERS on
   ensure TZ "$(host_timezone)"
   ensure BACKUP_DIR "$ROOT/backups"
+  # The backups folder's group, so the app can read the nightly archives (compose file).
+  ensure BACKUP_GID "$(id -g)"
   # The `1` channel: every 1.x release, never a 2.0 that might need you (images.yml).
   ensure APP_IMAGE "$IMAGES-app:1"
   ensure WEB_IMAGE "$IMAGES-web:1"
