@@ -175,6 +175,14 @@ const debugServer = readFileSync("src/lib/debugServer.ts", "utf8");
 assert.match(debugServer, /clearOtherUploads\(path\)/, "starting an upload deletes any other, so only one is ever on disk");
 assert.match(debugServer, /x-upload-size/, "the first chunk is checked against the whole archive's size");
 
+// A form that holds a password posts it: with no method, a submit before the page's script
+// loads sends it as a GET, into the URL, the access log and the browser history.
+for (const f of ["src/app/(auth)/login/LoginForm.tsx", "src/app/setup/FirstAccountForm.tsx", "src/components/shared/ChangePasswordDialog.tsx", "src/app/[society]/account/page.tsx", "src/components/settings/EmailSettings.tsx", "src/app/[society]/requests/treasury/new/page.tsx"]) {
+  for (const form of readFileSync(f, "utf8").match(/<form\b[^>]*>/g) ?? []) {
+    assert.match(form, /method="post"/, `${f}: a form with a password or bank details must say method="post"`);
+  }
+}
+
 // Resolving is async, so this runs last.
 (async () => {
   assert.equal(await publicMailAddress("localhost"), null, "a name that resolves to loopback is refused");

@@ -200,7 +200,7 @@ export default function NewTreasuryPage() {
         </CardContent>
       </Card>
 
-      <form ref={formRef} onSubmit={(e) => { e.preventDefault(); submit("REIMBURSEMENT_PENDING"); }} className="space-y-6">
+      <form method="post" ref={formRef} onSubmit={(e) => { e.preventDefault(); submit("REIMBURSEMENT_PENDING"); }} className="space-y-6">
         {/* Expense Details */}
         <Card>
           <CardHeader><CardTitle className="text-base">Expense Details</CardTitle></CardHeader>

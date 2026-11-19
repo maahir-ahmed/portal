@@ -99,7 +99,7 @@ export default function LoginForm({ demo, brand }: { demo: DemoCredentials | nul
             )}
             <Card className="shadow-[0_4px_24px_-8px_rgba(16,16,20,0.12)]">
               <CardContent className="p-6">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form method="post" onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" name="email" type="email" placeholder="you@example.com" required autoComplete="email" />

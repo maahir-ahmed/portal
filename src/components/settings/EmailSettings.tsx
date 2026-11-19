@@ -135,7 +135,7 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
         )}
       </div>
 
-      <form onSubmit={save} className="space-y-6">
+      <form method="post" onSubmit={save} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">1. Choose an email service</CardTitle>
