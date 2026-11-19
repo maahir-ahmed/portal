@@ -410,6 +410,10 @@ model MemberPortfolio {
 }
 
 // ─── Auth (NextAuth) ──────────────────────────────────────────────────────────
+// Unused: sign-in is credentials with JWT sessions, so NextAuth never reads or writes
+// these three tables. Kept because dropping them is a data-losing push, which
+// self-hosted stacks refuse (DB_PUSH_FLAGS), so every install would need a hand-run
+// SQL step for no gain (SOC-REF-005). Don't build on them.
 
 model Account {
   id                String  @id @default(cuid())
