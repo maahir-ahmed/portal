@@ -7,7 +7,7 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import { PDFDocument } from "pdf-lib";
 import { fillTemplate, readZip } from "../src/lib/xlsx";
-import { mergeMinutes } from "../src/lib/pdfMerge";
+import { isEncryptedPdf, mergeMinutes } from "../src/lib/pdfMerge";
 import {
   AHEGS_CATEGORIES,
   TEMPLATES,
@@ -299,10 +299,24 @@ async function checkMerge() {
   assert.deepEqual(await widths((await mergeMinutes("Whole", [source("All", threePage)])).pdf), [100, 101, 102],
     "no split means the whole document");
 
+  // SOC-BUG-025: pdf-lib copies an encrypted file's pages across blank and corrupt, so one
+  // is left out and named, never merged. A trailer /Encrypt entry is what marks a PDF
+  // encrypted, for "restrict editing" files too.
+  const locked = await PDFDocument.create();
+  locked.addPage([200, 842]);
+  locked.context.trailerInfo.Encrypt = locked.context.obj({ Filter: "Standard", V: 5, R: 6 });
+  const lockedBytes = await locked.save();
+  assert.equal(await isEncryptedPdf(lockedBytes), true, "an encrypted PDF is recognised");
+  assert.equal(await isEncryptedPdf(twoPage), false);
+  const withLocked = await mergeMinutes("Locked", [source("Open", twoPage), source("Protected", lockedBytes)]);
+  assert.deepEqual(withLocked.failed, ["Protected"], "an encrypted PDF is reported, not merged");
+  assert.deepEqual(await widths(withLocked.pdf), [100, 101]);
+  assert.match(readFileSync("src/app/api/upload/route.ts", "utf8"), /isEncryptedPdf/, "PDF-only uploads refuse encrypted files");
+
   console.log(
     `✅ ahegs: ${ALL_TEMPLATES.length} templates blank and fillable, ` +
       `${rebuilt.size} workbook parts preserved, dates on Excel's epoch, roster defaults from the directory, ` +
-      `hours summed from attendance, portfolio scoping enforced, minutes split into Arc's two files`
+      `hours summed from attendance, portfolio scoping enforced, minutes split into Arc's two files, encrypted PDFs left out`
   );
 }
 

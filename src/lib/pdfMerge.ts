@@ -59,6 +59,10 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
   for (const source of sources) {
     try {
       const doc = await PDFDocument.load(source.bytes, { ignoreEncryption: true });
+      // pdf-lib can't decrypt, so an encrypted file's pages would copy across blank and
+      // corrupt while the merge reported success. That includes "restrict editing" PDFs
+      // that open without a password. Leave it out and name it instead (SOC-BUG-025).
+      if (doc.isEncrypted) throw new Error("encrypted");
       const pages = await out.copyPages(doc, pageIndices(doc.getPageIndices(), source.take));
       for (const page of pages) out.addPage(page);
       merged.push(source);
@@ -91,4 +95,17 @@ export async function mergeMinutes(heading: string, sources: MergeSource[]): Pro
   }
 
   return { pdf: await out.save(), pages: out.getPageCount(), failed };
+}
+
+/**
+ * Whether a PDF is password-protected or edit-restricted, either of which the merge
+ * can't use. A file that won't parse at all counts as not encrypted: that's for the
+ * merge to report.
+ */
+export async function isEncryptedPdf(bytes: Uint8Array): Promise<boolean> {
+  try {
+    return (await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false })).isEncrypted;
+  } catch {
+    return false;
+  }
 }

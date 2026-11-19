@@ -249,7 +249,7 @@ export function AhegsClient({
         `Combined ${r.merged} set${r.merged === 1 ? "" : "s"} of minutes into ${r.pages} pages` +
           (r.skipped?.length ? ` · skipped ${r.skipped.length}` : "")
       );
-      if (r.skipped?.length) toast.warning(`Left out (linked or unreadable): ${r.skipped.join(", ")}`);
+      if (r.skipped?.length) toast.warning(`Left out (linked, unreadable or password-protected): ${r.skipped.join(", ")}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not combine the minutes");
     } finally {
