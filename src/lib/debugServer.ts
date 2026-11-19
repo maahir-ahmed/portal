@@ -1,13 +1,13 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, rm, stat, statfs, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireMembership } from "./api";
 import { createAuditLog } from "./audit";
 import { prisma } from "./db";
-import { backupsEnabled, debugToolsEnabled } from "./debugTools";
+import { backupsEnabled, debugToolsEnabled, uploadFits } from "./debugTools";
 import { setMaintenance } from "./maintenance";
 
 // Server side of Settings > Backups, Settings > Debugging and the restore at the start
@@ -195,8 +195,21 @@ export async function receiveChunk(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id") ?? "";
   const offset = Number(req.nextUrl.searchParams.get("offset"));
   const expected = Number(req.headers.get("x-chunk-length"));
-  if (!UPLOAD_ID.test(id) || !Number.isInteger(offset) || offset < 0 || !Number.isInteger(expected)) {
+  const total = Number(req.headers.get("x-upload-size") ?? 0);
+  if (!UPLOAD_ID.test(id) || !Number.isInteger(offset) || offset < 0 || !Number.isInteger(expected) || !Number.isInteger(total) || total < 0) {
     return NextResponse.json({ error: "Bad upload request" }, { status: 400 });
+  }
+
+  const path = incomingPath(id);
+  await mkdir(BACKUP_OUT, { recursive: true });
+  if (offset === 0) await clearOtherUploads(path);
+  // Checked before reading the body, so a too-big archive is refused on its first chunk
+  // rather than after filling the disk. The total is the browser's word, so each chunk is
+  // checked against what is actually free as well.
+  const free = await statfs(BACKUP_OUT).then((s) => s.bavail * s.bsize).catch(() => Infinity);
+  if (!uploadFits(free, Math.max(expected, offset === 0 ? total : 0))) {
+    await rm(path, { force: true });
+    return NextResponse.json({ error: "Not enough free disk space on the server for this backup" }, { status: 507 });
   }
 
   const chunk = Buffer.from(await req.arrayBuffer());
@@ -206,15 +219,35 @@ export async function receiveChunk(req: NextRequest) {
     return NextResponse.json({ error: `Chunk arrived as ${chunk.length} of ${expected} bytes` }, { status: 400 });
   }
 
-  const path = incomingPath(id);
-  await mkdir(BACKUP_OUT, { recursive: true });
   const have = offset === 0 ? 0 : await stat(path).then((s) => s.size).catch(() => -1);
   if (have !== offset) {
     return NextResponse.json({ error: "Upload out of order; start again" }, { status: 409 });
   }
-  if (offset === 0) await writeFile(path, chunk);
-  else await appendFile(path, chunk);
+  try {
+    if (offset === 0) await writeFile(path, chunk);
+    else await appendFile(path, chunk);
+  } catch (err) {
+    // A half-written archive can never be restored, so don't leave it taking up space.
+    await rm(path, { force: true });
+    throw err;
+  }
   return NextResponse.json({ size: offset + chunk.length });
+}
+
+/**
+ * One upload on disk at a time: starting one deletes any other. Without this, every
+ * closed tab or archive that failed its check stayed on disk for good, and parallel
+ * uploads could fill it. The newest wins rather than the oldest blocking, so an
+ * abandoned upload never locks the next person out; an upload cut off this way gets
+ * "out of order; start again" on its next chunk. A restore already running is
+ * unaffected: it holds the archive open, and Linux keeps a deleted open file readable.
+ */
+async function clearOtherUploads(own: string) {
+  const names = await readdir(BACKUP_OUT).catch(() => [] as string[]);
+  for (const name of names) {
+    const path = join(BACKUP_OUT, name);
+    if (/^\.incoming-[a-z0-9-]+\.tar\.gz$/.test(name) && path !== own) await rm(path, { force: true });
+  }
 }
 
 /** The uploaded archive's path, or null when there is no such upload. */

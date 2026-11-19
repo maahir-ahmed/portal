@@ -172,7 +172,9 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
         const chunk = file.slice(offset, offset + CHUNK);
         await api(`${base}/upload?id=${uploadId}&offset=${offset}`, {
           method: "POST",
-          headers: { ...headers, "Content-Type": "application/octet-stream", "X-Chunk-Length": String(chunk.size) },
+          // The whole size too, so the server can refuse an archive it has no room for
+          // before the first chunk rather than partway through.
+          headers: { ...headers, "Content-Type": "application/octet-stream", "X-Chunk-Length": String(chunk.size), "X-Upload-Size": String(file.size) },
           body: chunk,
         });
         setSent(Math.min(file.size, offset + CHUNK));

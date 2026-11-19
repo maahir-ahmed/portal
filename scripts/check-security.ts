@@ -6,7 +6,7 @@ import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { escapeHtml, isPrivateAddress, notificationEmail, publicMailAddress } from "../src/lib/email";
-import { debugToolsEnabled } from "../src/lib/debugTools";
+import { debugToolsEnabled, MIN_FREE_BYTES, uploadFits } from "../src/lib/debugTools";
 import { ownsServerSettings } from "../src/lib/serverSettings";
 import { isPlausibleDate, safeCallback, sameHost } from "../src/lib/utils";
 import { freshInteraction } from "../src/lib/discordBot";
@@ -165,6 +165,15 @@ assert.match(
   /mustChangePassword && user\.tempPasswordExpires && user\.tempPasswordExpires < new Date\(\)/,
   "authorize must refuse an expired temporary passphrase",
 );
+
+// SOC-SEC-006: a restore upload can't run the disk down past the floor, and the server
+// checks the whole archive on its first chunk.
+assert.equal(uploadFits(MIN_FREE_BYTES + 100, 100), true);
+assert.equal(uploadFits(MIN_FREE_BYTES + 100, 101), false, "an upload that leaves less than the floor is refused");
+assert.ok(MIN_FREE_BYTES >= 1024 ** 3, "the free-space floor is at least 1GB");
+const debugServer = readFileSync("src/lib/debugServer.ts", "utf8");
+assert.match(debugServer, /clearOtherUploads\(path\)/, "starting an upload deletes any other, so only one is ever on disk");
+assert.match(debugServer, /x-upload-size/, "the first chunk is checked against the whole archive's size");
 
 // Resolving is async, so this runs last.
 (async () => {
