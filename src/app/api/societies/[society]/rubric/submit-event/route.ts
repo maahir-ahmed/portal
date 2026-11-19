@@ -14,8 +14,9 @@ const schema = z.object({
   rubricEventId: z.string().optional(),
   // null clears the stored value (a reassignment to an event with no link or QR must not
   // keep the previous event's); left out leaves it alone.
-  rubricEventLink: httpUrl.nullable().optional(),
-  rubricQrCodeUrl: httpUrl.nullable().optional(),
+  // Rubric can hand back "" for an event with no purchase page: that means no link, not a bad one.
+  rubricEventLink: z.preprocess((v) => (v === "" ? null : v), httpUrl.nullable()).optional(),
+  rubricQrCodeUrl: z.preprocess((v) => (v === "" ? null : v), httpUrl.nullable()).optional(),
   // false when linking an already-existing Rubric event (assignment, not submission)
   markSubmitted: z.boolean().optional().default(true),
 });
