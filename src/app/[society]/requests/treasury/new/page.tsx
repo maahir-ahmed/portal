@@ -61,7 +61,7 @@ export default function NewTreasuryPage() {
   // Fetch the user's bank account on mount
   useEffect(() => {
     fetch("/api/me/bank-account")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null)) // an error body is not saved bank details
       .then((data) => {
         setSavedAccount(data);
         // If no account on file, default to manual entry
@@ -137,7 +137,6 @@ export default function NewTreasuryPage() {
       body.bankBsb = form.get("bankBsb");
       body.bankAccountNumber = form.get("bankAccountNumber");
       body.bankPayId = form.get("bankPayId");
-      body.saveToProfile = !savedAccount; // save to profile only if user has no account yet
     }
 
     const res = await fetch(`/api/societies/${params.society}/treasury`, {
@@ -201,7 +200,7 @@ export default function NewTreasuryPage() {
         </CardContent>
       </Card>
 
-      <form ref={formRef} onSubmit={(e) => { e.preventDefault(); submit("REIMBURSEMENT_PENDING"); }} className="space-y-6">
+      <form method="post" ref={formRef} onSubmit={(e) => { e.preventDefault(); submit("REIMBURSEMENT_PENDING"); }} className="space-y-6">
         {/* Expense Details */}
         <Card>
           <CardHeader><CardTitle className="text-base">Expense Details</CardTitle></CardHeader>

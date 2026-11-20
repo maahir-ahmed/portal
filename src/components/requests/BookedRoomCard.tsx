@@ -71,7 +71,7 @@ export function BookedRoomCard({
             className="flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              if (dirty) save();
+              if (dirty && !saving) save();
             }}
           >
             <Input

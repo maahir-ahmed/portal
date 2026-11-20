@@ -1,8 +1,10 @@
+import { serverError } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
+import { optionalDate, plainDate } from "@/lib/schemas";
 
 // One member's corrections for one year's submission. The row is created on first
 // edit; until then the roster is derived entirely from the member directory.
@@ -17,8 +19,8 @@ const schema = z.object({
   zid: z.string().max(20).nullable().optional(),
   email: z.string().max(200).nullable().optional(),
   position: z.string().max(200).nullable().optional(),
-  startDate: z.string().nullable().optional(),
-  endDate: z.string().nullable().optional(),
+  startDate: optionalDate(plainDate),
+  endDate: optionalDate(plainDate),
   hoursAdjustment: z.number().min(-1000).max(1000).nullable().optional(),
 });
 
@@ -73,6 +75,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ soci
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

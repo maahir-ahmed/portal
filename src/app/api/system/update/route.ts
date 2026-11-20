@@ -17,8 +17,11 @@ export async function POST(req: NextRequest) {
   if (!validUpdateToken(req.headers.get("authorization"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const parsed = body.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  // The installers send "{}" for a plain check-in, so a body that isn't JSON is a failure
+  // report that got mangled, not "no result": say so, and the installer keeps it to retry.
+  const json = await req.json().catch(() => null);
+  const parsed = body.safeParse(json);
+  if (json === null || !parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const { result, detail, version } = parsed.data;
   return NextResponse.json(await updaterCheckIn(result ? { result, detail, version } : undefined));
 }

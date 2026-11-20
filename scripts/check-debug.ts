@@ -11,10 +11,11 @@ for (const [t, c] of [
   ["Account", "access_token"], ["Account", "refresh_token"], ["Account", "id_token"], ["Account", "session_state"],
   ["Session", "sessionToken"], ["Session", "userId"], ["VerificationToken", "token"],
   ["BankAccount", "bsb"], ["BankAccount", "accountNumber"], ["BankAccount", "accountName"],
+  ["Society", "smtpPass"], ["BankAccount", "payId"], ["User", "discordLinkCode"],
 ]) assert.equal(isSensitive(t, c), true, `${t}.${c} must be masked`);
 
 // …without hiding the ordinary columns that merely look similar.
-for (const [t, c] of [["Society", "secretarialTier"], ["Society", "eventsWebhookRoleId"], ["User", "email"], ["Society", "name"]]) {
+for (const [t, c] of [["Society", "secretarialTier"], ["Society", "smtpHost"], ["User", "discordUserId"], ["Society", "eventsWebhookRoleId"], ["User", "email"], ["Society", "name"]]) {
   assert.equal(isSensitive(t, c), false, `${t}.${c} should be readable`);
 }
 

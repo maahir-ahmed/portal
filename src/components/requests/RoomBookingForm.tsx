@@ -4,7 +4,6 @@ import { usePolicy } from "@/hooks/usePolicy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TimeSelect } from "@/components/ui/datetime";
@@ -88,13 +87,15 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
       }
     ).catch(offline);
 
-    setLoading(false);
     if (res.ok) {
+      // Left disabled on success: a second click before the navigation lands would
+      // create a duplicate (and its notifications).
       const data = await res.json();
       toast.success(editing ? "Changes saved!" : "Room booking submitted!");
       router.push(`/${societySlug}/requests/room-booking/${editing ? initial!.id : data.id}`);
       router.refresh();
     } else {
+      setLoading(false);
       const data = await res.json().catch(() => ({}));
       toast.error(data.error ?? "Failed to save booking");
     }
@@ -159,7 +160,7 @@ export function RoomBookingForm({ societySlug, initial }: { societySlug: string;
                   id="preferredDate"
                   name="preferredDate"
                   type="date"
-                  defaultValue={initial ? format(new Date(initial.preferredDate), "yyyy-MM-dd") : undefined}
+                  defaultValue={initial ? initial.preferredDate.slice(0, 10) : undefined}
                   required
                 />
               </div>

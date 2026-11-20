@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
@@ -8,12 +8,9 @@ const createSchema = z.object({ name: z.string().min(1).max(60) });
 
 // GET is open to any member: the invite/edit member dialogs need the list.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const portfolios = await prisma.portfolio.findMany({
     where: { societyId: membership!.societyId },
@@ -25,7 +22,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
     portfolios.map((p) => ({
       id: p.id,
       name: p.name,
-      discordRoleId: p.discordRoleId,
+      // Only the Discord settings (executives) read this.
+      ...(membership!.role === "EXECUTIVE" && { discordRoleId: p.discordRoleId }),
       // Extra links never repeat the title's portfolio, so the two never double count.
       memberCount: p._count.memberships + p._count.extraMembers,
       titleCount: p._count.titles,
@@ -34,12 +32,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const body = await req.json();
@@ -66,6 +61,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

@@ -57,7 +57,7 @@ export function FirstAccountForm({ token, defaultEmail }: { token: string; defau
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form method="post" onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="societyName">Society name</Label>
             <Input id="societyName" name="societyName" placeholder="e.g. Chess Society" minLength={2} required />

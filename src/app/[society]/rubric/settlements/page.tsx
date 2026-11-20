@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { RubricShell } from "@/components/rubric/RubricShell";
@@ -8,7 +7,7 @@ import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, DollarSign, ChevronRight } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 
 interface Settlement {
   settlementid?: number | string;
@@ -22,23 +21,11 @@ interface Settlement {
 
 export default function RubricSettlementsPage() {
   const params = useParams<{ society: string }>();
-  const rubric = useRubricClient(params.society);
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    rubric.call({ type: "getSocietyPortalSettlementList" })
-      .then((d) => {
-        setSettlements((d.allSettlements ?? []) as Settlement[]);
-      })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        setError(msg === "not_configured" ? "not_configured" : msg);
-      })
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society]);
+  const { data, error, loading } = useRubricQuery(params.society, async (call) => {
+    const d = await call({ type: "getSocietyPortalSettlementList" });
+    return (d.allSettlements ?? []) as Settlement[];
+  });
+  const settlements = data ?? [];
 
   if (loading) return <RubricShell><div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></RubricShell>;
   if (error === "not_configured") return <RubricShell><RubricNotConfigured societySlug={params.society} /></RubricShell>;

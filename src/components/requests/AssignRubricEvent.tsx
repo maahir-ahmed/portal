@@ -35,6 +35,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
     rubric.call({ type: "getSocietyPortalTicketingHomePage" })
       .then((d) => {
         const evs = flattenEvents(d);
+        setError(null); // a failure on an earlier open must not outlive a successful retry
         setEvents(evs);
         if (evs[0]?.eventid != null) setSelected(String(evs[0].eventid));
       })
@@ -55,7 +56,10 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
         body: JSON.stringify({
           contentRequestId,
           rubricEventId: String(event.eventid),
-          rubricEventLink: event.purchaseurl,
+          // null, not undefined: JSON drops undefined and the route would keep the
+          // previous event's link and QR beside the new event id.
+          rubricEventLink: event.purchaseurl ?? null,
+          rubricQrCodeUrl: null,
           markSubmitted: false,
         }),
       }).catch(offline);
@@ -103,7 +107,7 @@ export function AssignRubricEvent({ societySlug, contentRequestId, label = "Assi
             {events.map((e) => (
               <option key={String(e.eventid)} value={String(e.eventid)}>
                 {e.eventname ?? `Event ${e.eventid}`}
-                {e.eventTime ? `, ${new Date(e.eventTime).toLocaleDateString("en-AU")}` : ""}
+                {e.eventTime ? `, ${new Date(e.eventTime.replace(" ", "T")).toLocaleDateString("en-AU")}` : ""}
               </option>
             ))}
           </select>

@@ -1,9 +1,8 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import { wallClockNow } from "@/lib/urgency";
-import { TUTORIAL_MARKER } from "@/lib/tutorial";
+import { othersDemo as othersDemoFor } from "@/lib/tutorial";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,14 +20,7 @@ interface Props {
 
 export default async function ExecutiveQueuePage({ params }: Props) {
   const { society: societySlug } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership || membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } }, true);
 
   const societyId = membership.societyId;
 
@@ -39,11 +31,8 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   const otherExecs = await prisma.societyMembership.count({
     where: { societyId, role: "EXECUTIVE", isActive: true, userId: { not: session.user.id } },
   });
-  // Someone else's tour records are theirs to see, not work for this exec. One's own
-  // stay, so the tour's queue step has something to show.
-  const othersDemo = (field: string) => ({
-    NOT: { [field]: { startsWith: TUTORIAL_MARKER }, submittedById: { not: session.user.id } },
-  });
+  // Someone else's tour records are theirs to see, not work for this exec.
+  const othersDemo = (field: string) => othersDemoFor(field, session.user.id);
   const [rubricAll, roomAll, reimbursementPending, printingAll, grantsAll] = await Promise.all([
     prisma.contentRequest.findMany({
       where: { societyId, rubricRequired: true, rubricEventLink: null, status: { notIn: ["CANCELLED", "COMPLETED"] }, ...othersDemo("eventName") },
@@ -219,9 +208,11 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                     </Link>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <StatusBadge status={b.status} />
-                      <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
-                        <Link href={`/${societySlug}/rubric/web?type=room&id=${b.id}`}>Submit on Rubric →</Link>
-                      </Button>
+                      {modules.ticketing && (
+                        <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
+                          <Link href={`/${societySlug}/rubric/web?type=room&id=${b.id}`}>Submit on Rubric →</Link>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -263,7 +254,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                           <Link href={`/${societySlug}/requests/printing/${p.id}`}>Review</Link>
                         </Button>
                       )}
-                      {p.status === "PENDING_ARC_SUBMISSION" && (
+                      {p.status === "PENDING_ARC_SUBMISSION" && modules.ticketing && (
                         <Button asChild size="sm" variant="outline" className="text-xs border-purple-300">
                           <Link href={`/${societySlug}/rubric/web?type=printing&id=${p.id}`}>Submit on Rubric →</Link>
                         </Button>

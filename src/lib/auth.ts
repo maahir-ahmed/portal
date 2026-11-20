@@ -9,6 +9,19 @@ import { clearFailures, isLimited, passwordLimits, recordFailure } from "./rateL
 let dummy: Promise<string> | null = null;
 const dummyHash = () => (dummy ??= bcrypt.hash(crypto.randomUUID(), 12));
 
+// Only the fields the UI reads. Whole Society rows used to travel from here into the JWT
+// and back out of /api/auth/session, which handed every logged-in member the society's
+// Rubric session ID.
+const MEMBERSHIP_SELECT = {
+  id: true,
+  role: true,
+  societyId: true,
+  title: true,
+  society: {
+    select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true },
+  },
+} as const;
+
 class TooManyAttempts extends CredentialsSignin {
   code = "rate_limited";
 }
@@ -36,23 +49,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // network), then wait out the window.
         const limits = passwordLimits(email, request.headers);
         if (isLimited(limits)) throw new TooManyAttempts();
-        // Only the fields the UI reads. Whole Society rows used to travel from here
-        // into the JWT and back out of /api/auth/session, which handed every logged-in
-        // member the society's Rubric session ID.
         const user = await prisma.user.findUnique({
           where: { email },
           include: {
             memberships: {
               where: { isActive: true },
-              select: {
-                id: true,
-                role: true,
-                societyId: true,
-                title: true,
-                society: {
-                  select: { id: true, name: true, slug: true, logoUrl: true, primaryColor: true },
-                },
-              },
+              select: MEMBERSHIP_SELECT,
             },
           },
         });
@@ -72,6 +74,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         if (!valid) {
           recordFailure(limits);
+          return null;
+        }
+        // An emailed temporary passphrase only works for a week. Only while it is still
+        // the temporary one: a password the member chose never expires.
+        if (user.mustChangePassword && user.tempPasswordExpires && user.tempPasswordExpires < new Date()) {
           return null;
         }
         clearFailures(limits);
@@ -105,13 +112,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       // A password change, reset or removal bumps the version, which ends every session
       // issued before it. Tokens from before this check have no sv and count as 0.
-      // ponytail: one indexed lookup per auth() call; cache it if that ever shows up.
+      // ponytail: one lookup per auth() call, memberships included; cache it if that ever shows up.
       if (token.id) {
         const current = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { sessionVersion: true },
+          select: {
+            sessionVersion: true,
+            memberships: { where: { isActive: true }, select: MEMBERSHIP_SELECT },
+          },
         });
         if (!current || current.sessionVersion !== (token.sv ?? 0)) return null;
+        // Roles and titles change without a sign-in, so take them from the same read.
+        token.memberships = current.memberships;
       }
       // Reflect profile edits (name/email) made via the account page without re-login.
       // Read from the database, not the update payload: anyone can call update() with

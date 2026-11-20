@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 
@@ -14,12 +14,9 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const titles = await prisma.societyTitle.findMany({
     where: { societyId: membership!.societyId },
@@ -27,16 +24,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
     include: { portfolio: { select: { id: true, name: true } } },
   });
 
-  return NextResponse.json(titles);
+  // How many active members hold each title, so deleting one can say what it affects.
+  const held = await prisma.societyMembership.groupBy({
+    by: ["title", "role"],
+    where: { societyId: membership!.societyId, isActive: true, title: { not: null } },
+    _count: true,
+  });
+  const count = new Map(held.map((h) => [`${h.role}|${h.title}`, h._count]));
+  return NextResponse.json(titles.map((t) => ({ ...t, holders: count.get(`${t.roleLevel}|${t.name}`) ?? 0 })));
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const body = createSchema.parse(await req.json());
@@ -73,6 +74,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "A title with that name already exists" }, { status: 409 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

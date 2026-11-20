@@ -1,3 +1,4 @@
+import { serverError } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
@@ -5,13 +6,14 @@ import { createAuditLog } from "@/lib/audit";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
 import { ahegsYearOf } from "@/lib/years";
+import { plainDate } from "@/lib/schemas";
 
 // A meeting a portfolio ran, with its minutes. Directors log their own portfolio's
 // meetings; executives can log any, including whole-of-committee ones.
 const schema = z.object({
   year: z.number().int().min(2000).max(2100),
   title: z.string().min(1).max(300),
-  date: z.string().min(1),
+  date: plainDate,
   hours: z.number().min(0).max(24),
   portfolioId: z.string().nullable().optional(),
   execTeam: z.boolean().default(false),
@@ -87,6 +89,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

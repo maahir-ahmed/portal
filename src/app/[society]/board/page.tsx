@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
+import { societyToday } from "@/lib/urgency";
 import { BoardClient } from "@/components/board/BoardClient";
 
 interface Props {
@@ -9,13 +9,7 @@ interface Props {
 
 export default async function BoardPage({ params }: Props) {
   const { society: societySlug } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-  });
-  if (!membership || membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
+  const { membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } }, true);
 
   const cards = await prisma.boardCard.findMany({
     where: { societyId: membership.societyId },
@@ -38,6 +32,7 @@ export default async function BoardPage({ params }: Props) {
 
       <BoardClient
         societySlug={societySlug}
+        today={societyToday(membership.society.timezone).toISOString()}
         initialCards={cards.map((c) => ({
           id: c.id,
           lane: c.lane,

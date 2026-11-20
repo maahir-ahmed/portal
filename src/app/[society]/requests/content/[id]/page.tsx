@@ -1,5 +1,5 @@
-import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
@@ -13,6 +13,7 @@ import { MarketingContentPanel } from "@/components/requests/MarketingContentPan
 import { RubricForm } from "./RubricForm";
 import { RubricQrCode } from "@/components/requests/RubricQrCode";
 import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog";
+import { SubmitRequestButton } from "@/components/requests/SubmitRequestButton";
 import { AssignRubricEvent } from "@/components/requests/AssignRubricEvent";
 import { EventPhotos } from "@/components/requests/EventPhotos";
 import { canViewRequest, formatCurrency, formatDate, formatDateTime, formatTimeRange, formatTimestamp } from "@/lib/utils";
@@ -25,14 +26,7 @@ interface Props {
 
 export default async function ContentRequestDetailPage({ params }: Props) {
   const { society: societySlug, id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
 
   const request = await prisma.contentRequest.findUnique({
     where: { id },
@@ -114,6 +108,7 @@ export default async function ContentRequestDetailPage({ params }: Props) {
             Submitted by {request.submittedBy.name} · {formatTimestamp(request.createdAt, membership.society.timezone)}
           </p>
         </div>
+        {isOwner && request.status === "DRAFT" && <SubmitRequestButton societySlug={societySlug} requestId={request.id} />}
         {canEdit && (
           <Button asChild variant="outline" size="sm" data-tour="content-edit" className="flex-shrink-0">
             <Link href={`/${societySlug}/requests/content/${request.id}/edit`}>

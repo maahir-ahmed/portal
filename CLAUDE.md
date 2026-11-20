@@ -19,6 +19,7 @@ npm run check:tutorial
 npm run check:passphrase
 npm run check:ahegs
 npm run check:bookings
+npm run check:years
 npm run check:modules
 npm run check:debug
 npm run check:import
@@ -29,9 +30,10 @@ npm run check:security
 npm run audit:layout        # Playwright layout sweep, needs a running dev server
 ```
 
-There is no test framework. The three `check:*` scripts are the whole safety net —
+There is no test framework. The thirteen `check:*` scripts are the whole safety net:
 plain `node:assert` scripts under [scripts/](scripts/) that guard invariants that
-would otherwise rot silently. Run the relevant one after touching its area:
+would otherwise rot silently. Run the relevant one after touching its area. CI runs all
+of them, plus lint, before any deploy or image build:
 
 | Script | Run it when you touch |
 |---|---|
@@ -40,6 +42,7 @@ would otherwise rot silently. Run the relevant one after touching its area:
 | `check:passphrase` | `src/lib/passphrase.ts` or the wordlist dependency |
 | `check:ahegs` | `src/lib/ahegs.ts`, `src/lib/xlsx.ts`, `src/lib/pdfMerge.ts`, the AHEGS routes, or the templates in `public/` |
 | `check:bookings` | `isLateArcSubmission` or anything about Arc's seven-day rule |
+| `check:years` | `src/lib/years.ts` (which financial, AHEGS and events year a date lands in) |
 | `check:modules` | `src/lib/modules.ts` (which pages and API routes each feature module owns) |
 | `check:debug` | `src/lib/debugTables.ts`: the viewer's masked columns, the SQL runner's transaction check |
 | `check:import` | `src/lib/csv.ts`, `readTable` in `src/lib/xlsx.ts`, `src/lib/memberImport.ts` (member import parsing and row checks) |
@@ -82,7 +85,7 @@ Next treats the rewrite as another site and fetches it over the network: every p
 out through the tunnel and back, and fails where the box can't reach its own domain.
 
 The proxy also does two things before any of that:
-- **Maintenance**: while a restore runs (Settings > Debugging) every request gets
+- **Maintenance**: while a restore runs (Settings > Backups) every request gets
   `deploy/maintenance.html` with a 503 ([src/lib/maintenance.ts](src/lib/maintenance.ts)).
 - **Feature modules**: a society can switch sections off. [src/lib/modules.ts](src/lib/modules.ts)
   is the one map from module to the pages and API prefixes it owns; the proxy 404s the
@@ -164,7 +167,7 @@ deletion and refunds. The rules, all enforced by `npm run check:rubric`:
 
 ### DEMO_MODE
 
-`DEMO_MODE=1` (the public `dev`-branch showcase stack) auto-signs every visitor in as a
+`DEMO_MODE=1` (the public demo stack, deployed from the `demo` branch) auto-signs every visitor in as a
 shared account, so it is only safe under conditions documented in
 [deploy/README.md](deploy/README.md). Three things depend on it in code:
 
@@ -244,17 +247,26 @@ Settings is one tab per sub-route under `src/app/[society]/settings/`, sharing a
 that checks the viewer is an executive. Forms the setup wizard also needs (Features,
 Policies) live in `src/components/settings/` and take an `onSaved`.
 
-## Debugging tab
+## Backups and Debugging tabs
 
-`ENABLE_DEBUG_TOOLS=true` (and never with `DEMO_MODE`) adds Settings > Debugging. Every
-route under `/api/societies/[society]/debug/` starts with `requireDebug`
-([src/lib/debugServer.ts](src/lib/debugServer.ts)), which 404s when the flag is off.
+Settings > Backups (download, upload and restore a whole-portal archive, and the nightly
+archives listed from a read-only mount) exists on any single-society stack except the
+demo, for any executive. `ENABLE_DEBUG_TOOLS=true` (and never with `DEMO_MODE`) adds
+Settings > Debugging on top: the masked table viewer, the SQL runner and the unused-uploads
+cleanup. Routes under `/api/societies/[society]/backups/` start with `requireBackups`,
+those under `.../debug/` with `requireDebug` ([src/lib/debugServer.ts](src/lib/debugServer.ts));
+both 404 when the feature is off or the slug isn't the stack's own `SOCIETY_SLUG`.
 Backup, validate and restore all shell out to [deploy/backup.sh](deploy/backup.sh), the
 one implementation of the archive format, shared with the backup container; don't
 reimplement it in TypeScript. Long actions run as jobs whose state is a file in
 `BACKUP_OUT`, which the page polls: Cloudflare cuts requests off at 100 seconds, and a
 restore restarts the process. Uploads arrive in 16MB chunks: with a proxy, Next buffers
 request bodies and silently truncates past `proxyClientMaxBodySize` (next.config.ts).
+Only one upload is kept on disk at a time, and one that would leave under 2GB free is
+refused (`MIN_FREE_BYTES` in debugTools.ts): the backups volume shares a disk with the database.
+
+The nightly archives are mode 640, owned by the backups folder's owner; the app (uid 1001)
+reads them by joining that folder's group (`BACKUP_GID`, default 1000, in the compose file).
 
 ## Self-hosting
 
@@ -326,7 +338,14 @@ use this to take PDFs only, since they get merged into one document for Arc. The
   (e.g. the per-process rate limiter in the Rubric proxy).
 - Commit messages are a **single imperative subject line, no body, no `Co-Authored-By`
   trailer**. See `git log`.
-- Never commit `.env` / `deploy/.env.*`, real member data, or Rubric credentials.
-- `main` → production stack, `dev` → public demo stack; pushing either triggers the
-  self-hosted-runner deploy in [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
-  Don't push without being asked.
+- Never commit `.env` / `deploy/.env.*`, `AGENTS.md` (`next dev` regenerates it), real
+  member data, or Rubric credentials.
+- Branches: work goes to `dev` first, which deploys nothing. Then `main` (fast-forwarded
+  from `dev`), which deploys both production stacks, one per society. Then `demo` (`main`
+  merged in), which deploys the public demo: the same code, made the demo by its settings
+  alone (`DEMO_MODE=1` for no login, `SEED_DEMO_DATA=1` and a nightly re-seed for fake
+  data), so `demo` carries no code of its own. Deploys run from
+  [.github/workflows/deploy.yml](.github/workflows/deploy.yml) on a self-hosted runner.
+  Don't push without being asked, and ask again before `main`.
+- Self-hosted installs follow release tags (`v1.x.y`), not branches; nothing reaches
+  them until a tag is pushed.

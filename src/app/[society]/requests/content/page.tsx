@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,14 +7,15 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { YearPicker } from "@/components/shared/YearPicker";
 import { eventYearRange, parseYear, yearOptions } from "@/lib/years";
-import { formatDate, formatTimeRange, statusLabel, cn } from "@/lib/utils";
-import { urgency, STAGE_CLASSES } from "@/lib/urgency";
+import { formatDate, formatTimeRange, statusLabel, cn, requestVisibility, firstParam } from "@/lib/utils";
+import { othersDemo } from "@/lib/tutorial";
+import { urgency, STAGE_CLASSES, societyToday } from "@/lib/urgency";
 import { Plus, FileText, Image as ImageIcon, AlignLeft, QrCode, Calendar, Clock, MapPin } from "lucide-react";
-import type { ContentRequestStatus } from "@prisma/client";
+import { ContentRequestStatus } from "@prisma/client";
 
 interface Props {
   params: Promise<{ society: string }>;
-  searchParams: Promise<{ status?: string; year?: string }>;
+  searchParams: Promise<{ status?: string | string[]; year?: string | string[] }>;
 }
 
 // Tab order: ASSIGNED / Awaiting exec action removed; "Need more information" sits before In Progress.
@@ -31,26 +31,23 @@ const CLOSED = new Set(["COMPLETED", "CANCELLED"]);
 
 export default async function ContentRequestsPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
-  const { status, year: yearParam } = await searchParams;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
+  const sp = await searchParams;
+  // Only a real status reaches the query: an unknown one is the All tab.
+  const statusValue = firstParam(sp.status);
+  const status = Object.values(ContentRequestStatus).find((s) => s === statusValue);
+  const yearParam = firstParam(sp.year);
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
   const now = new Date();
 
-  const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
   const owner = {
     societyId: membership.societyId,
-    ...(!canSeeAll ? { submittedById: session.user.id } : {}),
+    ...requestVisibility(membership, session.user.id),
+    ...othersDemo("eventName", session.user.id),
   };
 
   // Events go by calendar year (src/lib/years.ts). The picker offers every year from the
   // first event to whichever is later of this year and the furthest-out event.
-  const thisYear = new Date().getUTCFullYear();
+  const thisYear = societyToday(membership.society.timezone).getUTCFullYear();
   const year = parseYear(yearParam) ?? thisYear;
   const { start, end } = eventYearRange(year);
   const scope = { ...owner, startDate: { gte: start, lt: end } };
@@ -63,7 +60,7 @@ export default async function ContentRequestsPage({ params, searchParams }: Prop
 
   const [rows, counts] = await Promise.all([
     prisma.contentRequest.findMany({
-      where: { ...scope, ...(status ? { status: status as ContentRequestStatus } : {}) },
+      where: { ...scope, ...(status ? { status } : {}) },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
     }),
     prisma.contentRequest.groupBy({ by: ["status"], where: scope, _count: true }),

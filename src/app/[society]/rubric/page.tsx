@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
 import { Loader2, TrendingUp, Users, Package, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 import { flattenEvents } from "@/lib/rubricEvents";
 import { formatCurrency } from "@/lib/utils";
 
@@ -46,39 +45,28 @@ function StatCard({ label, value, icon: Icon, color = "blue" }: {
 
 export default function RubricOverviewPage() {
   const params = useParams<{ society: string }>();
-  const rubric = useRubricClient(params.society);
-  const [data, setData] = useState<OverviewData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.allSettled([
-      rubric.call({ type: "getSocietyPortalMembershipList", viewFilter: "active" }),
-      rubric.call({ type: "getSocietyPortalTicketingHomePage" }),
-      rubric.call({ type: "getSocietyPortalSettlementList" }),
-      rubric.call({ type: "getSocietyTeamMembers", complete: true }),
-    ]).then(([membership, ticketing, settlement, team]) => {
-      // Each card tolerates a single failed call, but if every one failed because
-      // Rubric was never set up, show the setup prompt instead of empty stats.
-      const results = [membership, ticketing, settlement, team];
-      const reason = (r: PromiseSettledResult<unknown>) =>
-        r.status === "rejected" && r.reason instanceof Error ? r.reason.message : null;
-      if (results.every((r) => reason(r) === "not_configured")) {
-        setError("not_configured");
-        return;
-      }
-      setData({
-        membership: membership.status === "fulfilled" ? membership.value : null,
-        ticketing: ticketing.status === "fulfilled" ? ticketing.value : null,
-        settlement: settlement.status === "fulfilled" ? settlement.value : null,
-        team: team.status === "fulfilled" ? team.value : null,
-      });
-    }).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg === "not_configured" ? "not_configured" : msg);
-    }).finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society]);
+  const { data, error, loading } = useRubricQuery<OverviewData>(params.society, async (call) => {
+    const [membership, ticketing, settlement, team] = await Promise.allSettled([
+      call({ type: "getSocietyPortalMembershipList", viewFilter: "active" }),
+      call({ type: "getSocietyPortalTicketingHomePage" }),
+      call({ type: "getSocietyPortalSettlementList" }),
+      call({ type: "getSocietyTeamMembers", complete: true }),
+    ]);
+    // Each card tolerates a single failed call, but if every one failed because
+    // Rubric was never set up, show the setup prompt instead of empty stats.
+    const results = [membership, ticketing, settlement, team];
+    const reason = (r: PromiseSettledResult<unknown>) =>
+      r.status === "rejected" && r.reason instanceof Error ? r.reason.message : null;
+    if (results.every((r) => reason(r) === "not_configured")) throw new Error("not_configured");
+    // Every call failed for some other reason: say so rather than show a page of dashes.
+    if (results.every((r) => r.status === "rejected")) throw new Error(reason(results[0]) ?? "Could not reach Rubric");
+    return {
+      membership: membership.status === "fulfilled" ? membership.value : null,
+      ticketing: ticketing.status === "fulfilled" ? ticketing.value : null,
+      settlement: settlement.status === "fulfilled" ? settlement.value : null,
+      team: team.status === "fulfilled" ? team.value : null,
+    };
+  });
 
   if (loading) return (
     <RubricShell>

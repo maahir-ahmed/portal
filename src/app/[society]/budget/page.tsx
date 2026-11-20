@@ -1,6 +1,6 @@
 import { wallClockNow } from "@/lib/urgency";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { othersDemo, othersDemoCategory } from "@/lib/tutorial";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import { COUNTS_TOWARD_SPEND, ensureAllocations, serialiseAllocation, serialiseCategory } from "@/lib/budget";
 import { financialYearOf, financialYearRange, parseYear, yearOptions, FIRST_YEAR } from "@/lib/years";
@@ -16,14 +16,7 @@ const round = (n: number) => Math.round(n * 100) / 100;
 
 export default async function BudgetPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
   // All members can see the budget totals; only execs get the individual claims
   // list (treasury claims are private) and the edit controls.
   const isExec = membership.role === "EXECUTIVE";
@@ -37,12 +30,12 @@ export default async function BudgetPage({ params, searchParams }: Props) {
   const [yearRows, categoriesRaw, treasuryRaw] = await Promise.all([
     prisma.societyYear.findMany({ where: { societyId } }),
     prisma.budgetCategory.findMany({
-      where: { societyId },
+      where: { societyId, ...othersDemoCategory(session.user.id) },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       include: { allocations: true },
     }),
     prisma.treasuryRequest.findMany({
-      where: { societyId, status: { not: "DRAFT" } },
+      where: { societyId, status: { not: "DRAFT" }, ...othersDemo("description", session.user.id) },
       orderBy: { expenseDate: "desc" },
       include: { submittedBy: { select: { name: true } } },
     }),

@@ -1,14 +1,15 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { flagsFrom } from "@/lib/modules";
+import { flagsFrom, MODULE_SELECT } from "@/lib/modules";
 import Link from "next/link";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatCurrency, canViewRequest } from "@/lib/utils";
+import { formatDate, formatCurrency, requestVisibility } from "@/lib/utils";
+import { othersDemo } from "@/lib/tutorial";
 import {
   FileText, Building2, Wallet, AlertCircle, Plus
 } from "lucide-react";
@@ -24,7 +25,8 @@ export default async function DashboardPage({ params }: Props) {
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: true },
+    // Only what this page reads: the full row would carry the Rubric credentials.
+    include: { society: { select: { setupCompletedAt: true, ...MODULE_SELECT } } },
   });
   if (!membership) redirect("/");
 
@@ -35,7 +37,8 @@ export default async function DashboardPage({ params }: Props) {
   const modules = flagsFrom(membership.society);
   // Recent events and bookings, limited to what this member could open (canViewRequest).
   const me = session.user.id;
-  const visible = canViewRequest(membership, me, { submittedById: "" }) ? {} : { OR: [{ submittedById: me }, { assignedToId: me }] };
+  const visible = requestVisibility(membership, me);
+  const demo = (field: string) => othersDemo(field, me);
 
   const [
     contentPending,
@@ -46,29 +49,29 @@ export default async function DashboardPage({ params }: Props) {
     recentTreasury,
   ] = await Promise.all([
     prisma.contentRequest.count({
-      where: { societyId, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+      where: { societyId, status: { notIn: ["COMPLETED", "CANCELLED"] }, ...visible, ...demo("eventName") },
     }),
     prisma.roomBooking.count({
-      where: { societyId, status: { notIn: ["COMPLETED", "REJECTED"] } },
+      where: { societyId, status: { notIn: ["COMPLETED", "REJECTED"] }, ...visible, ...demo("eventName") },
     }),
     prisma.treasuryRequest.count({
       // Claims are private to their submitter; only execs see everyone's.
-      where: { societyId, status: { notIn: ["REIMBURSED", "REJECTED"] }, ...(isExec ? {} : { submittedById: session.user.id }) },
+      where: { societyId, status: { notIn: ["REIMBURSED", "REJECTED"] }, ...(isExec ? {} : { submittedById: session.user.id }), ...demo("description") },
     }),
     prisma.contentRequest.findMany({
-      where: { societyId, ...visible },
+      where: { societyId, ...visible, ...demo("eventName") },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5,
     }),
     prisma.roomBooking.findMany({
-      where: { societyId, ...visible },
+      where: { societyId, ...visible, ...demo("eventName") },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5,
     }),
     prisma.treasuryRequest.findMany({
-      where: { societyId, ...(isExec ? {} : { submittedById: session.user.id }) },
+      where: { societyId, ...(isExec ? {} : { submittedById: session.user.id }), ...demo("description") },
       include: { submittedBy: { select: { id: true, name: true, avatarUrl: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5,
@@ -77,7 +80,7 @@ export default async function DashboardPage({ params }: Props) {
 
   const awaitingReimbursement = isExec
     ? await prisma.treasuryRequest.count({
-        where: { societyId, status: "REIMBURSEMENT_PENDING" },
+        where: { societyId, status: "REIMBURSEMENT_PENDING", ...demo("description") },
       })
     : 0;
 
@@ -115,11 +118,11 @@ export default async function DashboardPage({ params }: Props) {
 
       {/* Stats */}
       <div data-tour="dash-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {modules.events && <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} color="blue" />}
-        {modules.roomBookings && <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} color="purple" />}
-        <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} color="green" />
+        {modules.events && <StatsCard title="Open Content Requests" value={contentPending} icon={FileText} />}
+        {modules.roomBookings && <StatsCard title="Pending Room Bookings" value={roomPending} icon={Building2} />}
+        <StatsCard title="Active Reimbursements" value={treasuryPending} icon={Wallet} />
         {isExec && (
-          <StatsCard title="Awaiting Reimbursement" value={awaitingReimbursement} icon={AlertCircle} color="yellow" />
+          <StatsCard title="Awaiting Reimbursement" value={awaitingReimbursement} icon={AlertCircle} />
         )}
       </div>
 

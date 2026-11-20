@@ -1,18 +1,16 @@
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { allocationData, allocationSchema, ensureAllocations, serialiseCategory } from "@/lib/budget";
 
 // List budget categories (any member, the treasury form needs them too).
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   await ensureAllocations(membership!.societyId);
   const categories = await prisma.budgetCategory.findMany({
@@ -34,11 +32,9 @@ const createSchema = z.object({
 
 // Create a category (exec only), with its amount for the year being viewed.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const { allocation, ...body } = createSchema.parse(await req.json());
@@ -46,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     const created = await prisma.budgetCategory.create({
       data: {
         societyId: membership!.societyId, sortOrder: count, ...body,
-        ...(allocation && { allocations: { create: await allocationData(membership!.societyId, allocation) } }),
+        ...(allocation && { allocations: { create: await allocationData(membership!.societyId, allocation, membership!.society.timezone) } }),
       },
     });
     await createAuditLog({
@@ -65,6 +61,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "A category with that name already exists" }, { status: 409 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

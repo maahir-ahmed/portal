@@ -4,7 +4,7 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { encryptSecret, NO_SECRET_KEY, secretStorageReady } from "@/lib/secrets";
 import { demoEnabled } from "@/lib/rubricDemo";
-import { botSettings } from "@/lib/serverSettings";
+import { ownsServerSettings, botSettings } from "@/lib/serverSettings";
 import { registerCommands } from "@/lib/discordBot";
 import { z } from "zod";
 
@@ -14,6 +14,8 @@ import { z } from "zod";
 type Params = { params: Promise<{ society: string }> };
 
 async function exec(society: string) {
+  // Not found rather than forbidden, as for backups: another society's slug gets no confirmation.
+  if (!ownsServerSettings(society)) return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
   const { session, error } = await requireAuth();
   if (error) return { error };
   const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
@@ -37,7 +39,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
     appId: bot?.appId ?? own?.discordAppId ?? "",
     publicKey: bot?.publicKey ?? own?.discordPublicKey ?? "",
     guildId: bot?.guildId ?? own?.discordGuildId ?? "",
-    tokenSet: !!bot?.token || !!own?.discordBotToken,
+    // Only a token stored in the app: one from the env file is not kept by a blank box, the route refuses it.
+    tokenSet: !!own?.discordBotToken,
     interactionsUrl: `${base}/api/discord/interactions`,
   });
 }
@@ -101,6 +104,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   // Saved either way; a refusal here is something to fix in Discord, said in its words.
   const bot = body.on ? await botSettings() : null;
-  const problem = bot ? await registerCommands(bot) : null;
+  // Saved as on but still off: the stored token was encrypted under a key this server no longer has.
+  const problem = bot ? await registerCommands(bot) : body.on ? "The token saved earlier can't be read on this server, so the bot is still off. Paste the token again." : null;
   return NextResponse.json({ ok: true, problem });
 }

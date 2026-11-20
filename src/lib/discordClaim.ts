@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { prisma } from "./db";
 import { createAuditLog } from "./audit";
 import { notifyExecs } from "./notifications";
@@ -6,6 +7,10 @@ import { wallClockNow } from "./urgency";
 import { isPlausibleDate } from "./utils";
 import { ALLOWED_EXTS, ALLOWED_TYPES, MAX_UPLOAD, extOf, saveUpload } from "./uploads";
 import { memberFor, NOT_LINKED, type Attachment, type DiscordMessage, type Interaction } from "./discordBot";
+import { money as moneySchema } from "@/lib/schemas";
+import { checkBank } from "@/lib/bank";
+
+export { checkBank };
 
 // /claim: a reimbursement claim from Discord. The command saves the receipt and a DRAFT
 // claim, then shows it back with the society's rules and two buttons. "Submit claim"
@@ -35,7 +40,10 @@ export async function handleClaim(i: Interaction): Promise<DiscordMessage | stri
   });
   if (!society) return NOT_LINKED;
 
-  const amount = Math.round(Number(opt(i, "amount")) * 100) / 100;
+  // Checked before the receipt is saved: an amount past the column would fail after it.
+  const parsedAmount = moneySchema.safeParse(Number(opt(i, "amount")));
+  if (!parsedAmount.success) return "The amount has to be more than $0 and under $100 million.";
+  const amount = parsedAmount.data;
   if (!(amount > 0)) return "The amount has to be more than $0.";
   const what = String(opt(i, "what") ?? "").trim();
   const where = String(opt(i, "where") ?? "").trim();
@@ -171,10 +179,25 @@ export async function handleClaimButton(i: Interaction) {
   const { member, draft } = found;
 
   if (action === "cancel") {
-    await prisma.$transaction([
-      prisma.thread.deleteMany({ where: { treasuryRequestId: id } }),
-      prisma.treasuryRequest.deleteMany({ where: { id, status: "DRAFT" } }),
-    ]);
+    // As the website's delete does: the thread goes only with a claim that is still a
+    // draft, so one submitted on the website a moment ago keeps its thread.
+    const gone = { id, submittedById: member.id, status: "DRAFT" as const };
+    const cancelled = await prisma
+      .$transaction(async (tx) => {
+        await tx.thread.deleteMany({ where: { treasuryRequest: { is: gone } } });
+        const { count } = await tx.treasuryRequest.deleteMany({ where: gone });
+        if (!count) throw new Error("not a draft any more");
+      })
+      .then(() => true, () => false);
+    if (!cancelled) return update({ content: "That claim has already been submitted." });
+    await createAuditLog({
+      societyId: member.societyId,
+      userId: member.id,
+      action: "DELETE",
+      entityType: "TreasuryRequest",
+      entityId: id,
+      metadata: { amount: Number(draft.amount), status: "DRAFT", via: "discord" },
+    });
     return update({ content: "Cancelled. Nothing was sent to the executives." });
   }
 
@@ -229,21 +252,6 @@ export async function handleClaimBank(i: Interaction) {
   return update({ content: await submit(found.member, id, account.id) });
 }
 
-/** BSB as 123-456, a 4 to 10 digit account number, and an optional PayID. */
-export function checkBank(accountName: string, bsb: string, accountNumber: string, payId: string) {
-  const bsbDigits = bsb.replace(/[\s-]/g, "");
-  const account = accountNumber.replace(/[\s-]/g, "");
-  if (!accountName) return { error: "Add the account name." };
-  if (!/^\d{6}$/.test(bsbDigits)) return { error: "A BSB is 6 digits, like 123-456." };
-  if (!/^\d{4,10}$/.test(account)) return { error: "An account number is 4 to 10 digits." };
-  return {
-    accountName: accountName.slice(0, 100),
-    bsb: `${bsbDigits.slice(0, 3)}-${bsbDigits.slice(3)}`,
-    accountNumber: account,
-    payId: payId.slice(0, 100) || null,
-  };
-}
-
 /** DRAFT → submitted, once even if the button is pressed twice. */
 async function submit(member: { id: string; name: string; societyId: string }, id: string, bankAccountId: string) {
   const done = await prisma.treasuryRequest.updateMany({
@@ -261,12 +269,16 @@ async function submit(member: { id: string; name: string; societyId: string }, i
     entityId: id,
     metadata: { status: "DRAFT → REIMBURSEMENT_PENDING", via: "Discord /claim" },
   });
-  await notifyExecs(
-    member.societyId,
-    "EXECUTIVE_ACTION_REQUIRED",
-    `Reimbursement to pay: ${money(amount)} to ${member.name}`,
-    "Ready to pay out. Spending approval happens in the committee Discord.",
-    `/requests/treasury/${id}`
+  // After the reply: the exec-queue webhook can take up to 5 seconds, and Discord shows
+  // "This interaction failed" if the answer takes more than 3, although the claim is filed.
+  after(() =>
+    notifyExecs(
+      member.societyId,
+      "EXECUTIVE_ACTION_REQUIRED",
+      `Reimbursement to pay: ${money(amount)} to ${member.name}`,
+      "Ready to pay out. Spending approval happens in the committee Discord.",
+      `/requests/treasury/${id}`
+    ).catch((err) => console.warn("/claim: exec notification failed:", err instanceof Error ? err.message : err))
   );
   return (
     `Submitted: ${money(amount)}. The executives have it, and you'll get a notification when it's paid.` +

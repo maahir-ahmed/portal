@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createNotification } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { createAuditLog } from "@/lib/audit";
+import { httpUrl } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
 const schema = z.object({
-  rubricEventLink: z.string().max(2000).nullable().optional(),
-  rubricQrCodeUrl: z.string().max(2000).nullable().optional(),
+  rubricEventLink: httpUrl.or(z.literal("")).nullable().optional(),
+  rubricQrCodeUrl: httpUrl.or(z.literal("")).nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   // JSON only (the one caller, RubricForm, sends JSON). A form-encoded body used to be
   // accepted too, and that is the one shape another site can post here without the
@@ -33,12 +31,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Attaching the link starts the work only on a request still waiting for it; fixing
+  // the link on a draft, an in-progress, completed or cancelled one leaves its status alone.
+  const startsWork = request.status === "SUBMITTED" || request.status === "AWAITING_INFORMATION";
   const updated = await prisma.contentRequest.update({
     where: { id },
     data: {
       rubricEventLink: body.rubricEventLink,
       rubricQrCodeUrl: body.rubricQrCodeUrl || null,
-      status: "IN_PROGRESS",
+      ...(startsWork ? { status: "IN_PROGRESS" as const } : {}),
     },
   });
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     action: "UPDATE",
     entityType: "ContentRequest",
     entityId: id,
-    metadata: { rubricAttached: true },
+    metadata: { rubricAttached: true, ...(startsWork ? { from: request.status, to: "IN_PROGRESS" } : {}) },
   });
 
   await createNotification({

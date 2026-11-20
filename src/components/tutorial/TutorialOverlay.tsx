@@ -25,6 +25,14 @@ import {
 
 const SAVE_KEY = "society-tutorial";
 
+// Storage access throws where cookies are blocked (and in some webviews). This mounts in
+// the society layout, so an unguarded read would take every authenticated page down.
+const store = {
+  get: () => { try { return localStorage.getItem(SAVE_KEY); } catch { return null; } },
+  set: (v: string) => { try { localStorage.setItem(SAVE_KEY, v); } catch { /* the tour just won't resume after a reload */ } },
+  remove: () => { try { localStorage.removeItem(SAVE_KEY); } catch { /* nothing stored */ } },
+};
+
 interface Saved {
   stepId: string;
   ids: DemoIds;
@@ -51,6 +59,9 @@ export function TutorialOverlay() {
   const [waiting, setWaiting] = useState(false);
   const [busy, setBusy] = useState(false);
   const navigatedFor = useRef<string | null>(null);
+  // The welcome step's demo POST while it is in flight: a cleanup must wait for it, or
+  // its DELETE can run first and the records created after it survive as orphans.
+  const creating = useRef<Promise<unknown> | null>(null);
 
   const slug = params?.society;
   const role = (
@@ -74,6 +85,7 @@ export function TutorialOverlay() {
   // creating them too.
   const wipeDemo = useCallback(async () => {
     if (!slug) return;
+    await creating.current;
     await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "DELETE" }).catch(() => {});
     router.refresh();
   }, [slug, router]);
@@ -83,7 +95,7 @@ export function TutorialOverlay() {
       setActive(false);
       setPage(null);
       setRect(null);
-      localStorage.removeItem(SAVE_KEY);
+      store.remove();
       if (cleanup) {
         void wipeDemo();
         setIds({});
@@ -96,8 +108,8 @@ export function TutorialOverlay() {
   useEffect(() => {
     function start(event: Event) {
       const scope = (event as CustomEvent<{ scope?: "page" }>).detail?.scope;
-      const saved = localStorage.getItem(SAVE_KEY);
-      localStorage.removeItem(SAVE_KEY);
+      const saved = store.get();
+      store.remove();
       setIds({});
       setIndex(0);
       setPage(scope === "page" ? normalisePage(pathname, slug) : null);
@@ -117,7 +129,7 @@ export function TutorialOverlay() {
 
   // Restores tour position from localStorage, which only exists on the client.
   useEffect(() => {
-    const saved = localStorage.getItem(SAVE_KEY);
+    const saved = store.get();
     // Wait for the feature flags too: the saved step is found by its place in the list.
     if (!saved || !modules) return;
     try {
@@ -130,14 +142,14 @@ export function TutorialOverlay() {
         setActive(true);
       }
     } catch {
-      localStorage.removeItem(SAVE_KEY);
+      store.remove();
     }
     // role arrives with the session and modules with a fetch; resume once both have
   }, [role, modules]);
 
   useEffect(() => {
     if (active && step && page === null) {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ stepId: step.id, ids } satisfies Saved));
+      store.set(JSON.stringify({ stepId: step.id, ids } satisfies Saved));
     }
   }, [active, step, ids, page]);
 
@@ -236,10 +248,13 @@ export function TutorialOverlay() {
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
   const next = useCallback(async () => {
-    if (!step) return;
+    if (!step || busy) return; // arrow keys repeat: a second press must not POST the demo twice
     if (step.kind === "welcome" && slug) {
       setBusy(true);
-      const res = await fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
+      const request = fetch(`/api/societies/${slug}/tutorial/demo`, { method: "POST" }).catch(() => null);
+      creating.current = request;
+      const res = await request;
+      creating.current = null;
       setBusy(false);
       if (res?.ok) {
         setIds(await res.json());
@@ -261,11 +276,18 @@ export function TutorialOverlay() {
       return;
     }
     setIndex((i) => Math.min(steps.length - 1, i + 1));
-  }, [step, slug, steps.length, wipeDemo, close, page, index, router]);
+  }, [step, busy, slug, steps.length, wipeDemo, close, page, index, router]);
 
   useEffect(() => {
     if (!active) return;
     function onKey(e: KeyboardEvent) {
+      // The overlay lets clicks through, so people type in real fields mid-tour: arrows
+      // there move the caret, and Escape belongs to whatever dropdown or dialog is open
+      // (Radix marks the keys it handled as defaultPrevented).
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")) return;
+      if (e.key === "Escape" && document.querySelector('[role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"]')) return;
       if (e.key === "Escape") close(page === null);
       else if (e.key === "ArrowRight") void next();
       else if (e.key === "ArrowLeft") back();

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle, Users, Download } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 import { csvCell } from "@/lib/csv";
 
 type Filter = "active" | "expired" | "pending";
@@ -25,39 +25,22 @@ interface RubricMember {
 
 export default function RubricMembersPage() {
   const params = useParams<{ society: string }>();
-  const rubric = useRubricClient(params.society);
   const [filter, setFilter] = useState<Filter>("active");
-  const [members, setMembers] = useState<RubricMember[]>([]);
-  const [homeData, setHomeData] = useState<Record<string, unknown> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Switching filters quickly can have an older list arrive after a newer one; only
-  // the latest request may set the table.
-  const latest = useRef(0);
-  const load = useCallback((f: Filter) => {
-    const mine = ++latest.current;
-    setLoading(true);
-    Promise.all([
-      rubric.call({ type: "getSocietyPortalMembershipHomePage" }),
-      rubric.call({ type: "getSocietyPortalMembershipList", viewFilter: f }),
-    ]).then(([home, list]) => {
-      if (mine !== latest.current) return;
-      const memberships = (list.allMemberships ?? []) as RubricMember[];
-      setMembers(memberships);
-      setHomeData(home as Record<string, unknown>);
-    }).catch((err: unknown) => {
-      if (mine !== latest.current) return;
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg === "not_configured" ? "not_configured" : msg);
-    }).finally(() => {
-      if (mine === latest.current) setLoading(false);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets its own loading flag; state already starts in that value on mount
-  useEffect(() => { load(filter); }, [filter, load]);
+  // Switching filters quickly can have an older list arrive after a newer one; the hook
+  // only keeps the latest answer.
+  const { data, error, loading } = useRubricQuery(
+    params.society,
+    async (call) => {
+      const [home, list] = await Promise.all([
+        call({ type: "getSocietyPortalMembershipHomePage" }),
+        call({ type: "getSocietyPortalMembershipList", viewFilter: filter }),
+      ]);
+      return { members: (list.allMemberships ?? []) as RubricMember[], homeData: home as Record<string, unknown> };
+    },
+    [filter]
+  );
+  const members = data?.members ?? [];
+  const homeData = data?.homeData ?? null;
 
   function exportCsv() {
     if (members.length === 0) return;

@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { buildMinutes } from "@/lib/ahegsMinutes";
 import { z } from "zod";
@@ -21,12 +21,9 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const body = schema.parse(await req.json());

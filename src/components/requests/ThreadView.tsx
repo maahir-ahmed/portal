@@ -47,6 +47,7 @@ export function ThreadView({
       const newComment = await res.json();
       setComments((prev) => [...prev, newComment]);
       setContent("");
+      setIsInternal(false); // else the next reply defaults to internal and the requester never sees it
     } else {
       toast.error("Failed to post comment");
     }

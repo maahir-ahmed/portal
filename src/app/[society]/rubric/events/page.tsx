@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- Rubric serves these images from hosts we do not
    know ahead of time; next/image would need a wildcard remotePattern to render them. */
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import { SubmitToRubricDialog } from "@/components/requests/SubmitToRubricDialog
 import { Loader2, AlertCircle, ExternalLink, Calendar, Ticket, Eye, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 import { flattenEvents, type RubricEvent } from "@/lib/rubricEvents";
 
 export default function RubricEventsPage() {
@@ -25,25 +26,14 @@ export default function RubricEventsPage() {
     (session?.user as { memberships?: { society: { slug: string }; role: string }[] } | undefined)
       ?.memberships?.find((m) => m.society.slug === params.society)?.role === "EXECUTIVE";
   const rubric = useRubricClient(params.society);
-  const [events, setEvents] = useState<RubricEvent[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Now on the browser's clock, in the stored wall-clock-as-UTC shape the dialog reads.
+  const [startNow] = useState(() => new Date(Date.now() - new Date().getTimezoneOffset() * 60000));
   const [archiving, setArchiving] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    rubric.call({ type: "getSocietyPortalTicketingHomePage" })
-      .then((d) => setEvents(flattenEvents(d)))
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        setError(msg === "not_configured" ? "not_configured" : msg);
-      })
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society]);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets its own loading flag; state already starts in that value on mount
-  useEffect(() => { load(); }, [load]);
+  const { data, error, loading, reload } = useRubricQuery(params.society, async (call) =>
+    flattenEvents(await call({ type: "getSocietyPortalTicketingHomePage" }))
+  );
+  const events: RubricEvent[] = data ?? [];
 
   async function handleArchive(eventId: string | number) {
     if (!confirm("Archive this event on Rubric?")) return;
@@ -51,7 +41,7 @@ export default function RubricEventsPage() {
     try {
       await rubric.call({ type: "archiveEvent", eventid: String(eventId) });
       toast.success("Event archived on Rubric");
-      load();
+      reload();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to archive");
     } finally {
@@ -171,7 +161,7 @@ export default function RubricEventsPage() {
             defaultEventName=""
             defaultDescription=""
             defaultAddress=""
-            defaultStartDate={new Date()}
+            defaultStartDate={startNow}
           />
         )}
       </div>

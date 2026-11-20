@@ -34,7 +34,12 @@ assert.deepEqual(readTable(Buffer.from("name,email\n")), [["name", "email"]]);
 
 const ctx: ImportContext = {
   members: new Set(["old@example.com"]),
-  titles: new Map([["events director", { name: "Events Director", roleLevel: "DIRECTOR", portfolioId: "p-events" }]]),
+  titles: new Map([
+    ["DIRECTOR|events director", { name: "Events Director", roleLevel: "DIRECTOR", portfolioId: "p-events" }],
+    // Same name at two levels: each row must resolve at its own.
+    ["DIRECTOR|coordinator", { name: "Coordinator", roleLevel: "DIRECTOR", portfolioId: "p-events" }],
+    ["SUBCOMMITTEE|coordinator", { name: "Coordinator", roleLevel: "SUBCOMMITTEE", portfolioId: null }],
+  ]),
   portfolios: new Map([["events", { id: "p-events", name: "Events" }]]),
 };
 const run = (csv: string) => checkImport(parseCsv(csv), ctx);
@@ -46,6 +51,13 @@ assert.equal(t.rows[0].status, "add");
 assert.deepEqual(t.rows[0].portfolios, ["Events", "Marketing"]);
 assert.deepEqual(t.newPortfolios, ["Marketing"]);
 assert.equal(t.rows[0].title, "Events Director");
+
+const dup = checkImport(
+  parseCsv("name,email,role,title\nA,a@example.com,Director,Coordinator\nB,b@example.com,Subcommittee,Coordinator"),
+  ctx,
+);
+assert.deepEqual(dup.rows.map((r) => r.status), ["add", "add"]);
+assert.deepEqual(dup.rows.map((r) => r.title), ["Coordinator", "Coordinator"]);
 
 // Headers are matched loosely; required columns must be there.
 assert.match(run("Name,E-mail,role\n").error!, /Missing: email/);
@@ -77,6 +89,14 @@ assert.equal(by.get(8)!.status, "skip");
 assert.equal(bad.rows.length, 7); // the blank line is not a row
 assert.deepEqual(bad.newPortfolios, []); // only the skipped row used "New One"
 
+// Student IDs follow the Account page's rule (z + 7 digits); a bare number is a row error.
+const ids = checkImport(
+  parseCsv("name,email,role,student_id\nA,a@x.io,Director,1234567\nB,b@x.io,Director,Z1234567\nC,c@x.io,Director,"),
+  ctx,
+);
+assert.match(ids.rows[0].problems[0], /Student ID "1234567"/);
+assert.equal(ids.rows[1].studentId, "z1234567");
+assert.equal(ids.rows[2].status, "add");
 
 // Hostile workbooks: they must fail fast (or be skipped), not take the server down.
 const sheetXml = (cells: string) =>
@@ -95,6 +115,21 @@ assert.throws(
   () => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml", sheetXml('<c r="ZZZZZZ1" t="inlineStr"><is><t>x</t></is></c>')]]))),
   /past the last column/,
   "a cell past column XFD must be refused, not padded out"
+);
+// Every row claiming the LAST legal column would still densify to 16,384 cells a row.
+const wide = Buffer.from(
+  `<worksheet><sheetData>${'<row><c r="XFD1" t="inlineStr"><is><t>x</t></is></c></row>'.repeat(200)}</sheetData></worksheet>`
+);
+assert.throws(
+  () => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml", wide]]))),
+  /too large/,
+  "rows padded out to the last column must be refused before they densify"
+);
+assert.throws(
+  () => readTable(writeZip(new Map([["xl/worksheets/sheet1.xml",
+    Buffer.from(`<worksheet><sheetData>${"<row>".repeat(30_000)}</sheetData></worksheet>`)]]))),
+  /more than|never closes/,
+  "a flood of unclosed rows must be refused before the row regex runs"
 );
 
 console.log("check-import: ok");

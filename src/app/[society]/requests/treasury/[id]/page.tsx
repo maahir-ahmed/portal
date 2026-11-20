@@ -1,5 +1,5 @@
-import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { modulesForSociety } from "@/lib/modulesServer";
 import Link from "next/link";
@@ -26,14 +26,7 @@ const STATUSES: TreasuryStatus[] = ["DRAFT", "REIMBURSEMENT_PENDING", "REJECTED"
 
 export default async function TreasuryDetailPage({ params }: Props) {
   const { society: societySlug, id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
 
   const isExec = membership.role === "EXECUTIVE";
   const { budget } = await modulesForSociety(membership.societyId);
@@ -115,6 +108,7 @@ export default async function TreasuryDetailPage({ params }: Props) {
                 locationSupplier: request.locationSupplier,
                 contactEmail: request.contactEmail,
               }}
+              isDraft={request.status === "DRAFT"}
               receipts={request.receipts.map((r) => ({ id: r.id, fileName: r.fileName, fileUrl: r.fileUrl }))}
               linkedEvent={
                 request.contentRequest
@@ -272,7 +266,9 @@ export default async function TreasuryDetailPage({ params }: Props) {
           {isExec && (
             <StatusUpdater
               currentStatus={request.status}
-              statuses={STATUSES}
+              // Reimbursed only through the Mark reimbursed button, which confirms the
+              // amount; this dropdown sends no expectedAmount, so the API refuses it.
+              statuses={request.status === "REIMBURSED" ? STATUSES : STATUSES.filter((s) => s !== "REIMBURSED")}
               apiPath={`/api/societies/${societySlug}/treasury/${request.id}`}
             />
           )}

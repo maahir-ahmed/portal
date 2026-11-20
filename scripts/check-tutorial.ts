@@ -19,11 +19,20 @@ const anchors = new Set(
     [m[1], m[2]].filter(Boolean) as string[]
   )
 );
-// Template-literal anchors (`nav-${item.tour}` etc.) can't be read statically.
+// Template-literal anchors (`nav-${item.tour}`) can't be read as written, so each prefix says where
+// its suffixes are declared, and they are read from there: delete a sidebar entry and its
+// `nav-*` anchor goes with it, which fails the step that points at it. A prefix without a rule
+// fails too, so a new template anchor can't slip through unchecked.
+const TEMPLATE_ANCHORS: Record<string, { file: string; suffix: RegExp }> = {
+  nav: { file: "src/components/layout/Sidebar.tsx", suffix: /\btour:\s*"([a-z-]+)"/g },
+  "budget-tab": { file: "src/components/budget/SpendingBudgetClient.tsx", suffix: /\["([a-z-]+)",\s*[`"]/g },
+};
 for (const m of source.matchAll(/data-tour=\{`([a-z-]+)-\$\{[^}]+\}`\}/g)) {
-  for (const suffix of ["dashboard", "content", "room", "treasury", "printing", "budget", "queue", "board", "members", "ahegs", "rubric", "settings", "account", "current", "comparison"]) {
-    anchors.add(`${m[1]}-${suffix}`);
-  }
+  const rule = TEMPLATE_ANCHORS[m[1]];
+  assert.ok(rule, `data-tour template "${m[1]}-\${...}" has no rule in TEMPLATE_ANCHORS`);
+  const suffixes = [...readFileSync(rule.file, "utf8").matchAll(rule.suffix)].map((x) => x[1]);
+  assert.ok(suffixes.length > 0, `no "${m[1]}" suffixes found in ${rule.file}: update TEMPLATE_ANCHORS`);
+  for (const suffix of suffixes) anchors.add(`${m[1]}-${suffix}`);
 }
 
 const ids = TOUR_STEPS.map((s) => s.id);

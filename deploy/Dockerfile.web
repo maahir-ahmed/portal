@@ -2,7 +2,7 @@
 # effect. A mounted file changes nothing compose can see, so `up -d --build` leaves the
 # old container running and the edit silently never ships; worse, Docker Desktop
 # materialises the mount at container start, so even a reload reads the stale copy.
-FROM nginx:1.28-alpine
+FROM nginx:1.31-alpine
 # Upstream rebuilds lag Alpine's security patches (curl, OpenSSL, expat).
 # ponytail: the layer is cached until --pull brings a new base; to force fresh
 # patches in between, build with --no-cache.

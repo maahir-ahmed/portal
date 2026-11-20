@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Download, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { offline } from "@/lib/utils";
+import { api, runJob } from "@/lib/clientApi";
 
 // Settings > Backups, and the restore offered at the start of setup. Also the helpers
 // Settings > Debugging shares for its own long-running jobs.
@@ -18,30 +18,17 @@ const CHUNK = 16 * 1024 * 1024;
 export const size = (n: number) =>
   n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : n < 1024 ** 3 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
 
-export async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init).catch(offline);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error ?? `Request failed (${res.status})`), { data });
-  return data as T;
-}
-
 /**
- * Starts a job and waits for it. The server runs backups, restores and SQL in the
- * background (a request would hit Cloudflare's 100-second limit), so this polls. A
- * 502/503 means the maintenance page or a restart is in the way: keep waiting.
+ * A getter for a signal that aborts when the component unmounts, so a job poll stops with
+ * the page. Created in the effect, not during render, so React's dev remount gets a live one.
  */
-export async function runJob<T>(url: string, init: RequestInit, base: string, headers: Record<string, string> = {}): Promise<T> {
-  const { job } = await api<{ job: string }>(url, { ...init, headers: { ...headers, ...(init.headers as Record<string, string>) } });
-  for (;;) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const res = await fetch(`${base}/jobs/${job}`, { cache: "no-store", headers }).catch(() => null);
-    if (!res || res.status === 502 || res.status === 503 || res.status === 504) continue;
-    // Signed out by a restore that replaced the account: the reload sorts that out.
-    if (res.status === 401 || res.status === 403) throw Object.assign(new Error("signed out"), { signedOut: true });
-    const s = await res.json();
-    if (s.state === "done") return s.result as T;
-    if (s.state === "failed") throw Object.assign(new Error(s.error), { data: s.result ?? {} });
-  }
+export function useStopOnUnmount() {
+  const ref = useRef<AbortController | null>(null);
+  useEffect(() => {
+    ref.current = new AbortController();
+    return () => ref.current?.abort();
+  }, []);
+  return () => ref.current!.signal;
 }
 
 export function ConfirmName({ societyName, value, onChange }: { societyName: string; value: string; onChange: (v: string) => void }) {
@@ -59,13 +46,18 @@ export function ConfirmName({ societyName, value, onChange }: { societyName: str
 
 interface BackupFile {
   name: string;
+  kind: "nightly" | "manual";
   bytes: number;
   createdAt: string;
 }
 
+const taken = (iso: string) =>
+  new Date(iso).toLocaleString("en-AU", { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+
 export function Backups({ base }: { base: string }) {
   const [files, setFiles] = useState<BackupFile[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const stop = useStopOnUnmount();
 
   const load = useCallback(() => {
     api<BackupFile[]>(base).then(setFiles).catch((e) => toast.error(e.message));
@@ -75,12 +67,13 @@ export function Backups({ base }: { base: string }) {
   async function create() {
     setBusy(true);
     try {
-      const r = await runJob<{ name: string; bytes: number }>(base, { method: "POST" }, base);
+      const r = await runJob<{ name: string; bytes: number }>(base, { method: "POST" }, base, {}, stop());
       toast.success(`Backed up: ${r.name} (${size(r.bytes)})`);
       // Straight to the browser's download bar: the point of pressing it is the file.
       Object.assign(document.createElement("a"), { href: `${base}/${r.name}`, download: r.name }).click();
       load();
     } catch (e) {
+      if (stop().aborted) return;
       toast.error((e as Error).message);
     }
     setBusy(false);
@@ -101,23 +94,38 @@ export function Backups({ base }: { base: string }) {
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {busy ? "Backing up…" : "Back up and download"}
         </Button>
-        {files && files.length > 0 && (
-          <>
-            <p className="text-sm text-muted-foreground">Backups taken here before:</p>
-            <ul className="divide-y rounded-md border bg-background">
-              {files.map((f) => (
-                <li key={f.name} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                  <span className="min-w-0 break-all font-mono text-xs">{f.name}</span>
-                  <span className="flex items-center gap-3 text-xs text-muted-foreground">
-                    {size(f.bytes)}
-                    <a href={`${base}/${f.name}`} download className="inline-flex items-center gap-1 text-foreground underline">
+        {files && (
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Backups on the server</p>
+            <p className="text-xs text-muted-foreground">
+              Nightly backups are taken automatically and kept for two weeks. Ones taken here include the backup made
+              before each restore.
+            </p>
+            {files.length === 0 ? (
+              <p className="text-sm text-muted-foreground">None yet.</p>
+            ) : (
+              <ul className="divide-y rounded-md border bg-background">
+                {files.map((f) => (
+                  <li key={`${f.kind}/${f.name}`} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{taken(f.createdAt)}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {f.kind === "nightly" ? "Nightly" : "Taken here"} · {size(f.bytes)}
+                      </span>
+                    </span>
+                    <a
+                      href={`${base}/${f.name}`}
+                      download
+                      aria-label={`Download the backup from ${taken(f.createdAt)}`}
+                      className="inline-flex items-center gap-1 text-xs underline"
+                    >
                       <Download className="h-3.5 w-3.5" /> Download
                     </a>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -142,6 +150,7 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
   const [problem, setProblem] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
   const [phase, setPhase] = useState<"idle" | "uploading" | "checking" | "restoring" | "restarting">("idle");
+  const stop = useStopOnUnmount();
 
   function reset(f: File | null) {
     setFile(f);
@@ -163,7 +172,9 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
         const chunk = file.slice(offset, offset + CHUNK);
         await api(`${base}/upload?id=${uploadId}&offset=${offset}`, {
           method: "POST",
-          headers: { ...headers, "Content-Type": "application/octet-stream", "X-Chunk-Length": String(chunk.size) },
+          // The whole size too, so the server can refuse an archive it has no room for
+          // before the first chunk rather than partway through.
+          headers: { ...headers, "Content-Type": "application/octet-stream", "X-Chunk-Length": String(chunk.size), "X-Upload-Size": String(file.size) },
           body: chunk,
         });
         setSent(Math.min(file.size, offset + CHUNK));
@@ -176,10 +187,12 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
           `${base}/restore`,
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: uploadId, action: "validate" }) },
           base,
-          headers
+          headers,
+          stop()
         )
       );
     } catch (e) {
+      if (stop().aborted) return;
       setProblem((e as Error).message);
     }
     setPhase("idle");
@@ -193,7 +206,8 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
         `${base}/restore`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "restore", confirm }) },
         base,
-        headers
+        headers,
+        stop()
       );
       if (!r.restarting) {
         toast.success("Restored. Restart the dev server and run npm run db:push.");
@@ -215,6 +229,7 @@ export function Restore({ base, societyName, setupToken }: { base: string; socie
       else window.location.reload();
     } catch (e) {
       const err = e as Error & { data?: { safetyBackup?: string }; signedOut?: boolean };
+      if (stop().aborted) return;
       if (err.signedOut) return window.location.reload();
       setProblem(err.message + (err.data?.safetyBackup ? ` A backup from just before is on this page: ${err.data.safetyBackup}` : ""));
       setPhase("idle");

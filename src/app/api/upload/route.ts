@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireActiveMember } from "@/lib/api";
 import { ALLOWED_EXTS, ALLOWED_TYPES, MAX_UPLOAD, extOf, saveUpload } from "@/lib/uploads";
+import { isEncryptedPdf } from "@/lib/pdfMerge";
 
 // A caller can narrow the allowlist for its own field by posting an `accept` value.
 // AHEGS minutes are PDF-only because they get merged into one document for Arc, and
@@ -41,7 +42,15 @@ export async function POST(req: NextRequest) {
 
   const ext = extOf(file.name);
   if (!allowedExts.includes(ext)) return NextResponse.json({ error: refuse }, { status: 400 });
-  const url = await saveUpload(Buffer.from(await file.arrayBuffer()), ext);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  // A PDF-only field feeds the merge into Arc's files, which can't use a protected PDF.
+  if (narrow === NARROWED.pdf && (await isEncryptedPdf(bytes))) {
+    return NextResponse.json(
+      { error: "This PDF is password-protected or locked against editing, so it can't be combined for Arc. Open it, then save or print it as a new PDF without a password, and upload that." },
+      { status: 400 }
+    );
+  }
+  const url = await saveUpload(bytes, ext);
 
   return NextResponse.json({
     url,

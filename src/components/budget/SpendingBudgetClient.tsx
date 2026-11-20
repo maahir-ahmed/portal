@@ -19,6 +19,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { offline } from "@/lib/utils";
+import { reason } from "@/lib/clientApi";
 
 /** One category's figures for one financial year. */
 export interface YearFigures {
@@ -86,7 +87,7 @@ export function SpendingBudgetClient({
       body: JSON.stringify({ budgetCategoryId: categoryId }),
     }).catch(offline);
     if (res.ok) router.refresh();
-    else toast.error("Could not update category");
+    else toast.error(await reason(res, "Could not update category"));
   }
 
   return (
@@ -155,7 +156,7 @@ export function SpendingBudgetClient({
           {yearSet ? (
             <CurrentYearView year={year} isCurrent={year === currentYear} categories={categories} onEdit={setEditing} canEdit={isExec} />
           ) : isExec ? (
-            <SetBudgetForm base={base} year={year} pastYears={comparisonYears.filter((y) => y < year)}
+            <SetBudgetForm key={year} base={base} year={year} pastYears={comparisonYears.filter((y) => y < year)}
               categories={categories} onSaved={() => router.refresh()} />
           ) : (
             <Card data-tour="budget-setup">
@@ -429,7 +430,7 @@ function ClaimsTable({ categories, transactions, onReclassify, societySlug, year
                 <tbody>
                   {shown.map((t) => (
                     <tr key={t.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{formatDate(t.date)}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">{formatDate(t.date.slice(0, 19))}</td>
                       <td className="py-2 pr-3">
                         <Link href={`/${societySlug}/requests/treasury/${t.id}`} className="hover:underline">{t.description}</Link>
                       </td>
@@ -659,11 +660,16 @@ function CategoryDialog({ base, category, year, yearSet, pastYear, onClose, onSa
 
   async function remove() {
     if (!editing) return;
+    // The delete cascades: every year's figures, the reasoning and the notes go with it,
+    // and its claims become unclassified. Say which years, once, before it happens.
+    const years = Object.keys(category!.allocations).sort();
+    const lost = years.length ? `its budget figures for ${years.join(", ")}` : "its budget figures";
+    if (!confirm(`Delete "${category!.name}"? This erases ${lost}, its reasoning and its notes, and leaves its claims unclassified. This can't be undone.`)) return;
     setBusy(true);
     const res = await fetch(`${base}/${category!.id}`, { method: "DELETE" }).catch(offline);
     setBusy(false);
     if (res.ok) onSaved();
-    else toast.error("Could not delete category");
+    else toast.error(await reason(res, "Could not delete category"));
   }
 
   const numField = (k: keyof typeof form, label: string) => (

@@ -10,7 +10,17 @@ export type Limit = [key: string, max: number];
 /** The keys to count a password check under: the account, and where it came from. */
 export function passwordLimits(email: string, headers: Headers): Limit[] {
   // nginx sets X-Real-IP from Cloudflare's or Caddy's view of the client.
-  return [[`email:${email.toLowerCase()}`, 10], [`ip:${headers.get("x-real-ip") ?? "unknown"}`, 50]];
+  const ip = headers.get("x-real-ip") ?? "unknown";
+  // The tight limit is per account AND address: keyed on the email alone, ten wrong
+  // guesses from anywhere would lock the real owner out too (and the shared demo
+  // login, whose email every visitor's browser gets). The email-only ceiling stays
+  // far above anything one person typing can reach, so guessing one account from
+  // many addresses is still capped.
+  return [
+    [`email:${email.toLowerCase()}:${ip}`, 10],
+    [`ip:${ip}`, 50],
+    [`email:${email.toLowerCase()}`, 100],
+  ];
 }
 
 export function isLimited(limits: Limit[], now = Date.now()) {
@@ -29,7 +39,7 @@ export function recordFailure(limits: Limit[], now = Date.now()) {
   }
 }
 
-/** A right password clears the account's count (not the address's). */
+/** A right password clears the account's counts (not the address's). */
 export function clearFailures(limits: Limit[]) {
-  hits.delete(limits[0][0]);
+  for (const [key] of limits) if (key.startsWith("email:")) hits.delete(key);
 }

@@ -32,13 +32,15 @@ interface Props {
   // The currently linked event, passed in so it stays selectable even once it falls
   // outside what /events lists (older than its window, or since cancelled).
   linkedEvent: LinkableEvent | null;
+  /** A draft may keep a blank supplier or email; the submit check enforces the full claim. */
+  isDraft?: boolean;
 }
 
 function toDateInput(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, linkedEvent }: Props) {
+export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, linkedEvent, isDraft = false }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -61,7 +63,19 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
   const [eventsLoaded, setEventsLoaded] = useState(false);
   function onOpenChange(next: boolean) {
     setOpen(next);
-    if (!next || eventsLoaded) return;
+    if (!next) return;
+    // Every open starts from the saved claim: abandoned edits (a receipt marked for
+    // removal) are dropped, and receipts added by the last save now show.
+    setDescription(initial.description);
+    setAmount(String(initial.amount));
+    setExpenseDate(toDateInput(initial.expenseDate));
+    setLocationSupplier(initial.locationSupplier);
+    setContactEmail(initial.contactEmail);
+    setEventId(linkedEvent?.id ?? NO_EVENT);
+    setExisting(receipts);
+    setRemovedIds([]);
+    setNewFiles([]);
+    if (eventsLoaded) return;
     setEventsLoaded(true);
     fetch(`/api/societies/${societySlug}/events`)
       .then((r) => (r.ok ? r.json() : []))
@@ -93,12 +107,20 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
       toast.error("Description and a positive amount are required");
       return;
     }
+    if (!isDraft && !locationSupplier.trim()) {
+      toast.error("Supplier / location is required");
+      return;
+    }
+    if (!isDraft && !contactEmail.trim()) {
+      toast.error("Contact email is required");
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/societies/${societySlug}/treasury/${requestId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        description, amount: Number(amount), expenseDate, locationSupplier, contactEmail,
+        description, amount: Number(amount), expenseDate, locationSupplier: locationSupplier.trim(), contactEmail: contactEmail.trim(),
         contentRequestId: eventId === NO_EVENT ? null : eventId,
         addReceipts: newFiles,
         removeReceiptIds: removedIds,
@@ -170,7 +192,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
                   <a href={r.fileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 min-w-0 hover:underline">
                     <FileText className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">{r.fileName}</span>
                   </a>
-                  <button type="button" onClick={() => { setExisting((p) => p.filter((x) => x.id !== r.id)); setRemovedIds((p) => [...p, r.id]); }} className="text-muted-foreground hover:text-red-600">
+                  <button type="button" onClick={() => { setExisting((p) => p.filter((x) => x.id !== r.id)); setRemovedIds((p) => [...p, r.id]); }} aria-label={`Remove ${r.fileName}`} className="text-muted-foreground hover:text-red-600">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -178,7 +200,7 @@ export function EditTreasuryClaim({ societySlug, requestId, initial, receipts, l
               {newFiles.map((f, i) => (
                 <div key={`new-${i}`} className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
                   <span className="inline-flex items-center gap-2 min-w-0"><Upload className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">{f.fileName}</span> <span className="text-xs text-muted-foreground">(unsaved)</span></span>
-                  <button type="button" onClick={() => setNewFiles((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-600">
+                  <button type="button" onClick={() => setNewFiles((p) => p.filter((_, j) => j !== i))} aria-label={`Remove ${f.fileName}`} className="text-muted-foreground hover:text-red-600">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>

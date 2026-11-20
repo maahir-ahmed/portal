@@ -3,11 +3,15 @@ import { z } from "zod";
 import { bookingDecided, isPlausibleDate } from "@/lib/utils";
 import { EventType, PreferredLocation, RoomBookingStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { createNotification } from "@/lib/notifications";
+import { notDemo } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
+
+// The statuses bookingDecided() answers true for, as the enum type a Prisma where needs.
+const DECIDED: RoomBookingStatus[] = ["APPROVED", "REJECTED", "COMPLETED"];
 
 // What the edit form, the status picker and the booked-room card send. Types only, and
 // as forgiving as the code below (which already skips empty strings and nulls): a wrong
@@ -17,16 +21,16 @@ const text = (max: number) => z.string().max(max).nullable();
 const patchSchema = z
   .object({
     status: z.enum(RoomBookingStatus),
-    eventName: text(1000),
+    eventName: notDemo(z.string().max(1000)).nullable(),
     eventType: z.union([z.enum(EventType), z.literal("")]).nullable(),
     preferredDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable(),
     startTime: text(50),
     endTime: text(50),
     description: text(20000),
-    maxAttendees: z.number().nullable(),
+    maxAttendees: z.number().int().max(10000).nullable(),
     hasExternalGuests: z.boolean(),
     externalGuestsDesc: text(5000),
-    numExternalGuests: z.number().int().min(0).nullable(),
+    numExternalGuests: z.number().int().min(0).max(10000).nullable(),
     preferredLocation: z.union([z.enum(PreferredLocation), z.literal("")]).nullable(),
     safetyOfficerName: text(200),
     safetyOfficerZid: text(50),
@@ -37,12 +41,9 @@ const patchSchema = z
   .partial();
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -125,23 +126,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     },
   });
 
+  // Logged from the status that was applied, not the one the caller sent: a submitter's
+  // `status` is ignored above, so it must not appear in the log either.
+  const appliedStatus = autoComplete ? "COMPLETED" : isExec && body.status ? body.status : null;
   await createAuditLog({
     societyId: membership!.societyId,
     userId: session!.user.id,
-    action: body.status || autoComplete ? "STATUS_CHANGE" : "UPDATE",
+    action: appliedStatus ? "STATUS_CHANGE" : "UPDATE",
     entityType: "RoomBooking",
     entityId: id,
-    ...(body.status || autoComplete
-      ? { metadata: { from: booking.status, to: body.status ?? "COMPLETED" } }
-      : {}),
+    ...(appliedStatus ? { metadata: { from: booking.status, to: appliedStatus } } : {}),
   });
 
   // Tell the submitter their booking moved — unless they are the one who moved it.
-  const newStatus = body.status && isExec && body.status !== booking.status
-    ? body.status
-    : autoComplete
-      ? "COMPLETED"
-      : null;
+  const newStatus = appliedStatus && appliedStatus !== booking.status ? appliedStatus : null;
   if (newStatus && booking.submittedById !== session!.user.id) {
     await createNotification({
       userId: booking.submittedById,
@@ -160,12 +158,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
 // Deletable by the submitter or any exec, same permission as editing.
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const booking = await prisma.roomBooking.findUnique({ where: { id } });
   if (!booking || booking.societyId !== membership!.societyId) {
@@ -175,6 +170,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   const isExec = membership!.role === "EXECUTIVE";
   const isOwner = booking.submittedById === session!.user.id;
   if (!isExec && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Once Arc has decided, the booking is a record of what Arc approved or refused, so
+  // the submitter can't delete it (they can't edit it either); an executive still can.
+  if (!isExec && bookingDecided(booking.status)) {
+    return NextResponse.json({ error: "Arc has decided on this booking. Ask an executive to delete it." }, { status: 403 });
+  }
 
   // The where clause IS the authorization check, re-enforced atomically at delete
   // time. The thread's FK would only be nulled out, so remove it explicitly;
@@ -182,14 +182,21 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<Pa
   const deleteWhere = {
     id,
     societyId: membership!.societyId,
-    ...(isExec ? {} : { submittedById: session!.user.id }),
+    ...(isExec ? {} : { submittedById: session!.user.id, status: { notIn: DECIDED } }),
   };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.thread.deleteMany({ where: { roomBooking: { is: deleteWhere } } });
-    await tx.roomBooking.deleteMany({ where: deleteWhere });
-    await tx.notification.deleteMany({ where: { link: `/requests/room-booking/${id}` } });
-  });
+  // A delete that matched nothing (decided or removed in the meantime) rolls the thread
+  // delete back and writes no audit entry.
+  const deleted = await prisma
+    .$transaction(async (tx) => {
+      await tx.thread.deleteMany({ where: { roomBooking: { is: deleteWhere } } });
+      const { count } = await tx.roomBooking.deleteMany({ where: deleteWhere });
+      if (!count) throw new Error("nothing deleted");
+      await tx.notification.deleteMany({ where: { link: `/requests/room-booking/${id}` } });
+      return true;
+    })
+    .catch(() => false);
+  if (!deleted) return NextResponse.json({ error: "This booking changed. Reload and try again." }, { status: 409 });
 
   await createAuditLog({
     societyId: membership!.societyId,

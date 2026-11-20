@@ -44,6 +44,12 @@ export function wallClockNow(timeZone: string, now = new Date()): number {
 
 const DAY = 86_400_000;
 
+/** The society's calendar date today, as UTC midnight like a stored typed-in date. */
+export function societyToday(timeZone: string, now = new Date()): Date {
+  const w = wallClockNow(timeZone, now);
+  return new Date(w - (w % DAY));
+}
+
 /**
  * How urgent a deadline is now: a stage, and the label the events list shows. Days are
  * calendar days on the society's clock, so content due at 5 PM is "Due today" all day,

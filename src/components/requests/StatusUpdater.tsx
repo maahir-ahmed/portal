@@ -52,7 +52,8 @@ export function StatusUpdater({
       toast.success("Updated successfully");
       router.refresh();
     } else {
-      toast.error("Failed to update");
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Failed to update");
     }
   }
 

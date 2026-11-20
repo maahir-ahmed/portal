@@ -176,8 +176,23 @@ function Host-Timezone {
   return (Ask "Your timezone, for the time of the daily backup (e.g. Australia/Sydney)" "UTC")
 }
 
+# Only this Windows account may open a path: portal.env holds every password the portal uses
+# and the backups hold the whole database, and a folder like C:\portal lets every signed-in
+# user read new files by default. (./portal does the same with umask 077.) A folder gets the
+# inheritable grant, so the archives written into it later are covered too.
+function Lock-Path([string]$path, [string]$what) {
+  $grant = "${env:USERNAME}:F"
+  if (Test-Path $path -PathType Container) { $grant = "${env:USERNAME}:(OI)(CI)F" }
+  if ((Quiet { icacls $path /inheritance:r /grant:r $grant }) -ne 0) {
+    Say "Warning: couldn't limit who can read $what. Keep the portal folder somewhere only you can open."
+  }
+}
+
 function Write-Settings {
   if (Test-Path $EnvFile) { Say "Found portal.env: keeping the settings already in it." }
+  # Made and locked before the first Ensure, so no password is ever written to a readable file.
+  if (-not (Test-Path $EnvFile)) { New-Item -ItemType File -Path $EnvFile | Out-Null }
+  Lock-Path $EnvFile "portal.env"
 
   $name = Get-Setting "APP_NAME"
   while (-not $name) { $name = Ask "Your society's name (e.g. Chess Society)" }
@@ -239,6 +254,9 @@ function Write-Settings {
   if (-not (Has-Setting "TZ")) { Ensure "TZ" (Host-Timezone) }
   # Forward slashes: Docker Desktop takes them, and nothing has to be escaped.
   Ensure "BACKUP_DIR" ((Join-Path $Root "backups") -replace "\\", "/")
+  # The backups folder's group on Linux (compose file). Docker Desktop's file sharing
+  # doesn't carry Windows ownership into the container, so any value works; this is the default.
+  Ensure "BACKUP_GID" "1000"
   # The `1` channel: every 1.x release, never a 2.0 that might need you (images.yml).
   Ensure "APP_IMAGE" "$Images-app:1"
   Ensure "WEB_IMAGE" "$Images-web:1"
@@ -248,13 +266,8 @@ function Write-Settings {
   Ensure "UPDATE_TOKEN" (RandomHex 24)
   Ensure "UPDATE_HOUR" "4"
   Ensure "BUILD_FROM_SOURCE" "false"
-  # Only this Windows account may read it: it holds every password the portal uses, and a
-  # folder like C:\portal lets every signed-in user read new files by default. (./portal
-  # does the same with chmod 600.)
-  if ((Quiet { icacls $EnvFile /inheritance:r /grant:r "${env:USERNAME}:F" }) -ne 0) {
-    Say "Warning: couldn't limit who can read portal.env. Keep the portal folder somewhere only you can open."
-  }
   New-Item -ItemType Directory -Force -Path (Get-Setting "BACKUP_DIR") | Out-Null
+  Lock-Path (Get-Setting "BACKUP_DIR") "the backups folder"
 }
 
 function Get-Images {
@@ -384,8 +397,16 @@ function Restore([string]$file) {
   Say "Backing up what's there now first, in case you want it back..."
   Backup
   Compose stop app
-  Compose run --rm -T backup restore "/backups/$name"
-  if ($LASTEXITCODE -eq 0) { Say "Restored." } else { Say "The restore failed and the database was left as it was." }
+  # The script prints its own verdict as its one line of stdout when it fails: whether the
+  # database was changed depends on how far it got, so say what it says.
+  $out = Compose run --rm -T backup restore "/backups/$name" | Select-Object -Last 1
+  if ($LASTEXITCODE -eq 0) {
+    Say "Restored."
+  } elseif ($out) {
+    Say "The restore failed: $out"
+  } else {
+    Say "The restore failed: see the messages above."
+  }
   Compose up -d --no-build app
   Wait-Ready | Out-Null
 }

@@ -3,7 +3,8 @@ import type { Role } from "@prisma/client";
 
 // A member's main portfolio always follows their title, so it is derived here rather
 // than accepted from the client. Executives hold no portfolio, whatever title they
-// have; a title that isn't in the society's list leaves them unassigned.
+// have; a title that isn't in the society's list leaves them unassigned. Looked up by
+// name and role level: the same name can exist at two levels.
 export async function portfolioForTitle(
   societyId: string,
   title: string | null | undefined,
@@ -12,7 +13,7 @@ export async function portfolioForTitle(
   if (role === "EXECUTIVE" || !title) return null;
 
   const match = await prisma.societyTitle.findFirst({
-    where: { societyId, name: title },
+    where: { societyId, name: title, roleLevel: role },
     select: { portfolioId: true },
   });
   return match?.portfolioId ?? null;

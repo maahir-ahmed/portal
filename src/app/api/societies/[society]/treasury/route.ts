@@ -1,43 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { isPlausibleDate } from "@/lib/utils";
+import { money, notDemo } from "@/lib/schemas";
+import { checkBank } from "@/lib/bank";
+import { societyToday } from "@/lib/urgency";
+
+// More than any claim has; keeps one request from writing thousands of rows.
+const MAX_RECEIPTS = 20;
 
 // Fields are optional so a partial claim can be saved as a DRAFT; the full set
 // is enforced below only when the claim is actually submitted for approval.
 const schema = z.object({
-  contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  contactEmail: z.union([z.string().email().max(320), z.literal("")]).optional(),
   expenseDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").optional(),
   locationSupplier: z.string().max(500).optional(),
-  description: z.string().max(10000).optional(),
-  // Decimal(10,2) holds up to 99,999,999.99; past that Postgres refuses it with a 500.
-  amount: z.number().nonnegative().finite().max(99_999_999.99).optional(),
+  description: notDemo(z.string().max(10000)).optional(),
+  amount: money.optional(),
   useExistingBank: z.boolean(),
   // The same limits as saving bank details on the Account page.
   bankAccountName: z.string().max(100).nullable().optional(),
   bankBsb: z.string().max(20).nullable().optional(),
   bankAccountNumber: z.string().max(30).nullable().optional(),
   bankPayId: z.string().trim().max(100).nullable().optional(),
-  saveToProfile: z.boolean().optional(),
   acknowledgedRules: z.boolean().optional(),
-  receiptUrls: z.array(z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here")).optional(),
-  budgetCategoryId: z.string().nullable().optional(),
+  receiptUrls: z.array(z.string().regex(UPLOADED_FILE, "Receipts have to be uploaded here")).max(MAX_RECEIPTS).optional(),
+  budgetCategoryId: z.string().max(100).nullable().optional(),
   // The event this was spent on, if any.
-  contentRequestId: z.string().nullable().optional(),
+  contentRequestId: z.string().max(100).nullable().optional(),
   status: z.enum(["DRAFT", "REIMBURSEMENT_PENDING"]).default("REIMBURSEMENT_PENDING"),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const body = schema.parse(await req.json());
@@ -69,21 +70,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
       }
     }
 
+    // The account the claim is paid to: typed in here (checked like the Account page and
+    // /claim check it) or the one on file. A draft may have none yet; a submit may not.
+    const typed =
+      !body.useExistingBank && body.bankAccountName && body.bankBsb && body.bankAccountNumber
+        ? checkBank(body.bankAccountName.trim(), body.bankBsb.trim(), body.bankAccountNumber.trim(), body.bankPayId ?? "")
+        : null;
+    if (typed && "error" in typed) return NextResponse.json({ error: typed.error }, { status: 400 });
+    if (isSubmitting && !typed && !(body.useExistingBank && (await prisma.bankAccount.count({ where: { userId: session!.user.id } })) > 0)) {
+      return NextResponse.json({ error: "Add the bank account to pay this claim into (name, BSB and account number)." }, { status: 400 });
+    }
+
     // One transaction: a failure part way must not leave a new bank account, or a claim
     // without its receipts or thread, behind.
     const request = await prisma.$transaction(async (tx) => {
       let bankAccountId: string | null = null;
 
-      if (!body.useExistingBank && body.bankAccountName && body.bankBsb && body.bankAccountNumber) {
+      if (typed && !("error" in typed)) {
         // Check if user already has a bank account on file
         const existingCount = await tx.bankAccount.count({ where: { userId: session!.user.id } });
         const account = await tx.bankAccount.create({
           data: {
             userId: session!.user.id,
-            accountName: body.bankAccountName,
-            bsb: body.bankBsb,
-            accountNumber: body.bankAccountNumber,
-            payId: body.bankPayId || null,
+            accountName: typed.accountName,
+            bsb: typed.bsb,
+            accountNumber: typed.accountNumber,
+            payId: typed.payId,
             isDefault: existingCount === 0, // first account becomes default
           },
         });
@@ -104,7 +116,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           societyId: membership!.societyId,
           submittedById: session!.user.id,
           contactEmail: body.contactEmail || "",
-          expenseDate: body.expenseDate ? new Date(body.expenseDate) : new Date(),
+          expenseDate: body.expenseDate ? new Date(body.expenseDate) : societyToday(membership!.society.timezone),
           locationSupplier: body.locationSupplier || "",
           description: body.description || "",
           amount: body.amount ?? 0,
@@ -157,6 +169,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 interface Portfolio {
   id: string;
@@ -24,12 +26,15 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   const [editValue, setEditValue] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    const res = await fetch(base).catch(offline);
-    if (res.ok) setPortfolios(await res.json());
-  }
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- load-on-mount; re-runs only when the society changes
+  const load = () =>
+    api<Portfolio[]>(base).then(setPortfolios).catch((e: Error) => {
+      // A reload after a change failing must not blank a list that is already showing.
+      setLoadError(e.message);
+    });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load-on-mount; re-runs only when the society changes
   useEffect(() => { load(); }, [societySlug]);
 
   async function send(url: string, init: RequestInit, failure: string) {
@@ -37,8 +42,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
     const res = await fetch(url, init).catch(offline);
     setBusy(false);
     if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? failure);
+      toast.error(await reason(res, failure));
       return false;
     }
     await load();
@@ -46,7 +50,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   }
 
   async function add() {
-    if (!newName.trim()) return;
+    if (busy || !newName.trim()) return;
     const ok = await send(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -60,7 +64,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
   }
 
   async function rename(id: string) {
-    if (!editValue.trim()) return;
+    if (busy || !editValue.trim()) return;
     const ok = await send(`${base}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -76,7 +80,7 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
     const warning = p.memberCount > 0 || p.titleCount > 0
       ? `Delete "${p.name}"? ${p.memberCount} member${p.memberCount === 1 ? "" : "s"} and ${p.titleCount} title${p.titleCount === 1 ? "" : "s"} will be left unassigned.`
       : `Delete "${p.name}"?`;
-    if (!confirm(warning)) return;
+    if (busy || !confirm(warning)) return;
     if (await send(`${base}/${p.id}`, { method: "DELETE" }, "Could not delete portfolio")) {
       toast.success("Portfolio removed");
     }
@@ -94,7 +98,11 @@ export function PortfoliosManager({ societySlug }: { societySlug: string }) {
       </CardHeader>
       <CardContent className="space-y-3">
         {portfolios === null ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          loadError ? (
+            <LoadFailed message={loadError} onRetry={() => { setLoadError(null); load(); }} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          )
         ) : portfolios.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center space-y-3">
             <p className="text-sm text-muted-foreground">

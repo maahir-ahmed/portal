@@ -1,13 +1,13 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { appendFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, rm, stat, statfs, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireMembership } from "./api";
 import { createAuditLog } from "./audit";
 import { prisma } from "./db";
-import { backupsEnabled, debugToolsEnabled } from "./debugTools";
+import { backupsEnabled, debugToolsEnabled, uploadFits } from "./debugTools";
 import { setMaintenance } from "./maintenance";
 
 // Server side of Settings > Backups, Settings > Debugging and the restore at the start
@@ -38,6 +38,48 @@ const SCRIPT = join(process.cwd(), "deploy", "backup.sh");
 
 /** An archive name as the script writes it. No paths. */
 export const ARCHIVE_NAME = /^[A-Za-z0-9_-]+\.tar\.gz$/;
+
+// The backup container's nightly archives (${BACKUP_DIR}), mounted read-only. On the
+// hosted box that folder is shared by every stack, so only this stack's own archives
+// count, by the exact name the script gives them; the older two-file backups
+// (<stack>_uploads_<date>.tar.gz beside a .sql.gz) don't match, and aren't restorable here.
+const NIGHTLY_DIR = process.env.NIGHTLY_DIR;
+const STACK = (process.env.STACK ?? "portal").replace(/[^A-Za-z0-9_-]/g, "");
+const OWN_ARCHIVE = new RegExp(`^${STACK}_\\d{4}-\\d\\d-\\d\\d_\\d{6}\\.tar\\.gz$`);
+
+export type BackupKind = "nightly" | "manual";
+const backupDirs = (): [string, BackupKind][] =>
+  NIGHTLY_DIR ? [[BACKUP_OUT, "manual"], [NIGHTLY_DIR, "nightly"]] : [[BACKUP_OUT, "manual"]];
+const listable = (name: string, kind: BackupKind) =>
+  ARCHIVE_NAME.test(name) && (kind === "manual" || OWN_ARCHIVE.test(name));
+
+/** Every archive on the server, newest first: the nightly ones and those made in the app. */
+export async function listBackups() {
+  await mkdir(BACKUP_OUT, { recursive: true });
+  const found = await Promise.all(
+    backupDirs().map(async ([dir, kind]) => {
+      const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => listable(n, kind));
+      return Promise.all(
+        names.map(async (name) => {
+          // An archive removed (by the keep-days sweep) or unreadable since the listing is skipped.
+          const s = await stat(join(dir, name)).catch(() => null);
+          return s ? { name, kind, bytes: s.size, createdAt: s.mtime.toISOString() } : null;
+        })
+      ).then((rows) => rows.filter((r) => r !== null));
+    })
+  );
+  return found.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** The path of a listed archive, or null. The name is never trusted as a path. */
+export async function findBackup(name: string): Promise<{ path: string; bytes: number } | null> {
+  for (const [dir, kind] of backupDirs()) {
+    if (!listable(name, kind)) continue;
+    const s = await stat(join(dir, name)).catch(() => null);
+    if (s?.isFile()) return { path: join(dir, name), bytes: s.size };
+  }
+  return null;
+}
 
 /** An archive being uploaded for a restore. Dot-named, so it is never listed as a
  *  backup, and keyed by an id the browser picks per upload. */
@@ -153,8 +195,21 @@ export async function receiveChunk(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id") ?? "";
   const offset = Number(req.nextUrl.searchParams.get("offset"));
   const expected = Number(req.headers.get("x-chunk-length"));
-  if (!UPLOAD_ID.test(id) || !Number.isInteger(offset) || offset < 0 || !Number.isInteger(expected)) {
+  const total = Number(req.headers.get("x-upload-size") ?? 0);
+  if (!UPLOAD_ID.test(id) || !Number.isInteger(offset) || offset < 0 || !Number.isInteger(expected) || !Number.isInteger(total) || total < 0) {
     return NextResponse.json({ error: "Bad upload request" }, { status: 400 });
+  }
+
+  const path = incomingPath(id);
+  await mkdir(BACKUP_OUT, { recursive: true });
+  if (offset === 0) await clearOtherUploads(path);
+  // Checked before reading the body, so a too-big archive is refused on its first chunk
+  // rather than after filling the disk. The total is the browser's word, so each chunk is
+  // checked against what is actually free as well.
+  const free = await statfs(BACKUP_OUT).then((s) => s.bavail * s.bsize).catch(() => Infinity);
+  if (!uploadFits(free, Math.max(expected, offset === 0 ? total : 0))) {
+    await rm(path, { force: true });
+    return NextResponse.json({ error: "Not enough free disk space on the server for this backup" }, { status: 507 });
   }
 
   const chunk = Buffer.from(await req.arrayBuffer());
@@ -164,15 +219,35 @@ export async function receiveChunk(req: NextRequest) {
     return NextResponse.json({ error: `Chunk arrived as ${chunk.length} of ${expected} bytes` }, { status: 400 });
   }
 
-  const path = incomingPath(id);
-  await mkdir(BACKUP_OUT, { recursive: true });
   const have = offset === 0 ? 0 : await stat(path).then((s) => s.size).catch(() => -1);
   if (have !== offset) {
     return NextResponse.json({ error: "Upload out of order; start again" }, { status: 409 });
   }
-  if (offset === 0) await writeFile(path, chunk);
-  else await appendFile(path, chunk);
+  try {
+    if (offset === 0) await writeFile(path, chunk);
+    else await appendFile(path, chunk);
+  } catch (err) {
+    // A half-written archive can never be restored, so don't leave it taking up space.
+    await rm(path, { force: true });
+    throw err;
+  }
   return NextResponse.json({ size: offset + chunk.length });
+}
+
+/**
+ * One upload on disk at a time: starting one deletes any other. Without this, every
+ * closed tab or archive that failed its check stayed on disk for good, and parallel
+ * uploads could fill it. The newest wins rather than the oldest blocking, so an
+ * abandoned upload never locks the next person out; an upload cut off this way gets
+ * "out of order; start again" on its next chunk. A restore already running is
+ * unaffected: it holds the archive open, and Linux keeps a deleted open file readable.
+ */
+async function clearOtherUploads(own: string) {
+  const names = await readdir(BACKUP_OUT).catch(() => [] as string[]);
+  for (const name of names) {
+    const path = join(BACKUP_OUT, name);
+    if (/^\.incoming-[a-z0-9-]+\.tar\.gz$/.test(name) && path !== own) await rm(path, { force: true });
+  }
 }
 
 /** The uploaded archive's path, or null when there is no such upload. */
@@ -197,7 +272,7 @@ export function validateJob(job: string, path: string) {
  */
 export function restoreJob(job: string, path: string, who: string | null) {
   const production = process.env.NODE_ENV === "production";
-  return startJob(job, async () => {
+  return startJob(job, () => exclusive(async () => {
     const sha256 = await sha256File(path);
     let safetyBackup: string | null = null;
     if (who) {
@@ -248,7 +323,21 @@ export function restoreJob(job: string, path: string, who: string | null) {
       setTimeout(() => process.exit(0), 1000);
     }
     return { restarting: production, safetyBackup, renamedFrom };
-  });
+  }));
+}
+
+// One restore at a time: a second would clear and refill the uploads folder under the first,
+// and its failure would switch the maintenance page off mid-restore. backup.sh refuses a
+// second too, but only after this process had already raised the maintenance flag.
+let restoring = false;
+async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
+  if (restoring) throw new Error("Another restore is already running");
+  restoring = true;
+  try {
+    return await fn();
+  } finally {
+    restoring = false;
+  }
 }
 
 /**

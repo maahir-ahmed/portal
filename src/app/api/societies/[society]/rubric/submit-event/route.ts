@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { z } from "zod";
 import { syncEventToDiscord } from "@/lib/discordEvents";
+import { createAuditLog } from "@/lib/audit";
+import { httpUrl } from "@/lib/schemas";
 
 // The Rubric submitEvent call itself goes through the server proxy
 // (/rubric/call, allowlisted and executive-only). This route only stamps the
@@ -10,18 +12,19 @@ import { syncEventToDiscord } from "@/lib/discordEvents";
 const schema = z.object({
   contentRequestId: z.string().optional(),
   rubricEventId: z.string().optional(),
-  rubricEventLink: z.string().optional(),
+  // null clears the stored value (a reassignment to an event with no link or QR must not
+  // keep the previous event's); left out leaves it alone.
+  // Rubric can hand back "" for an event with no purchase page: that means no link, not a bad one.
+  rubricEventLink: z.preprocess((v) => (v === "" ? null : v), httpUrl.nullable()).optional(),
+  rubricQrCodeUrl: z.preprocess((v) => (v === "" ? null : v), httpUrl.nullable()).optional(),
   // false when linking an already-existing Rubric event (assignment, not submission)
   markSubmitted: z.boolean().optional().default(true),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
   if (membership!.role !== "EXECUTIVE") {
     return NextResponse.json({ error: "Exec only" }, { status: 403 });
   }
@@ -37,9 +40,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         ...(parsed.data.markSubmitted ? { rubricSubmittedAt: new Date() } : {}),
         rubricEventId: parsed.data.rubricEventId,
         rubricEventLink: parsed.data.rubricEventLink,
+        rubricQrCodeUrl: parsed.data.rubricQrCodeUrl,
       },
     });
     if (!count) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    await createAuditLog({
+      societyId: membership!.societyId,
+      userId: session!.user.id,
+      action: "UPDATE",
+      entityType: "ContentRequest",
+      entityId: parsed.data.contentRequestId,
+      metadata: { rubricEventId: parsed.data.rubricEventId ?? null, submitted: parsed.data.markSubmitted },
+    });
     await syncEventToDiscord(
       parsed.data.contentRequestId,
       `${session!.user.name} ${parsed.data.markSubmitted ? "submitted the event to Rubric" : "linked the Rubric event"}.`

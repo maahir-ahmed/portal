@@ -4,7 +4,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { RUBRIC_CALLS, canCall, scrubResponse } from "../src/lib/rubricCalls";
+import { RATE_MAX, RATE_WINDOW_MS, RUBRIC_CALLS, canCall, rubricRateLimited, scrubResponse } from "../src/lib/rubricCalls";
 import { encryptSecret, decryptSecret } from "../src/lib/secrets";
 import { anonymisePeople } from "../src/lib/rubricDemo";
 import { tierForMembers } from "../src/lib/printing";
@@ -25,7 +25,12 @@ const RUBRIC_CLIENT = "src/lib/rubric.ts";
 
 // 1. Only postRubric may talk to Rubric.
 // The bare host, not the URL: any spelling of it (http://, a template string) counts.
-const rubricHosts = files.filter(([, s]) => s.includes("api.hellorubric.com"));
+// scripts/ too: a script that called Rubric directly would be another holder of the session.
+// This file is skipped, since it has to name the host to look for it.
+const scriptFiles = walk("scripts")
+  .filter((f) => f.replace(/\\/g, "/") !== "scripts/check-rubric.ts")
+  .map((f) => [f, readFileSync(f, "utf8")] as const);
+const rubricHosts = [...files, ...scriptFiles].filter(([, s]) => s.includes("api.hellorubric.com"));
 assert.deepEqual(
   rubricHosts.map(([f]) => f.replace(/\\/g, "/")),
   [RUBRIC_CLIENT],
@@ -64,6 +69,8 @@ for (const [, s] of files) {
   for (const m of s.matchAll(/rubric\.call\(\{\s*\n?\s*type:\s*"([^"]+)"/g)) used.add(m[1]);
   for (const m of s.matchAll(/call\(\{\s*type:\s*"([^"]+)"/g)) used.add(m[1]);
 }
+// A drift in how the UI writes its calls would otherwise make this check pass on an empty set.
+assert.ok(used.size > 0, "no UI call to Rubric was found: the call-site patterns above no longer match the code");
 const missing = [...used].filter((t) => !RUBRIC_CALLS[t]);
 assert.deepEqual(missing, [], `UI calls Rubric types that are not allowlisted: ${missing.join(", ")}`);
 
@@ -98,13 +105,20 @@ assert.equal(scrubbed.success, true);
 // reported impact was bulk PII exfiltration, so "who read what" must be answerable.
 const piiCalls = Object.entries(RUBRIC_CALLS).filter(([, s]) => s.pii);
 assert.ok(piiCalls.length > 0, "no call is marked pii — the flag has been dropped");
-const proxySource = files.find(([f]) => f.replace(/\\/g, "/") === PROXY)?.[1] ?? "";
+// Comments stripped, so a comment cannot stand in for code that was deleted.
+const proxySource = (files.find(([f]) => f.replace(/\\/g, "/") === PROXY)?.[1] ?? "").replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/.*$/gm, "$1");
 assert.match(proxySource, /spec\.write \|\| spec\.pii/, "the proxy must audit log pii reads, not just writes");
 
 // 6. Bulk reads are rate limited: the allowlist decides what a member may call,
 // this decides how often, which is what stops a slow scrape of the member list.
-assert.match(proxySource, /rateLimited\(/, "the proxy must rate limit Rubric calls");
+assert.match(proxySource, /if \(rubricRateLimited\(/, "the proxy must rate limit Rubric calls");
 assert.match(proxySource, /status:\s*429/, "the rate limiter must answer 429");
+// ...and the limiter itself, run: the cap, per user, and the window reopening.
+const t0 = 1_000_000;
+for (let n = 0; n < RATE_MAX; n++) assert.equal(rubricRateLimited("limiter-a", t0), false, `call ${n + 1} is within the cap`);
+assert.equal(rubricRateLimited("limiter-a", t0), true, "the call past the cap must be refused");
+assert.equal(rubricRateLimited("limiter-b", t0), false, "one member's use must not limit another");
+assert.equal(rubricRateLimited("limiter-a", t0 + RATE_WINDOW_MS + 1), false, "the limit must lift once the window has passed");
 
 // 7. The stored session survives a round trip and the ciphertext does not contain it.
 // Both key states matter: unset (existing deployments) and set.
@@ -151,6 +165,12 @@ assert.equal(t["Phone Number"], "", "phone answers must be blanked");
 assert.notEqual(t.studentnumber, "z9999999", "student numbers must be replaced");
 assert.notEqual(t["Student ID"], "z8888888", "student ID answers must be replaced");
 
+// A student number or phone Rubric returns as a JSON number is replaced too.
+const numeric = anonymisePeople({ rows: [{ studentnumber: 9999999, phone: 412345678, studentsAttending: 12, email: "a@b.c" }] }) as { rows: Record<string, unknown>[] };
+assert.notEqual(numeric.rows[0].studentnumber, 9999999, "numeric student numbers must be replaced");
+assert.equal(numeric.rows[0].phone, "", "numeric phone numbers must be blanked");
+assert.equal(numeric.rows[0].studentsAttending, 12, "a small count under a student key must survive");
+
 // The committed snapshot holds no credential under any spelling.
 const credentialKeys: string[] = [];
 const walkKeys = (v: unknown): void => {
@@ -163,6 +183,21 @@ assert.deepEqual(credentialKeys, [], "the demo snapshot must not contain a Rubri
 // The committed fixture itself must already be clean.
 const fixture = JSON.stringify(snapshot);
 assert.equal(/unsw\.edu\.au|@gmail|@outlook/i.test(fixture), false, "the demo snapshot contains a real-looking address");
+
+// No run of seven or more digits anywhere in the committed snapshot: that is a zID or a phone
+// number. The anonymiser's own placeholders (z5000001 and up) and fields that are never about a
+// person (ids, timestamps, money) are exempt; anything else means a real capture slipped through.
+const SAFE_NUMERIC = /(^id|id$|time|date|created|updated|price|total|amount|grant)/i;
+const PERSON_KEY = /student|zid|phone|mobile/i;
+const digitRuns: string[] = [];
+const walkDigits = (v: unknown, key = ""): void => {
+  if (Array.isArray(v)) return v.forEach((x) => walkDigits(x, key));
+  if (v && typeof v === "object") return Object.entries(v).forEach(([k, x]) => walkDigits(x, k));
+  if (SAFE_NUMERIC.test(key) && !PERSON_KEY.test(key)) return;
+  if (/\d{7,}/.test(String(v).replace(/z5\d{6}/g, ""))) digitRuns.push(key);
+};
+walkDigits(snapshot);
+assert.deepEqual(digitRuns, [], "the demo snapshot contains a long digit run (a student number or phone?)");
 
 const writes = Object.entries(RUBRIC_CALLS).filter(([, s]) => s.write).length;
 console.log(

@@ -11,9 +11,10 @@ export async function listTables(): Promise<string[]> {
 }
 
 // Columns never shown in the viewer, by name: password hashes, 2FA secrets, OAuth and
-// session tokens, the Rubric session, Discord webhook URLs and bank details. The
+// session tokens, the Rubric session, Discord webhook URLs, the SMTP password, Discord
+// link codes and bank details (account numbers and PayIDs). The
 // viewer is for checking data, not for lifting credentials off a live stack.
-const SENSITIVE = /password|secret$|token|session_?id|session_?state|webhookurl|bsb|account_?(number|name)/i;
+const SENSITIVE = /password|secret$|token|session_?id|session_?state|webhookurl|smtp_?pass|link_?code|pay_?id|bsb|account_?(number|name)/i;
 
 export function isSensitive(table: string, column: string): boolean {
   return table === "Session" || SENSITIVE.test(column);

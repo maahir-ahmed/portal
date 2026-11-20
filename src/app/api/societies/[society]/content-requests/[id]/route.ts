@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ContentRequestStatus } from "@prisma/client";
+import { ContentRequestStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
-import { createNotification } from "@/lib/notifications";
+import { createNotification, notifyExecs } from "@/lib/notifications";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import { canViewRequest, statusLabel, isPlausibleDate } from "@/lib/utils";
+import { UPLOADED_FILE } from "@/lib/uploads";
+import { notDemo } from "@/lib/schemas";
 
 
 // What the edit form, the status picker and the marketing panel send. Types only, with
@@ -19,7 +21,7 @@ const patchSchema = z
   .object({
     status: z.enum(ContentRequestStatus),
     activityGrantStatus: z.string(),
-    eventName: z.string().max(1000),
+    eventName: notDemo(z.string().max(1000)),
     startDate: date.nullable(),
     endDate: date.nullable(),
     deadline: date.nullable(),
@@ -31,7 +33,7 @@ const patchSchema = z
     rubricRequired: z.boolean(),
     otherNotes: text(20000),
     finishedBlurb: text(20000),
-    addDeliverables: z.array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().max(2000).optional() })),
+    addDeliverables: z.array(z.object({ fileName: z.string().max(500).optional(), fileUrl: z.string().regex(UPLOADED_FILE, "Graphics must be files uploaded here").optional() })),
     removeDeliverableIds: z.array(z.string()),
   })
   .partial();
@@ -39,12 +41,9 @@ const patchSchema = z
 type Params = { society: string; id: string };
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -91,13 +90,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 
   // Only a manager's status is applied, so only theirs is announced: anyone else's
   // would otherwise be logged, notified and posted to Discord without having happened.
-  const statusSent = canManage && body.status ? body.status : null;
+  // The one exception is the owner submitting their own draft.
+  const ownerSubmit = !canManage && isOwner && request.status === "DRAFT" && body.status === "SUBMITTED";
+  const statusSent = (canManage || ownerSubmit) && body.status ? body.status : null;
   const statusChanged = !!statusSent && statusSent !== request.status;
 
+  // The status read above is re-checked in the write, so a draft can't be submitted
+  // twice (and announced twice) by two clicks.
   const updated = await prisma.contentRequest.update({
-    where: { id },
+    where: { id, ...(ownerSubmit ? { status: "DRAFT" as const } : {}) },
     data: {
-      ...(canManage && body.status ? { status: body.status } : {}),
+      ...((canManage || ownerSubmit) && body.status ? { status: body.status } : {}),
       ...(canManage && body.activityGrantStatus ? { activityGrantStatus: body.activityGrantStatus } : {}),
       ...(canEditCore && typeof body.eventName === "string" ? { eventName: body.eventName } : {}),
       ...(canEditCore && body.startDate ? { startDate: new Date(body.startDate) } : {}),
@@ -117,7 +120,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
         ? { blurbDone: String(body.finishedBlurb ?? "").trim().length > 0 }
         : {}),
     },
+  }).catch((err) => {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
+    throw err;
   });
+  if (!updated) {
+    return NextResponse.json({ error: "This request was just updated by someone else. Reload and try again." }, { status: 409 });
+  }
 
   if (isMarketing && Array.isArray(body.addDeliverables) && body.addDeliverables.length > 0) {
     await prisma.contentDeliverable.createMany({
@@ -165,6 +174,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     });
   }
 
+  // A draft joining the queue alerts the executives, exactly as a new request does.
+  if (statusChanged && request.status === "DRAFT" && statusSent === "SUBMITTED") {
+    await notifyExecs(
+      request.societyId,
+      "APPROVAL_REQUIRED",
+      `New Content Request: ${request.eventName}`,
+      `${session!.user.name} submitted a new content request.`,
+      `/requests/content/${id}`
+    );
+    if (updated.rubricRequired) {
+      await notifyExecs(
+        request.societyId,
+        "EXECUTIVE_ACTION_REQUIRED",
+        `Rubric Event Required: ${request.eventName}`,
+        "This content request requires an executive to create a Rubric event and attach the link/QR code.",
+        `/requests/content/${id}`
+      );
+    }
+  }
+
   // Edits the marketing channel's message in place, or posts it if this edit is the
   // one that submits a draft, and says what changed in its thread.
   await syncEventToDiscord(
@@ -178,12 +207,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const request = await prisma.contentRequest.findUnique({
     where: { id },

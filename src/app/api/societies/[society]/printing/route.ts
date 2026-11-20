@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { allowanceSpendWhere, SECRETARIAL_ALLOWANCE } from "@/lib/printing";
 import { createPrintingRequest } from "@/lib/printingServer";
 import { UPLOADED_FILE } from "@/lib/uploads";
 import { refreshArcTier } from "@/lib/rubric";
 import { z } from "zod";
+import { plausibleDate } from "@/lib/schemas";
+import { notDemo } from "@/lib/schemas";
 
 // Contact details (club, name, email, phone) are derived server-side from the
 // logged-in user + society (createPrintingRequest), so the form doesn't ask for them.
 const schema = z.object({
-  pickupAt: z.string().min(1),
+  pickupAt: plausibleDate,
   // Far past any real job, and low enough that the cost (A3 colour double sided at
   // the most) stays inside its Decimal(10,2) column instead of failing with a 500.
   quantity: z.number().int().positive().max(5000),
@@ -19,8 +21,8 @@ const schema = z.object({
   sided: z.enum(["SINGLE", "DOUBLE_SHORT", "DOUBLE_LONG"]),
   colour: z.enum(["BW", "COLOUR"]),
   fileUrl: z.string().regex(UPLOADED_FILE, "The file has to be uploaded here"),
-  fileName: z.string().min(1).max(500),
-  additionalDetails: z.string().optional(),
+  fileName: notDemo(z.string().min(1).max(500)),
+  additionalDetails: z.string().max(10000).optional(),
 });
 
 // Budget left = tier allowance − sum of this year's approved-and-beyond request costs.
@@ -35,11 +37,9 @@ async function budgetFor(societyId: string, tier: keyof typeof SECRETARIAL_ALLOW
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   await refreshArcTier(membership!.societyId);
   const soc = await prisma.society.findUnique({
@@ -66,11 +66,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const body = schema.parse(await req.json());
@@ -84,6 +82,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

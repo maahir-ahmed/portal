@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Upload, Download, X, Loader2, CheckCircle2, Megaphone, Check } from "lucide-react";
 import { offline } from "@/lib/utils";
+import { reason } from "@/lib/clientApi";
 
 interface Deliverable {
   id: string;
@@ -46,8 +47,10 @@ export function MarketingContentPanel({
 
   const [blurb, setBlurb] = useState(initialBlurb);
   const [savedBlurb, setSavedBlurb] = useState(initialBlurb);
-  const [existing, setExisting] = useState<Deliverable[]>(deliverables);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
+  // From props, so the files a save just added show after the refresh; keying the panel
+  // instead would also throw away a half-typed blurb.
+  const existing = deliverables.filter((d) => !removedIds.includes(d.id));
   const [newFiles, setNewFiles] = useState<{ fileName: string; fileUrl: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState<"banner" | "blurb" | "complete" | null>(null);
@@ -65,7 +68,7 @@ export function MarketingContentPanel({
         const { url } = await res.json();
         setNewFiles((prev) => [...prev, { fileName: file.name, fileUrl: url }]);
       } else {
-        toast.error(`Upload failed: ${file.name}`);
+        toast.error(`Upload failed: ${file.name}. ${await reason(res, "Try again.")}`);
       }
     }
     setUploading(false);
@@ -80,7 +83,7 @@ export function MarketingContentPanel({
     }).catch(offline);
     setBusy(null);
     if (!res.ok) {
-      toast.error("Failed to save");
+      toast.error(await reason(res, "Failed to save"));
       return false;
     }
     router.refresh();
@@ -123,7 +126,7 @@ export function MarketingContentPanel({
             <a href={d.fileUrl} download className="inline-flex items-center gap-2 text-foreground hover:underline min-w-0">
               <Download className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">{d.fileName}</span>
             </a>
-            <button type="button" onClick={() => { setExisting((p) => p.filter((x) => x.id !== d.id)); setRemovedIds((p) => [...p, d.id]); }} className="text-muted-foreground hover:text-red-600">
+            <button type="button" onClick={() => setRemovedIds((p) => [...p, d.id])} className="text-muted-foreground hover:text-red-600">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>

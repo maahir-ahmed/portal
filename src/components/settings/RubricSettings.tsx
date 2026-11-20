@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { CheckCircle, XCircle, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
 import { useRubricClient } from "@/hooks/useRubricClient";
 import { offline } from "@/lib/utils";
+import { api, reason } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 interface RubricStatus {
   configured: boolean;
@@ -32,12 +34,13 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
   const [testing, setTesting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const loadStatus = useCallback(
     () =>
-      fetch(`/api/societies/${societySlug}/rubric/credentials`)
-        .then((r) => r.json())
+      api<RubricStatus>(`/api/societies/${societySlug}/rubric/credentials`)
         .then(setStatus)
-        .catch(() => {}),
+        .catch((e: Error) => setLoadError(e.message)),
     [societySlug]
   );
 
@@ -63,7 +66,7 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
       setSocietyId("");
       await loadStatus();
     } else {
-      toast.error("Failed to save credentials");
+      toast.error(await reason(res, "Failed to save credentials"));
     }
   }
 
@@ -82,7 +85,7 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
       toast.success("Rubric disconnected. The stored session has been deleted.");
       await loadStatus();
     } else {
-      toast.error("Failed to disconnect");
+      toast.error(await reason(res, "Failed to disconnect"));
     }
   }
 
@@ -122,7 +125,9 @@ export function RubricSettings({ societySlug }: RubricSettingsProps) {
       <CardContent className="space-y-5">
         {/* Connection status */}
         <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border">
-          {status === null ? (
+          {loadError ? (
+            <LoadFailed message={loadError} onRetry={() => { setLoadError(null); loadStatus(); }} />
+          ) : status === null ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : status.configured ? (
             <>

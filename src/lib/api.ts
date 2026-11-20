@@ -1,12 +1,22 @@
 import { auth } from "./auth";
 import { prisma } from "./db";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import type { Role, SocietyMembership, Society } from "@prisma/client";
 import type { Session } from "next-auth";
 
 export type RouteContext<T = Record<string, string>> = {
   params: Promise<T>;
 };
+
+/** The catch-all for a route handler: logs the error, a unique-constraint clash is a 409, anything else a 500. */
+export function serverError(err: unknown) {
+  console.error(err);
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    return NextResponse.json({ error: "That already exists" }, { status: 409 });
+  }
+  return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+}
 
 type AuthResult =
   | { session: Session & { user: { id: string; name: string; email: string } }; error: null }
@@ -46,6 +56,19 @@ export async function requireMembership(
   }
 
   return { membership, error: null };
+}
+
+/**
+ * The preamble of every society route: a signed-in session, then an active membership of
+ * the society in the URL (at least `minRole`, if given). Takes the slug, not `params`, so
+ * a handler can still read its own ids from `params`.
+ */
+export async function requireRole(societySlug: string, minRole?: Role) {
+  const { session, error } = await requireAuth();
+  if (error) return { session: null, membership: null, error };
+  const { membership, error: memErr } = await requireMembership(session.user.id, societySlug, minRole);
+  if (memErr) return { session: null, membership: null, error: memErr };
+  return { session, membership, error: null };
 }
 
 // DEMO_MODE (the public showcase stack) signs every visitor in as one shared

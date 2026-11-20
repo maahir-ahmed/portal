@@ -1,35 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { notifyExecs } from "@/lib/notifications";
 import { z } from "zod";
 import { isPlausibleDate } from "@/lib/utils";
 import { syncEventToDiscord } from "@/lib/discordEvents";
 import type { ContentRequestStatus } from "@prisma/client";
+import { notDemo } from "@/lib/schemas";
 
 const createSchema = z.object({
-  eventName: z.string().min(1).max(200),
+  eventName: notDemo(z.string().min(1).max(200)),
   startDate: z.string().refine(isPlausibleDate, "Enter a real date"),
   endDate: z.string().refine((s) => s === "" || isPlausibleDate(s), "Enter a real date").nullable().optional(),
   location: z.string().min(1).max(200),
-  keyPoints: z.string().min(1),
+  keyPoints: z.string().min(1).max(20000),
   deadline: z.string().refine(isPlausibleDate, "Enter a real date"),
   bannerRequired: z.boolean().default(false),
   blurbRequired: z.boolean().default(false),
   rubricRequired: z.boolean().default(false),
-  otherNotes: z.string().nullable().optional(),
-  portfolioId: z.string().nullable().optional(),
+  otherNotes: z.string().max(20000).nullable().optional(),
+  portfolioId: z.string().max(100).nullable().optional(),
   status: z.enum(["DRAFT", "SUBMITTED"]).default("SUBMITTED"),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
@@ -52,12 +50,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const body = createSchema.parse(await req.json());
@@ -81,11 +76,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
         otherNotes: body.otherNotes,
         portfolioId: body.portfolioId || null,
         status: body.status,
+        thread: { create: {} },
       },
     });
-
-    // Create discussion thread
-    await prisma.thread.create({ data: { contentRequestId: request.id } });
 
     await createAuditLog({
       societyId: membership!.societyId,
@@ -123,6 +116,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

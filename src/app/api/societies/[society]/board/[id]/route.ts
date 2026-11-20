@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { z } from "zod";
+import { optionalDate, plausibleDate } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
 const schema = z.object({
   title: z.string().min(1).max(200).optional(),
   notes: z.string().max(2000).nullable().optional(),
-  dueDate: z.string().nullable().optional(),
+  dueDate: optionalDate(plausibleDate),
   lane: z.enum(["TODO", "DOING", "DONE"]).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const body = schema.parse(await req.json());
@@ -41,17 +39,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<Params> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society, id } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const deleted = await prisma.boardCard.deleteMany({
     where: { id, societyId: membership!.societyId },

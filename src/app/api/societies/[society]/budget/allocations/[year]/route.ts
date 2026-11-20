@@ -4,13 +4,14 @@ import { requireAuth, requireMembership } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { parseYear } from "@/lib/years";
 import { z } from "zod";
+import { money } from "@/lib/schemas";
 
 type Params = { society: string; year: string };
 
 const setSchema = z.object({
   allocations: z.array(z.object({
     categoryId: z.string().min(1),
-    amount: z.number().min(0),
+    amount: money,
   })).min(1).max(200),
 });
 
@@ -47,6 +48,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
       entityId: String(year),
       metadata: { year, categories: count },
     });
+    // skipDuplicates leaves a category that already has a figure for the year as it is,
+    // so fewer rows than sent means someone else saved first: say so rather than "saved".
+    if (count < ids.length) {
+      return NextResponse.json(
+        {
+          error: `${year} already had figures for ${ids.length - count} of these categories, so only ${count} of ${ids.length} were saved. Reload to see the current figures.`,
+          created: count,
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ ok: true, created: count }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {

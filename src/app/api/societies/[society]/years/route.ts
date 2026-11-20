@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { z } from "zod";
 import { ahegsYearOf, FIRST_YEAR } from "@/lib/years";
@@ -11,11 +11,9 @@ import { ahegsYearOf, FIRST_YEAR } from "@/lib/years";
 type Params = { params: Promise<{ society: string }> };
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   const years = await prisma.societyYear.findMany({
     where: { societyId: membership!.societyId },
@@ -48,11 +46,9 @@ const schema = z.object({
 });
 
 export async function PUT(req: NextRequest, { params }: Params) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const { years } = schema.parse(await req.json());
@@ -94,7 +90,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    console.error(err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

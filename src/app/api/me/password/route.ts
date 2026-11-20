@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, blockDemoAccountWrite } from "@/lib/api";
+import { requireAuth, blockDemoAccountWrite, serverError } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import { auditAccountChange } from "@/lib/audit";
 import bcrypt from "bcryptjs";
@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest) {
     const passwordHash = await hashPassword(data.newPassword);
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash, mustChangePassword: false, sessionVersion: { increment: 1 } },
+      data: { passwordHash, mustChangePassword: false, tempPasswordExpires: null, sessionVersion: { increment: 1 } },
     });
 
     await auditAccountChange(user.id, "Password");
@@ -57,6 +57,6 @@ export async function PATCH(req: NextRequest) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

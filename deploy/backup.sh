@@ -154,12 +154,17 @@ unpack_and_check() {
   [ -f "$into/database.sql" ] || die "archive has no database.sql"
   [ -d "$into/uploads" ] || die "archive has no uploads directory"
 
-  # psql runs the dump, and a line starting with a backslash is a psql command: \! runs a
-  # shell, \o and \copy write files. pg_dump's own output only has them as COPY data and
-  # \restrict / \unrestrict, so anything else means the dump was not made by pg_dump.
+  # psql treats a backslash as the start of a command WHEREVER it sits on a line, not
+  # just at the start: \! runs a shell, \o and \copy write files. pg_dump's own output
+  # only has backslashes inside COPY data and in its \restrict / \unrestrict pair, so
+  # any other backslash means the dump was not made by pg_dump. This is one of two
+  # layers: restore() below also runs psql in restricted mode, which refuses every
+  # command whatever the text looks like (a faked COPY header could blind this check).
   awk '/^COPY .* FROM stdin;$/ { copy = 1; next }
        copy && /^\\\.$/ { copy = 0; next }
-       !copy && /^\\/ && !/^\\(restrict|unrestrict) / { bad = 1 }
+       copy { next }
+       /^\\(restrict|unrestrict) [A-Za-z0-9_]+$/ { next }
+       /\\/ { bad = 1 }
        END { exit bad }' "$into/database.sql" ||
     die "database.sql holds psql commands; a dump from pg_dump never does"
 
@@ -187,10 +192,21 @@ validate() {
   unpack_and_check "$1" "$tmp"
 }
 
+# A failure while restoring: logged like die, and also printed alone on stdout (which a
+# restore otherwise leaves empty) so the installers can show it as the last word on whether
+# the database was changed, without having to read the log on stderr.
+restore_fail() { echo "$*"; die "$*"; }
+
 restore() {
   [ "$(basename "$UPLOADS")" = uploads ] || die "UPLOADS_DIR must be a directory named uploads, not $UPLOADS"
   tmp="$OUT/.restore-$$"
-  trap 'rm -rf "$tmp"' EXIT
+  # The archive's lock, but without waiting: two restores at once would both clear and refill
+  # the uploads folder, and the first to finish restarts the app under the other.
+  mkdir -p "$OUT"
+  lock="$OUT/.lock-$STACK"
+  find "$OUT" -maxdepth 1 -name ".lock-$STACK" -mmin +120 -exec rm -rf {} +
+  mkdir "$lock" 2>/dev/null || die "another backup or restore of $STACK is running; wait for it to finish"
+  trap 'rm -rf "$tmp" "$lock"' EXIT
   unpack_and_check "$1" "$tmp" >&2
 
   # One transaction (--single-transaction wraps -f input only, hence -f -): the old schema is dropped and the dump loaded together, so a dump
@@ -198,17 +214,25 @@ restore() {
   # (rather than relying on the dump's own DROPs) also clears tables a newer version
   # added that the dump knows nothing about, which would otherwise block the drops.
   log "restoring database"
-  { echo 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;'; cat "$tmp/database.sql"; } |
+  # Restricted mode (psql 16.10+, which both images carry): after our \restrict, psql
+  # itself refuses every backslash command until an \unrestrict with the same random
+  # key, wherever it appears and whatever the text around it looks like. That makes
+  # psql, not the text check above, the thing an archive would have to beat. The
+  # dump's own restrict pair carries its own key and is dropped; ours spans the file.
+  restrict_key="r$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+  { printf '\\restrict %s\n' "$restrict_key"
+    echo 'DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;'
+    grep -Ev '^\\(restrict|unrestrict) ' "$tmp/database.sql"; } |
     PGOPTIONS="-c client_min_messages=warning" psql -q -v ON_ERROR_STOP=1 --single-transaction -f - "$PGURL" > /dev/null ||
-    die "database restore failed; the database is unchanged"
+    restore_fail "database restore failed; the database is unchanged"
 
   # The directory may be a mount point, which cannot be swapped by rename, so its
   # contents are replaced. The database is already restored by now; if this fails,
   # the backup taken before the restore still has the old uploads.
   log "restoring uploads"
   mkdir -p "$UPLOADS"
-  find "$UPLOADS" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || die "could not clear $UPLOADS"
-  cp -a "$tmp/uploads/." "$UPLOADS/" || die "could not copy uploads into $UPLOADS; the database IS restored"
+  find "$UPLOADS" -mindepth 1 -maxdepth 1 -exec rm -rf {} + || restore_fail "could not clear $UPLOADS; the database IS restored"
+  cp -a "$tmp/uploads/." "$UPLOADS/" || restore_fail "could not copy uploads into $UPLOADS; the database IS restored"
   log "restore complete"
 }
 

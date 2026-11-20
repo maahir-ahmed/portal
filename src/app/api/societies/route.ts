@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/api";
-import { generateSlug } from "@/lib/utils";
+import { requireAuth, serverError } from "@/lib/api";
+import { generateSlug, slugProblem } from "@/lib/utils";
 import { z } from "zod";
 
 const schema = z.object({
@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = schema.parse(await req.json());
     let slug = generateSlug(body.name);
+    const bad = slugProblem(slug);
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 });
 
     // Ensure uniqueness
     const existing = await prisma.society.findUnique({ where: { slug } });
@@ -56,6 +58,6 @@ export async function POST(req: NextRequest) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

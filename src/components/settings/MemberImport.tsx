@@ -92,6 +92,7 @@ export function MemberImport({ societySlug, onImported }: { societySlug: string;
           accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           aria-label="Members file"
           onChange={(e) => choose(e.target.files?.[0])}
+          disabled={busy}
           className="block w-full text-sm file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm"
         />
         {busy && !check && <p className="text-sm text-muted-foreground">Checking…</p>}

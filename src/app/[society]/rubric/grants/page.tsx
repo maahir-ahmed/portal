@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle, FileText } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 
 interface Grant {
   uuid?: string;
@@ -26,25 +25,12 @@ interface DynamicCard {
 
 export default function RubricGrantsPage() {
   const params = useParams<{ society: string }>();
-  const rubric = useRubricClient(params.society);
-  const [grants, setGrants] = useState<Grant[]>([]);
-  const [cards, setCards] = useState<DynamicCard[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    rubric.call({ type: "getSocietyPortalSettlementList" })
-      .then((d) => {
-        setGrants((d.fundingsummary ?? []) as Grant[]);
-        setCards((d.dynamicCards ?? []) as DynamicCard[]);
-      })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        setError(msg === "not_configured" ? "not_configured" : msg);
-      })
-      .finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society]);
+  const { data, error, loading } = useRubricQuery(params.society, async (call) => {
+    const d = await call({ type: "getSocietyPortalSettlementList" });
+    return { grants: (d.fundingsummary ?? []) as Grant[], cards: (d.dynamicCards ?? []) as DynamicCard[] };
+  });
+  const grants = data?.grants ?? [];
+  const cards = data?.cards ?? [];
 
   if (loading) return <RubricShell><div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></RubricShell>;
   if (error === "not_configured") return <RubricShell><RubricNotConfigured societySlug={params.society} /></RubricShell>;

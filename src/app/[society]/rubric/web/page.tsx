@@ -1,6 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { wallClockNow } from "@/lib/urgency";
+import { othersDemo } from "@/lib/tutorial";
+import { modulesForSociety } from "@/lib/modulesServer";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricCopyPanel, type CopyRecord } from "@/components/rubric/RubricCopyPanel";
 import { formatDate, formatDateTime, EVENT_TYPE_LABELS, ACTIVITY_GRANT_DAYS } from "@/lib/utils";
@@ -13,7 +16,7 @@ import { ExternalLink } from "lucide-react";
 const RUBRIC_URL = "https://portal.hellorubric.com/";
 
 // Past the claim window the grant is dead, so the event stops being offered here.
-const grantCutoff = () => new Date(Date.now() - ACTIVITY_GRANT_DAYS * 86_400_000);
+const grantCutoff = (now: Date) => new Date(now.getTime() - ACTIVITY_GRANT_DAYS * 86_400_000);
 
 const pretty = (s: string) => s.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 const SIDED: Record<string, string> = {
@@ -37,29 +40,35 @@ export default async function RubricWebPage({
 
   const membership = await prisma.societyMembership.findFirst({
     where: { userId: session.user.id, society: { slug: society }, isActive: true },
+    include: { society: { select: { timezone: true } } },
   });
   // Execs only: this tab isn't shown to anyone else, and the guard blocks direct access.
   if (!membership || membership.role !== "EXECUTIVE") notFound();
 
   const societyId = membership.societyId;
+  // Event dates are typed-in wall-clock times, so compare them with the society's clock.
+  const now = new Date(wallClockNow(membership.society.timezone));
+  // A switched-off module's records stay in the database but leave its tab here.
+  const modules = await modulesForSociety(societyId);
+  const showGrants = modules.events && modules.grants;
   const [rooms, prints, grantEvents] = await Promise.all([
-    prisma.roomBooking.findMany({
+    !modules.roomBookings ? [] : prisma.roomBooking.findMany({
       // Only bookings still to be lodged on the portal; once marked submitted to
       // Arc they drop off this list, same as printing jobs.
-      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"] } },
+      where: { societyId, status: { in: ["SUBMITTED", "UNDER_REVIEW", "WAITING_ON_INFORMATION"] }, ...othersDemo("eventName", session.user.id) },
       orderBy: { createdAt: "desc" },
       take: 25,
       include: { submittedBy: { select: { name: true } } },
     }),
-    prisma.printingRequest.findMany({
+    !modules.printing ? [] : prisma.printingRequest.findMany({
       // Only jobs waiting to be submitted on the portal; once marked submitted
       // they drop off this list (but stay in the exec queue until pickup-ready).
-      where: { societyId, status: "PENDING_ARC_SUBMISSION" },
+      where: { societyId, status: "PENDING_ARC_SUBMISSION", ...othersDemo("fileName", session.user.id) },
       orderBy: { createdAt: "desc" },
       take: 25,
       include: { submittedBy: { select: { name: true } } },
     }),
-    prisma.contentRequest.findMany({
+    !showGrants ? [] : prisma.contentRequest.findMany({
       // Events with a Rubric event attached: the pool activity grants are submitted for.
       // An activity grant can only be claimed within 30 days of the event, so anything
       // older is past claiming and drops off the list, as does anything already lodged.
@@ -68,7 +77,8 @@ export default async function RubricWebPage({
         OR: [{ rubricEventId: { not: null } }, { rubricEventLink: { not: null } }],
         status: { not: "CANCELLED" },
         activityGrantStatus: "NOT_SUBMITTED",
-        startDate: { gte: grantCutoff() },
+        ...othersDemo("eventName", session.user.id),
+        startDate: { lte: now, gte: grantCutoff(now) },
       },
       orderBy: { startDate: "desc" },
       take: 25,
@@ -163,6 +173,11 @@ export default async function RubricWebPage({
             bookings={bookings}
             printing={printing}
             grants={grants}
+            tabs={[
+              ...(modules.roomBookings ? (["room"] as const) : []),
+              ...(modules.printing ? (["printing"] as const) : []),
+              ...(showGrants ? (["grants"] as const) : []),
+            ]}
             initialTab={sp.type === "printing" ? "printing" : sp.type === "grants" ? "grants" : "room"}
             initialId={sp.id}
           />

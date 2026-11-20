@@ -6,6 +6,8 @@ import { csvLine } from "./csv";
 // what gets written. Nobody is emailed or given a password: imported members start
 // NOT_INVITED and an executive issues each a passphrase (see SocietyMembership).
 
+export const titleKey = (roleLevel: Role, name: string) => `${roleLevel}|${name.toLowerCase()}`;
+
 export const IMPORT_COLUMNS = ["name", "email", "role", "title", "portfolios", "student_id", "discord_username"] as const;
 const REQUIRED = ["name", "email", "role"] as const;
 
@@ -34,7 +36,7 @@ export type ImportRow = {
 export type ImportContext = {
   /** Emails (lowercase) of this society's active members. */
   members: Set<string>;
-  /** Titles by lowercase name. */
+  /** Titles by titleKey: a name is only unique within a role level. */
   titles: Map<string, { name: string; roleLevel: Role; portfolioId: string | null }>;
   /** Portfolios by lowercase name. */
   portfolios: Map<string, { id: string; name: string }>;
@@ -71,6 +73,9 @@ export function checkImport(table: string[][], ctx: ImportContext): ImportCheck 
     const roleText = col(cells, "role");
     const role = ROLES[roleText.toLowerCase()] ?? null;
     const titleText = col(cells, "title");
+    // The same rule as the Account page (api/me), which sends this with every save.
+    const studentId = col(cells, "student_id").toLowerCase();
+    if (studentId && !/^z\d{7}$/.test(studentId)) problems.push(`Student ID "${studentId}" must be z followed by 7 digits, like z1234567`);
     const portfolios = [...new Set(col(cells, "portfolios").split(";").map((p) => p.trim()).filter(Boolean))];
 
     if (!name) problems.push("Name is empty");
@@ -81,10 +86,14 @@ export function checkImport(table: string[][], ctx: ImportContext): ImportCheck 
 
     let title: string | null = null;
     if (titleText) {
-      const t = ctx.titles.get(titleText.toLowerCase());
-      if (!t) problems.push(`No title called "${titleText}". Add it in Settings first, or leave it blank.`);
-      else if (role && t.roleLevel !== role) problems.push(`"${t.name}" is a title for ${t.roleLevel.toLowerCase()}s`);
-      else title = t.name;
+      const t = role ? ctx.titles.get(titleKey(role, titleText)) : undefined;
+      if (t) title = t.name;
+      else {
+        // The same name may exist at another level; say so rather than "no title".
+        const other = [...ctx.titles.values()].find((x) => x.name.toLowerCase() === titleText.toLowerCase());
+        if (!other) problems.push(`No title called "${titleText}". Add it in Settings first, or leave it blank.`);
+        else if (role) problems.push(`"${other.name}" is a title for ${other.roleLevel.toLowerCase()}s`);
+      }
     }
     for (const p of portfolios) {
       if (!ctx.portfolios.has(p.toLowerCase())) newPortfolios.set(p.toLowerCase(), p);
@@ -100,7 +109,7 @@ export function checkImport(table: string[][], ctx: ImportContext): ImportCheck 
       title,
       // Spelled as the existing portfolio is, so the commit can look them up.
       portfolios: portfolios.map((p) => ctx.portfolios.get(p.toLowerCase())?.name ?? newPortfolios.get(p.toLowerCase())!),
-      studentId: col(cells, "student_id") || null,
+      studentId: studentId || null,
       discordUsername: col(cells, "discord_username") || null,
       status: problems.length ? "error" : already ? "skip" : "add",
       problems: already ? ["Already a member, left as they are"] : problems,

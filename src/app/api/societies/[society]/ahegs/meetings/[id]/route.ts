@@ -1,3 +1,4 @@
+import { serverError } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAhegsAccess, membershipsInScope } from "@/lib/ahegsServer";
@@ -5,12 +6,13 @@ import { createAuditLog } from "@/lib/audit";
 import { canTouchPortfolio } from "@/lib/ahegs";
 import { z } from "zod";
 import { ahegsYearOf } from "@/lib/years";
+import { plainDate } from "@/lib/schemas";
 
 type Params = { society: string; id: string };
 
 const schema = z.object({
   title: z.string().min(1).max(300).optional(),
-  date: z.string().min(1).optional(),
+  date: plainDate.optional(),
   hours: z.number().min(0).max(24).optional(),
   fileUrl: z.string().max(2000).nullable().optional(),
   fileName: z.string().max(300).nullable().optional(),
@@ -83,7 +85,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }
 

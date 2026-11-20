@@ -10,6 +10,19 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  // The seed is for demo and dev databases only, but nothing used to stop it being
+  // run against a real one, where it would attach four known-password accounts (two
+  // of them executives) to the real society. Any account outside example.com (which
+  // only real use creates: the seed and the demo stay inside RFC 2606) means this is
+  // not a database to seed. The demo stack is reset with --force-reset first, so it
+  // is empty here and never trips this.
+  const realAccounts = await prisma.user.count({ where: { NOT: { email: { endsWith: "@example.com" } } } });
+  if (realAccounts > 0 && process.env.SEED_FORCE !== "1") {
+    console.error(`Refusing to seed: this database has ${realAccounts} real account(s).`);
+    console.error("The seed adds demo executives with a known password. If you really mean to, set SEED_FORCE=1.");
+    process.exit(1);
+  }
+
   console.log("🌱 Seeding database...");
 
   // Create demo society: UNSW Security Society
@@ -49,7 +62,8 @@ async function main() {
   const [demo, alice, bob, charlie] = await Promise.all([
     prisma.user.upsert({
       where: { email: "demo@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "demo@example.com",
         name: "Demo Executive",
@@ -59,7 +73,8 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "alice@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "alice@example.com",
         name: "Alice Chen",
@@ -69,7 +84,8 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "bob@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "bob@example.com",
         name: "Bob Nguyen",
@@ -79,7 +95,8 @@ async function main() {
     }),
     prisma.user.upsert({
       where: { email: "charlie@example.com" },
-      update: {},
+      // Keep the hash current: a re-seed after changing DEMO_PASSWORD must change the login.
+      update: { passwordHash: password },
       create: {
         email: "charlie@example.com",
         name: "Charlie Park",
@@ -404,7 +421,7 @@ async function main() {
         description: "Hands-on workshop working up from a plain stack overflow to a ret2libc. Attendees work on our own VMs, nothing touches university machines.",
         requirements: "Lab machines or BYO laptops, projector, whiteboard. Upper campus preferred.",
         status: "SUBMITTED",
-        officer: { name: "Yuki Tanaka", zid: "z5100006", phone: "0400 111 222" },
+        officer: { name: "Yuki Tanaka", zid: "z5100006", phone: "0491 570 156" },
       },
       {
         id: "demo-rb-2", eventName: "Careers Panel: Blue Team vs Red Team", type: "PRESENTATION_TALK_PANEL", by: "sam",
@@ -413,7 +430,7 @@ async function main() {
         requirements: "Tiered theatre, two handheld mics plus a lapel, HDMI to the lectern, foyer space for catering.",
         status: "UNDER_REVIEW", external: true, extNum: 4,
         extDesc: "Four panellists from local security teams, speaking in a personal capacity. No payment, travel reimbursed at cost.",
-        officer: { name: "Sam Ferreira", zid: "z5100005", phone: "0400 333 444" },
+        officer: { name: "Sam Ferreira", zid: "z5100005", phone: "0491 570 157" },
       },
       {
         id: "demo-rb-3", eventName: "Sec-a-thon 2026", type: "WORKSHOP", by: "tom",
@@ -422,7 +439,7 @@ async function main() {
         requirements: "After-hours access, power for 120 laptops, breakout room for judging, accessible bathrooms on the same floor.",
         status: "WAITING_ON_INFORMATION", external: true, extNum: 6,
         extDesc: "Six sponsor representatives running challenge desks. Sponsorship is settled separately with the treasurer; no payment on the day.",
-        officer: { name: "Tom Whitfield", zid: "z5100002", phone: "0400 555 666" },
+        officer: { name: "Tom Whitfield", zid: "z5100002", phone: "0491 570 158" },
       },
       {
         id: "demo-rb-4", eventName: "Annual General Meeting", type: "GENERAL_MEETING", by: "alice",
@@ -430,7 +447,7 @@ async function main() {
         description: "Constitutional AGM: annual report, treasurer's report, and election of the incoming committee.",
         requirements: "Tiered theatre with a lectern mic, roving mic for questions, projector for the slides.",
         status: "SUBMITTED_TO_ARC",
-        officer: { name: "Alice Chen", zid: "z5000102", phone: "0400 777 888" },
+        officer: { name: "Alice Chen", zid: "z5000102", phone: "0491 570 159" },
       },
       {
         id: "demo-rb-5", eventName: "Security Trivia Night", type: "SOCIAL_ACTIVITY", by: "deniz",
@@ -438,7 +455,7 @@ async function main() {
         description: "Six rounds of security trivia in teams of five, with a break for food halfway through.",
         requirements: "Loose tables rather than fixed seating, PA and a microphone, screen for the question slides.",
         status: "APPROVED", room: "Roundhouse — Main Floor",
-        officer: { name: "Deniz Yilmaz", zid: "z5100004", phone: "0400 999 000" },
+        officer: { name: "Deniz Yilmaz", zid: "z5100004", phone: "0491 570 110" },
       },
       {
         id: "demo-rb-6", eventName: "CTF Beginners Workshop", type: "WORKSHOP", by: "bob",
@@ -446,7 +463,7 @@ async function main() {
         description: "Beginner-friendly walkthrough of web, crypto and forensics warmups on our own scoreboard.",
         requirements: "Flat room with power at every seat, projector, wired network if possible.",
         status: "COMPLETED", room: "CATS Room (K17 G12)",
-        officer: { name: "Bob Nguyen", zid: "z5000103", phone: "0411 222 333" },
+        officer: { name: "Bob Nguyen", zid: "z5000103", phone: "0491 571 266" },
       },
       {
         id: "demo-rb-8", eventName: "Sponsor Site Visit", type: "NETWORKING_INDUSTRY", by: "sam",
@@ -455,7 +472,7 @@ async function main() {
         requirements: "Outdoor space with shade and a power point for the PA. Wet weather backup room if one is going.",
         status: "SUBMITTED", external: true, extNum: 3,
         extDesc: "Three staff from a sponsoring employer, attending in a work capacity. No payment either way; they bring their own lunch catering.",
-        officer: { name: "Sam Ferreira", zid: "z5100005", phone: "0400 333 444" },
+        officer: { name: "Sam Ferreira", zid: "z5100005", phone: "0491 570 157" },
       },
       {
         id: "demo-rb-7", eventName: "Movie Night: Hackers (1995)", type: "MOVIE_NIGHT", by: "charlie",
@@ -463,7 +480,7 @@ async function main() {
         description: "Screening with a short intro on how little of it is accurate, then discussion.",
         requirements: "Theatre with working sound, HDMI, and lights we can dim.",
         status: "REJECTED",
-        officer: { name: "Charlie Park", zid: "z5000104", phone: "0422 333 444" },
+        officer: { name: "Charlie Park", zid: "z5000104", phone: "0491 573 770" },
       },
     ];
 
@@ -566,24 +583,24 @@ async function main() {
 
     const printing = [
       {
-        id: "demo-pr-1", by: "hana", name: "Hana Okafor", email: "hana@example.com", phone: "0400 121 212",
+        id: "demo-pr-1", by: "hana", name: "Hana Okafor", email: "hana@example.com", phone: "0491 572 549",
         pickup: at("2026-09-04", "14:00"), quantity: 40, pages: 1, size: "A3", sided: "SINGLE", colour: "COLOUR",
         file: "trivia-night-poster.pdf", cost: 68.0, status: "PENDING_ARC_SUBMISSION",
         notes: "Please keep the bleed — the border is part of the design.",
       },
       {
-        id: "demo-pr-2", by: "charlie", name: "Charlie Park", email: "charlie@example.com", phone: "0422 333 444",
+        id: "demo-pr-2", by: "charlie", name: "Charlie Park", email: "charlie@example.com", phone: "0491 573 770",
         pickup: at("2026-09-17", "11:00"), quantity: 200, pages: 1, size: "A4", sided: "SINGLE", colour: "BW",
         file: "binex-workshop-flyer.pdf", cost: 24.0, status: "PENDING_APPROVAL",
       },
       {
-        id: "demo-pr-3", by: "sam", name: "Sam Ferreira", email: "sam@example.com", phone: "0400 333 444",
+        id: "demo-pr-3", by: "sam", name: "Sam Ferreira", email: "sam@example.com", phone: "0491 570 157",
         pickup: at("2026-08-25", "10:30"), quantity: 60, pages: 4, size: "A4", sided: "DOUBLE_LONG", colour: "COLOUR",
         file: "careers-panel-programme.pdf", cost: 132.0, status: "SUBMITTED",
         notes: "Stapled top-left if the machine can do it.",
       },
       {
-        id: "demo-pr-4", by: "olive", name: "Olive Nakamura", email: "olive@example.com", phone: "0433 444 555",
+        id: "demo-pr-4", by: "olive", name: "Olive Nakamura", email: "olive@example.com", phone: "0491 574 118",
         pickup: at("2026-07-28", "15:00"), quantity: 25, pages: 2, size: "A3", sided: "DOUBLE_SHORT", colour: "COLOUR",
         file: "ctf-scoreboard-signage.pdf", cost: 87.5, status: "READY_FOR_PICKUP",
       },
@@ -740,7 +757,8 @@ async function main() {
 
   console.log("✅ Seeding complete!");
   console.log("");
-  console.log(`Demo accounts (password: ${demoPassword}):`);
+  // Never echo a real DEMO_PASSWORD: the nightly re-seed cron appends this output to a log.
+  console.log(`Demo accounts (password: ${process.env.DEMO_PASSWORD ? "$DEMO_PASSWORD" : demoPassword}):`);
   console.log("  demo@example.com    Executive (President & Treasurer)");
   console.log("  alice@example.com   Executive (Secretary)");
   console.log("  bob@example.com     Director (CTF)");
@@ -750,5 +768,9 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
+  // exitCode, so a failed or refused seed is a failed command, not a logged-and-green one.
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

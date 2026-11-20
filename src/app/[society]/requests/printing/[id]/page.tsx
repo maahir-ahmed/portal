@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requirePageMember } from "@/lib/pageAccess";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
@@ -19,13 +19,7 @@ interface Props {
 
 export default async function PrintingRequestDetailPage({ params }: Props) {
   const { society: societySlug, id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-  });
-  if (!membership) redirect("/");
+  const { session, membership } = await requirePageMember(societySlug);
 
   const request = await prisma.printingRequest.findUnique({
     where: { id },

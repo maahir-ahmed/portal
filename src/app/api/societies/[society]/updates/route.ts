@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireAuth, requireMembership, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { requestUpdate, updateStatus } from "@/lib/updates";
 
@@ -16,11 +16,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
 }
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const status = await updateStatus();
   if (!status.enabled) return NextResponse.json({ error: "Updates are managed elsewhere on this server" }, { status: 400 });

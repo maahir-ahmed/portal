@@ -3,13 +3,12 @@
 /* eslint-disable @next/next/no-img-element -- Rubric serves these images from hosts we do not
    know ahead of time; next/image would need a wildcard remotePattern to render them. */
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { RubricShell } from "@/components/rubric/RubricShell";
 import { RubricNotConfigured } from "@/components/rubric/RubricNotConfigured";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, AlertCircle, Package, ShoppingCart, ExternalLink } from "lucide-react";
-import { useRubricClient } from "@/hooks/useRubricClient";
+import { useRubricQuery } from "@/hooks/useRubricQuery";
 
 interface MerchItem {
   itemid?: number | string;
@@ -36,25 +35,15 @@ interface MerchOrder {
 
 export default function RubricMerchPage() {
   const params = useParams<{ society: string }>();
-  const rubric = useRubricClient(params.society);
-  const [listings, setListings] = useState<MerchItem[]>([]);
-  const [orders, setOrders] = useState<MerchOrder[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      rubric.call({ type: "getMerchListings" }),
-      rubric.call({ type: "getMerchOrders" }),
-    ]).then(([l, o]) => {
-      setListings((l.items ?? l.merch ?? l.listings ?? []) as MerchItem[]);
-      setOrders((o.orders ?? o.data ?? []) as MerchOrder[]);
-    }).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg === "not_configured" ? "not_configured" : msg);
-    }).finally(() => setLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.society]);
+  const { data, error, loading } = useRubricQuery(params.society, async (call) => {
+    const [l, o] = await Promise.all([call({ type: "getMerchListings" }), call({ type: "getMerchOrders" })]);
+    return {
+      listings: (l.items ?? l.merch ?? l.listings ?? []) as MerchItem[],
+      orders: (o.orders ?? o.data ?? []) as MerchOrder[],
+    };
+  });
+  const listings = data?.listings ?? [];
+  const orders = data?.orders ?? [];
 
   if (loading) return <RubricShell><div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></RubricShell>;
   if (error === "not_configured") return <RubricShell><RubricNotConfigured societySlug={params.society} /></RubricShell>;

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Database, FileCode, Loader2 } from "lucide-react";
+import { AlertTriangle, Database, FileCode, FileX, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { ConfirmName, api, runJob, size } from "./BackupsClient";
+import { cn, formatDate } from "@/lib/utils";
+import { ConfirmName, size, useStopOnUnmount } from "./BackupsClient";
+import { api, runJob } from "@/lib/clientApi";
 
 // Settings > Debugging. Everything here acts on the live database, so the whole tab
 // sits in one red panel, and running SQL asks for the society's name and takes a
@@ -33,6 +34,7 @@ export function DebugClient({ societySlug, societyName }: { societySlug: string;
       </div>
       <SqlRunner base={base} societyName={societyName} />
       <TableViewer base={base} />
+      <UnusedUploads base={base} />
     </div>
   );
 }
@@ -53,8 +55,9 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
   const [file, setFile] = useState<{ name: string; text: string } | null>(null);
   const [confirm, setConfirm] = useState("");
   const [running, setRunning] = useState(false);
+  const stop = useStopOnUnmount();
   const [outcome, setOutcome] = useState<
-    { ok: true; results: SqlResult[]; backup: string } | { ok: false; error: string; line?: number; backup?: string } | null
+    { ok: true; results: SqlResult[]; backup: string } | { ok: false; error: string; unchanged: boolean; line?: number; backup?: string } | null
   >(null);
 
   async function pick(f: File | undefined) {
@@ -74,12 +77,22 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileName: file.name, sql: file.text, confirm }),
         },
-        base
+        base,
+        {},
+        stop()
       );
       setOutcome({ ok: true, ...r });
     } catch (e) {
-      const err = e as Error & { data?: { line?: number; backup?: string } };
-      setOutcome({ ok: false, error: err.message, ...err.data });
+      if (stop().aborted) return;
+      const err = e as Error & { data?: { line?: number; backup?: string }; signedOut?: boolean };
+      // Only a job that itself failed (or never started) rolled back. A lost session or
+      // a lost job says nothing about whether the statement committed.
+      setOutcome({
+        ok: false,
+        error: err.signedOut ? "You were signed out before the result came back, so it is not known whether the file ran. Check the audit log." : err.message,
+        unchanged: err.data !== undefined,
+        ...err.data,
+      });
     }
     setRunning(false);
   }
@@ -126,7 +139,7 @@ function SqlRunner({ base, societyName }: { base: string; societyName: string })
         {outcome && !outcome.ok && (
           <p className="rounded-md bg-red-100 px-3 py-2 text-sm text-red-900 break-words">
             {outcome.line ? `Line ${outcome.line}: ` : ""}
-            {outcome.error} Nothing was changed.
+            {outcome.error}{outcome.unchanged && " Nothing was changed."}
           </p>
         )}
         {outcome?.ok && (
@@ -175,7 +188,7 @@ function Records({ columns, rows, masked = [] }: { columns: string[]; rows: unkn
             const v = row[j];
             const text = v === null || v === undefined ? "null" : typeof v === "object" ? JSON.stringify(v) : String(v);
             return (
-              <div key={c} className="contents">
+              <div key={j} className="contents">
                 <dt className={cn("truncate font-medium text-muted-foreground", masked[j] && "text-red-700")}>{c}</dt>
                 <dd className={cn("break-all font-mono", v === null && "text-muted-foreground/60")} title={text.length > 300 ? text : undefined}>
                   {text.length > 300 ? `${text.slice(0, 300)}…` : text}
@@ -248,6 +261,88 @@ function TableViewer({ base }: { base: string }) {
               </span>
             </div>
             <Records columns={data.columns.map((c) => c.name)} masked={data.columns.map((c) => c.masked)} rows={data.rows} />
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Unused uploads ────────────────────────────────────────────────────────────
+
+interface OrphanFile {
+  name: string;
+  bytes: number;
+  modifiedAt: string;
+}
+
+// Lists first and deletes only on a second click, and the server re-checks each file is
+// still unused at that moment, since someone may have attached it in between.
+function UnusedUploads({ base }: { base: string }) {
+  const [files, setFiles] = useState<OrphanFile[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function find() {
+    setBusy(true);
+    try {
+      setFiles((await api<{ files: OrphanFile[] }>(`${base}/uploads`)).files);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  async function remove() {
+    if (!files?.length) return;
+    setBusy(true);
+    try {
+      const r = await api<{ deleted: number; skipped: number }>(`${base}/uploads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ names: files.map((f) => f.name) }),
+      });
+      toast.success(`Deleted ${r.deleted} file${r.deleted === 1 ? "" : "s"}${r.skipped ? `; ${r.skipped} had been attached since, so were kept` : ""}`);
+      setFiles(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  const total = files?.reduce((n, f) => n + f.bytes, 0) ?? 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><FileX className="h-4 w-4" /> Unused uploaded files</CardTitle>
+        <CardDescription>
+          Files that were uploaded but are no longer attached to anything: a form left unfinished, or a record
+          deleted. Files from the last day are left alone. Nightly backups still hold anything deleted here.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button variant="outline" onClick={find} disabled={busy} className="gap-1.5">
+          {busy && files === null ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileX className="h-4 w-4" />}
+          Find unused files
+        </Button>
+        {files && files.length === 0 && <p className="text-sm text-muted-foreground">No unused files.</p>}
+        {files && files.length > 0 && (
+          <>
+            <p className="text-sm">
+              {files.length} unused file{files.length === 1 ? "" : "s"}, {size(total)} in all.
+            </p>
+            <ul className="max-h-64 overflow-y-auto rounded-md border bg-background p-2 text-xs space-y-1">
+              {files.map((f) => (
+                <li key={f.name} className="flex flex-wrap justify-between gap-x-3">
+                  <a href={`/uploads/${f.name}`} target="_blank" rel="noreferrer" className="font-mono break-all underline underline-offset-2">{f.name}</a>
+                  <span className="text-muted-foreground">{size(f.bytes)}, {formatDate(f.modifiedAt)}</span>
+                </li>
+              ))}
+            </ul>
+            <Button onClick={remove} disabled={busy} className="h-auto min-h-9 gap-1.5 whitespace-normal bg-red-700 py-2 text-white hover:bg-red-800">
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileX className="h-4 w-4" />}
+              Delete these {files.length} file{files.length === 1 ? "" : "s"}
+            </Button>
           </>
         )}
       </CardContent>

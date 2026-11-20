@@ -132,6 +132,25 @@ export function canViewRequest(
   );
 }
 
+/** A query-string value as one string: Next hands back an array when a key is repeated. */
+export const firstParam = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v);
+
+/** A list page number from the query string: a whole number from 1 to `max`, else 1. */
+export function pageParam(v: string | string[] | undefined, max = 10_000): number {
+  const n = Number(firstParam(v));
+  return Number.isInteger(n) ? Math.min(max, Math.max(1, n)) : 1;
+}
+
+/**
+ * The where-clause form of canViewRequest, for lists and counts of event requests and room
+ * bookings: nothing to narrow for those who see all, else the member's own and assigned.
+ */
+export function requestVisibility(m: { role: string; title: string | null }, userId: string) {
+  return canViewRequest(m, userId, { submittedById: "" })
+    ? {}
+    : { OR: [{ submittedById: userId }, { assignedToId: userId }] };
+}
+
 /** Arc has approved or refused it: from here the submitter may only record the room. */
 export const bookingDecided = (status: string) => ["APPROVED", "REJECTED", "COMPLETED"].includes(status);
 
@@ -209,6 +228,16 @@ export function generateSlug(name: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .trim();
+}
+
+// Top-level paths the app owns (see ROOT_PATHS in proxy.ts); a society slug can't sit there.
+const RESERVED_SLUGS = ["api", "login", "setup", "uploads", "_next"];
+
+/** Why a slug can't be used, or null. An empty one would send the home page to `//dashboard`. */
+export function slugProblem(slug: string): string | null {
+  if (!slug) return "Use a name with some letters or numbers (a-z, 0-9) so it can make a web address";
+  if (RESERVED_SLUGS.includes(slug)) return `"${slug}" is reserved, choose a different name`;
+  return null;
 }
 
 // Arc's event categories, used by the room booking form and the exec detail view.

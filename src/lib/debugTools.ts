@@ -11,3 +11,10 @@ export function backupsEnabled(): boolean {
 export function debugToolsEnabled(): boolean {
   return process.env.ENABLE_DEBUG_TOOLS === "true" && backupsEnabled();
 }
+
+// A restore upload is refused once it would leave less than this free on the backups
+// volume. On a single box that is the same disk as the database, and a full disk takes
+// every stack on it down, not just this one.
+export const MIN_FREE_BYTES = 2 * 1024 ** 3;
+export const uploadFits = (freeBytes: number, incomingBytes: number) => freeBytes - incomingBytes >= MIN_FREE_BYTES;
+

@@ -137,7 +137,9 @@ is one `.tar.gz` file in the `backups` folder, and the last 14 days are kept.
 ./portal restore backups/<file>   # put one back
 ```
 
-Executives can also download a backup, or restore one, in Settings › Backups. To move
+Executives can also see every backup, with when it was taken, download any of them, or
+restore one, in Settings › Backups. Backups taken there are kept apart from the nightly
+ones (in a Docker volume, not the `backups` folder), so download one to keep it. To move
 to a new computer, install there and choose **Restore a backup** on the setup page.
 
 Copy a backup somewhere else now and then. A backup on the same machine won't help if

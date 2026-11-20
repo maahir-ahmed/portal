@@ -136,3 +136,21 @@ export function scrubResponse<T>(value: T): T {
   }
   return value;
 }
+
+// The allowlist stops a member reaching a call they shouldn't; this stops them
+// draining a call they may reach. Loading the Rubric tabs costs a handful of calls,
+// so a minute's worth of ordinary use sits well under the cap, while scraping the
+// membership or ticket lists hits it immediately.
+// ponytail: per-process counter, no store. Correct for the single-container
+// deployment and resets on restart; needs a shared store only if this ever runs
+// more than one replica. The map is bounded by the number of committee members.
+export const RATE_WINDOW_MS = 60_000;
+export const RATE_MAX = 60;
+const recentCalls = new Map<string, number[]>();
+
+export function rubricRateLimited(userId: string, now = Date.now()): boolean {
+  const recent = (recentCalls.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  recent.push(now);
+  recentCalls.set(userId, recent);
+  return recent.length > RATE_MAX;
+}

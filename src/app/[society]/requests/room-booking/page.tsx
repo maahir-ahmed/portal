@@ -1,12 +1,12 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { cn, formatDate, isLateArcSubmission } from "@/lib/utils";
+import { othersDemo } from "@/lib/tutorial";
+import { cn, formatDate, isLateArcSubmission, requestVisibility } from "@/lib/utils";
 import { Plus, Building2, AlertTriangle, Calendar, Clock, MapPin, Users, DoorOpen } from "lucide-react";
 
 // Finished bookings sink below the active ones and grey out, same as content requests.
@@ -18,21 +18,13 @@ interface Props {
 
 export default async function RoomBookingsPage({ params }: Props) {
   const { society: societySlug } = await params;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
-
-  const canSeeAll = membership.role === "EXECUTIVE" || membership.role === "DIRECTOR";
+  const { session, membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } });
 
   const rows = await prisma.roomBooking.findMany({
     where: {
       societyId: membership.societyId,
-      ...(!canSeeAll ? { submittedById: session.user.id } : {}),
+      ...requestVisibility(membership, session.user.id),
+      ...othersDemo("eventName", session.user.id),
     },
     include: {
       submittedBy: { select: { id: true, name: true, avatarUrl: true } },

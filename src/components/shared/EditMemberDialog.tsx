@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Trash2 } from "lucide-react";
 import { offline } from "@/lib/utils";
+import { copyText } from "@/lib/clientApi";
 
 interface SocietyTitle {
   id: string;
@@ -73,6 +74,18 @@ export function EditMemberDialog({
         .catch(() => {});
     }
   }, [open, societySlug]);
+
+  // Every open starts from what the member is now, so an abandoned edit is not saved later.
+  function handleOpenChange(o: boolean) {
+    setOpen(o);
+    setTempPassword(null);
+    if (o) {
+      setRole(currentRole);
+      setTitle(currentTitle ?? "__none__");
+      setPhone(memberPhone ?? "");
+      setExtras(extraPortfolioIds);
+    }
+  }
 
   function handleRoleChange(newRole: string) {
     setRole(newRole);
@@ -140,9 +153,9 @@ export function EditMemberDialog({
   const otherPortfolios = portfolios.filter((p) => p.id !== derivedId);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTempPassword(null); }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="icon" variant="ghost" className="h-7 w-7">
+        <Button size="icon" variant="ghost" className="h-7 w-7" aria-label={`Edit ${memberName}`}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
@@ -219,7 +232,7 @@ export function EditMemberDialog({
                 <div className="flex items-center gap-2">
                   {/* Wraps rather than truncates: the whole point of a passphrase is being readable. */}
                   <code className="flex-1 break-all rounded bg-background px-2 py-1 text-sm">{tempPassword}</code>
-                  <Button type="button" size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(tempPassword); toast.success("Copied"); }}>
+                  <Button type="button" size="sm" variant="outline" onClick={() => copyText(tempPassword, "passphrase")}>
                     Copy
                   </Button>
                 </div>

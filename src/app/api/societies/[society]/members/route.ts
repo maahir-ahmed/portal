@@ -1,28 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
 import { portfolioForTitle } from "@/lib/titles";
-import { generatePassphrase } from "@/lib/passphrase";
+import { generatePassphrase, tempPassphraseExpiry } from "@/lib/passphrase";
 import { emailPassphrase } from "@/lib/email";
 import { z } from "zod";
 
 const schema = z.object({
   // Sign-in lowercases what is typed, so a capital here would lock the member out.
   email: z.string().trim().toLowerCase().email(),
-  name: z.string().min(1),
+  name: z.string().min(1).max(100),
   role: z.enum(["EXECUTIVE", "DIRECTOR", "SUBCOMMITTEE"]),
-  title: z.string().nullable().optional(),
+  title: z.string().max(100).nullable().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   try {
     const body = schema.parse(await req.json());
@@ -42,6 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
           name: body.name,
           passwordHash: await hashPassword(tempPassword),
           mustChangePassword: true,
+          tempPasswordExpires: tempPassphraseExpiry(),
         },
       });
     }
@@ -87,6 +85,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ soc
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues[0]?.message ?? "Validation error" }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return serverError(err);
   }
 }

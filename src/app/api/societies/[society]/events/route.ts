@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { serverError, requireRole } from "@/lib/api";
 import { subMonths } from "date-fns";
 
 // The events a reimbursement claim can be linked to. Any member may link their own
@@ -9,12 +9,9 @@ import { subMonths } from "date-fns";
 // 13-month window keeps last year's same-named event pickable without listing
 // every event the society has ever run.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society);
-  if (memErr) return memErr;
+  const { membership, error: accessErr } = await requireRole(society);
+  if (accessErr) return accessErr;
 
   try {
     const events = await prisma.contentRequest.findMany({
@@ -28,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ soc
     });
 
     return NextResponse.json(events);
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (err) {
+    return serverError(err);
   }
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { join } from "node:path";
 import { prisma } from "@/lib/db";
-import { requireAuth, requireMembership } from "@/lib/api";
+import { requireRole } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { AHEGS_CATEGORIES, CATEGORY_LABELS, TEMPLATES, resolveRow } from "@/lib/ahegs";
 import { fillTemplate, type Cell } from "@/lib/xlsx";
@@ -9,12 +9,9 @@ import type { AhegsCategory } from "@prisma/client";
 
 // Downloads one category's list as Arc's own .xlsx, filled in and ready to upload.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ society: string }> }) {
-  const { session, error: authErr } = await requireAuth();
-  if (authErr) return authErr;
-
   const { society } = await params;
-  const { membership, error: memErr } = await requireMembership(session!.user.id, society, "EXECUTIVE");
-  if (memErr) return memErr;
+  const { session, membership, error: accessErr } = await requireRole(society, "EXECUTIVE");
+  if (accessErr) return accessErr;
 
   const category = req.nextUrl.searchParams.get("category") as AhegsCategory | null;
   const year = Number(req.nextUrl.searchParams.get("year"));
@@ -22,12 +19,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
     return NextResponse.json({ error: "Unknown category or year" }, { status: 400 });
   }
 
-  const [memberships, entries] = await Promise.all([
+  const [memberships, entries, soc] = await Promise.all([
     prisma.societyMembership.findMany({
       where: { societyId: membership!.societyId },
       include: { user: { select: { name: true, email: true, zId: true } } },
     }),
     prisma.ahegsEntry.findMany({ where: { societyId: membership!.societyId, year } }),
+    prisma.society.findUnique({ where: { id: membership!.societyId }, select: { timezone: true } }),
   ]);
 
   const overrides = new Map(entries.map((e) => [e.membershipId, e]));
@@ -46,7 +44,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ soci
           zId: m.user.zId,
         },
         overrides.get(m.id),
-        year
+        year,
+        [],
+        soc?.timezone ?? "Etc/UTC"
       )
     )
     .filter((r) => r.included && r.category === category)

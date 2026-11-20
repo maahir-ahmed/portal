@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn, offline } from "@/lib/utils";
+import { api } from "@/lib/clientApi";
+import { LoadFailed } from "@/components/settings/LoadFailed";
 
 // Settings > Email, and the setup wizard's Email step. Picking Brevo or Resend fills in
 // the technical half (server, port, login) so the person only pastes a key and an address.
@@ -59,15 +61,17 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
   const [busy, setBusy] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const fetchSaved = (slug: string): Promise<Saved> => fetch(`/api/societies/${slug}/email`).then((r) => r.json());
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const fetchSaved = (slug: string) => api<Saved>(`/api/societies/${slug}/email`);
   function show(s: Saved) {
     setSaved(s);
     const p = providerOf(s.host);
     setProvider(p);
     setF({ host: s.host || PROVIDERS[p].host, port: String(s.port || PROVIDERS[p].port), user: s.user, pass: "", from: s.from });
   }
-  const load = () => fetchSaved(societySlug).then(show);
-  useEffect(() => { fetchSaved(societySlug).then(show); }, [societySlug]);
+  const load = () => fetchSaved(societySlug).then(show).catch((e: Error) => setLoadError(e.message));
+  useEffect(() => { fetchSaved(societySlug).then(show).catch((e: Error) => setLoadError(e.message)); }, [societySlug]);
 
   function pick(p: Provider) {
     setProvider(p);
@@ -106,9 +110,12 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
     setTest(res.ok ? { ok: true, text: `Sent to ${data.to}. If it isn't in the inbox within a minute, check the spam folder.` } : { ok: false, text: data.error ?? "It didn't send." });
   }
 
+  if (loadError) return <LoadFailed message={loadError} onRetry={() => { setLoadError(null); load(); }} />;
   if (!saved) return <div className="text-sm text-muted-foreground">Loading…</div>;
   const on = saved.source === "app" || saved.source === "server";
   const p = PROVIDERS[provider];
+  // The route keeps a saved key only for the server and login it was saved with.
+  const keepsKey = saved.passSet && saved.source === "app" && f.host.toLowerCase() === saved.host.toLowerCase() && f.user === saved.user;
 
   return (
     <div className="space-y-6">
@@ -128,7 +135,7 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
         )}
       </div>
 
-      <form onSubmit={save} className="space-y-6">
+      <form method="post" onSubmit={save} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">1. Choose an email service</CardTitle>
@@ -214,7 +221,7 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
                 type="password"
                 value={f.pass}
                 onChange={(e) => setF({ ...f, pass: e.target.value })}
-                placeholder={saved.passSet && saved.source === "app" ? "Saved. Leave blank to keep it" : provider === "resend" ? "Starts with re_" : ""}
+                placeholder={keepsKey ? "Saved. Leave blank to keep it" : provider === "resend" ? "Starts with re_" : ""}
                 autoComplete="new-password"
               />
             </div>

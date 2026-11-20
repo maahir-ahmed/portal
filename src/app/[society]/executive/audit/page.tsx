@@ -1,17 +1,16 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requirePageMember } from "@/lib/pageAccess";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { formatTimestamp } from "@/lib/utils";
+import { formatTimestamp, firstParam, pageParam } from "@/lib/utils";
 import { ScrollText } from "lucide-react";
-import type { AuditAction } from "@prisma/client";
+import { AuditAction } from "@prisma/client";
 
 interface Props {
   params: Promise<{ society: string }>;
-  searchParams: Promise<{ page?: string; action?: string; type?: string }>;
+  searchParams: Promise<{ page?: string | string[]; action?: string | string[]; type?: string | string[] }>;
 }
 
 const PER_PAGE = 50;
@@ -45,21 +44,17 @@ const label = (s: string) => s.replace(/_/g, " ").toLowerCase();
 // names who did what, which is not everyone's business.
 export default async function AuditLogPage({ params, searchParams }: Props) {
   const { society: societySlug } = await params;
-  const { page: pageParam, action, type } = await searchParams;
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const sp = await searchParams;
+  // Only a real action reaches the query: an unknown one shows every entry.
+  const actionValue = firstParam(sp.action);
+  const action = Object.values(AuditAction).find((x) => x === actionValue);
+  const type = firstParam(sp.type);
+  const { membership } = await requirePageMember(societySlug, { include: { society: { select: { timezone: true } } } }, true);
 
-  const membership = await prisma.societyMembership.findFirst({
-    where: { userId: session.user.id, society: { slug: societySlug }, isActive: true },
-    include: { society: { select: { timezone: true } } },
-  });
-  if (!membership) redirect("/");
-  if (membership.role !== "EXECUTIVE") redirect(`/${societySlug}/dashboard`);
-
-  const page = Math.max(1, Number(pageParam) || 1);
+  const page = pageParam(sp.page);
   const where = {
     societyId: membership.societyId,
-    ...(action ? { action: action as AuditAction } : {}),
+    ...(action ? { action } : {}),
     ...(type ? { entityType: type } : {}),
   };
 

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { UserPlus } from "lucide-react";
 import { offline } from "@/lib/utils";
+import { copyText } from "@/lib/clientApi";
 
 interface SocietyTitle {
   id: string;
@@ -31,6 +32,9 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
   const [titles, setTitles] = useState<SocietyTitle[]>([]);
   const [role, setRole] = useState("SUBCOMMITTEE");
   const [title, setTitle] = useState("__none__");
+  // Shown inline and cleared on close, like the edit dialog's reset: never in a toast
+  // that outlives the dialog.
+  const [issued, setIssued] = useState<{ tempPassword: string; emailed: boolean } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -66,22 +70,14 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
     const data = await res.json();
 
     if (res.ok) {
-      if (data.tempPassword) {
-        // Shown once and nowhere else, so it stays up until dismissed rather than
-        // timing out while the exec is switching to Discord to send it on.
-        toast.success(`Member added. Temporary passphrase: ${data.tempPassword}`, {
-          description: data.emailed
-            ? "We've emailed it to them. They'll choose their own password when they sign in."
-            : "Copy and share it now. They'll choose their own password when they sign in.",
-          duration: Infinity,
-          closeButton: true,
-        });
-      } else {
-        toast.success("Member added successfully");
-      }
-      setOpen(false);
       setRole("SUBCOMMITTEE");
       setTitle("__none__");
+      if (data.tempPassword) {
+        setIssued({ tempPassword: data.tempPassword, emailed: !!data.emailed });
+      } else {
+        toast.success("Member added successfully");
+        setOpen(false);
+      }
       router.refresh();
     } else {
       toast.error(data.error ?? "Failed to add member");
@@ -94,12 +90,35 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
     role === "EXECUTIVE" ? null : titles.find((t) => t.name === title)?.portfolio?.name ?? null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setIssued(null); }}>
       <DialogTrigger asChild>
         <Button size="sm" data-tour="member-invite"><UserPlus className="h-4 w-4 mr-2" /> Add Member</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Add Member</DialogTitle></DialogHeader>
+        {issued ? (
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border bg-muted/40 p-2">
+              <p className="text-xs text-muted-foreground mb-1.5">
+                Member added.{" "}
+                {issued.emailed
+                  ? "Temporary passphrase, also emailed to them. "
+                  : "Temporary passphrase: copy and share it now, it won't be shown again. "}
+                They&apos;ll be asked to choose their own password when they sign in.
+              </p>
+              <div className="flex items-center gap-2">
+                {/* Wraps rather than truncates: the whole point of a passphrase is being readable. */}
+                <code className="flex-1 break-all rounded bg-background px-2 py-1 text-sm">{issued.tempPassword}</code>
+                <Button type="button" size="sm" variant="outline" onClick={() => copyText(issued.tempPassword, "passphrase")}>
+                  Copy
+                </Button>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => { setOpen(false); setIssued(null); }}>Done</Button>
+            </DialogFooter>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name *</Label>
@@ -142,6 +161,7 @@ export function InviteMemberDialog({ societySlug }: InviteMemberDialogProps) {
             <Button type="submit" disabled={loading}>{loading ? "Adding…" : "Add Member"}</Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

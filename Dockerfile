@@ -66,6 +66,9 @@ RUN mkdir -p /app/uploads /app/backups && chown nextjs:nodejs /app/uploads /app/
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Next 16.4.6 traces prisma.config.ts into standalone; the prisma CLI would then load it
+# and crash on its dotenv import. The start command passes --schema and --url instead.
+RUN rm -f prisma.config.ts
 
 USER nextjs
 
