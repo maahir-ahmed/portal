@@ -30,7 +30,7 @@ function Say([string]$s = "") { Write-Host $s }
 function Die([string]$s) { Write-Host "Error: $s" -ForegroundColor Red; exit 1 }
 function Ask([string]$q, [string]$def = "") {
   # Unattended (an automatic update): nobody can answer, so stop and say why.
-  if ($env:PORTAL_UNATTENDED) { Die "a new setting needs an answer ($q). Run portal.ps1 update yourself." }
+  if ($env:PORTAL_UNATTENDED) { Die "a new setting needs an answer ($q). Run powershell -ExecutionPolicy Bypass -File portal.ps1 update yourself." }
   $prompt = $q; if ($def) { $prompt = "$q [$def]" }
   $a = Read-Host $prompt
   if ($a) { return $a.Trim() } else { return $def }
@@ -104,13 +104,13 @@ function Email-Settings {
     }
     "4" {
       Set-Setting "SMTP_HOST" ""
-      Say "Email is off. Turn it on later with: portal.ps1 email"
+      Say "Email is off. Turn it on later with: powershell -ExecutionPolicy Bypass -File portal.ps1 email"
       return
     }
     default { Die "choose 1, 2, 3 or 4" }
   }
   $from = Ask "Send as, at your verified domain (e.g. Chess Society <noreply@chesssoc.org>)"
-  if (-not $hostName -or -not $pass -or -not $from) { Die "that needs every answer. Run portal.ps1 email to try again" }
+  if (-not $hostName -or -not $pass -or -not $from) { Die "that needs every answer. Run powershell -ExecutionPolicy Bypass -File portal.ps1 email to try again" }
   # Checked before writing any, so a refused answer leaves the old settings whole.
   if ("$hostName$port$user$pass$from".Contains("'")) { Die "the answers can't contain a ' character" }
   Set-Setting "SMTP_HOST" $hostName
@@ -123,7 +123,7 @@ function Email-Settings {
 }
 
 function Email {
-  if (-not (Test-Path $EnvFile)) { Die "no portal.env yet. Run portal.ps1 install first." }
+  if (-not (Test-Path $EnvFile)) { Die "no portal.env yet. Run powershell -ExecutionPolicy Bypass -File portal.ps1 install first." }
   Email-Settings
   Say "Restarting the portal so it uses the new settings..."
   Compose up -d --no-build app
@@ -301,7 +301,7 @@ function Wait-Ready {
     if ((Quiet { Compose exec -T web wget -q -O /dev/null http://app:3000/login }) -eq 0) { return $true }
     Start-Sleep -Seconds 2
   }
-  Say "It hasn't answered after 3 minutes. See what it's doing with: portal.ps1 logs app"
+  Say "It hasn't answered after 3 minutes. See what it's doing with: powershell -ExecutionPolicy Bypass -File portal.ps1 logs app"
   return $false
 }
 
@@ -521,7 +521,7 @@ function Backup {
 }
 
 function Restore([string]$file) {
-  if (-not $file) { Die "say which backup: portal.ps1 restore <file.tar.gz>" }
+  if (-not $file) { Die "say which backup: powershell -ExecutionPolicy Bypass -File portal.ps1 restore <file.tar.gz>" }
   if (-not (Test-Path $file)) { Die "no such file: $file" }
   $dir = Get-Setting "BACKUP_DIR"
   $name = Split-Path $file -Leaf
@@ -625,7 +625,7 @@ function Update {
   if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw -Encoding UTF8).Trim() -eq $after)) {
     Retag $before
     Restore-Scripts $head $true
-    Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
+    Say "Skipped: this version didn't start last time. Run powershell -ExecutionPolicy Bypass -File portal.ps1 update to try it again."
     return
   }
 
@@ -652,7 +652,7 @@ function Update {
   Restore-Scripts $head $true
   Compose up -d --no-build --remove-orphans
   Wait-Ready | Out-Null
-  Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: portal.ps1 logs app"
+  Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: powershell -ExecutionPolicy Bypass -File portal.ps1 logs app"
 }
 
 # Talks to the portal's update endpoint from inside the web container, so it works
@@ -757,13 +757,13 @@ function Autoupdate([string]$state) {
     Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
     Say "Automatic updates are on: each night at ${hour}:00 the server checks for a new release"
     Say "and installs it after a backup, while you're signed in to Windows (Docker Desktop only"
-    Say "runs then). To install one straight away, run portal.ps1 update. After changing"
-    Say "UPDATE_HOUR, run portal.ps1 autoupdate on again. Log: update.log"
+    Say "runs then). To install one straight away, run powershell -ExecutionPolicy Bypass -File portal.ps1 update. After changing"
+    Say "UPDATE_HOUR, run powershell -ExecutionPolicy Bypass -File portal.ps1 autoupdate on again. Log: update.log"
   } elseif ($state -eq "off") {
     Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
-    Say "Automatic updates are off. Update with: portal.ps1 update"
+    Say "Automatic updates are off. Update with: powershell -ExecutionPolicy Bypass -File portal.ps1 update"
   } else {
-    Die "say on or off: portal.ps1 autoupdate on"
+    Die "say on or off: powershell -ExecutionPolicy Bypass -File portal.ps1 autoupdate on"
   }
 }
 

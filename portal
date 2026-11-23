@@ -77,7 +77,7 @@ check_docker() {
         exit 0
         ;;
       Darwin) die "install Docker Desktop from https://www.docker.com/products/docker-desktop/, open it once, then run ./portal install again" ;;
-      *) die "install Docker Desktop (https://www.docker.com/products/docker-desktop/), or on Windows use portal.ps1" ;;
+      *) die "install Docker Desktop (https://www.docker.com/products/docker-desktop/), or on Windows run powershell -ExecutionPolicy Bypass -File portal.ps1" ;;
     esac
   fi
   if ! docker info >/dev/null 2>&1; then
