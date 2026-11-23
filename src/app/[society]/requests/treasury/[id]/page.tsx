@@ -68,14 +68,6 @@ export default async function TreasuryDetailPage({ params }: Props) {
   const canEdit = isExec || (isOwner && ["DRAFT", "REIMBURSEMENT_PENDING"].includes(request.status));
   const amount = Number(request.amount);
 
-  // Paying out your own claim is for another executive, when there is one.
-  const ownPayout =
-    isExec &&
-    request.submittedById === session.user.id &&
-    (await prisma.societyMembership.count({
-      where: { societyId: membership.societyId, role: "EXECUTIVE", isActive: true, userId: { not: session.user.id } },
-    })) > 0;
-
   return (
     <div className="max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
@@ -218,10 +210,8 @@ export default async function TreasuryDetailPage({ params }: Props) {
                 <p className="text-sm text-muted-foreground">
                   Spending is approved in the committee Discord. This claim is waiting to be paid out.
                 </p>
-                {isExec && !ownPayout ? (
+                {isExec ? (
                   <MarkReimbursedButton societySlug={societySlug} requestId={request.id} amount={Number(request.amount)} account={request.bankAccount} />
-                ) : isExec ? (
-                  <p className="text-sm text-muted-foreground">Another executive marks your own claim as paid.</p>
                 ) : null}
               </CardContent>
             </Card>

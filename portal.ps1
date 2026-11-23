@@ -43,12 +43,14 @@ function RandomHex([int]$bytes) {
 
 function Get-Setting([string]$key) {
   if (-not (Test-Path $EnvFile)) { return "" }
-  $line = Get-Content $EnvFile | Where-Object { $_ -like "$key=*" } | Select-Object -Last 1
+  $line = Get-Content $EnvFile -Encoding UTF8 | Where-Object { $_ -like "$key=*" } | Select-Object -Last 1
   if ($line) { return $line.Substring($key.Length + 1) } else { return "" }
 }
 function Has-Setting([string]$key) {
-  return (Test-Path $EnvFile) -and [bool](Get-Content $EnvFile | Where-Object { $_ -like "$key=*" })
+  return (Test-Path $EnvFile) -and [bool](Get-Content $EnvFile -Encoding UTF8 | Where-Object { $_ -like "$key=*" })
 }
+# Get-Content says UTF-8 on purpose: with no BOM, Windows PowerShell 5.1 reads the file
+# as the ANSI code page and garbles a non-ASCII path or name.
 # Appends KEY=value unless KEY is already there. UTF-8 without a BOM and \n endings:
 # Docker Compose would read a BOM as part of the first key.
 function Ensure([string]$key, [string]$value) {
@@ -57,7 +59,7 @@ function Ensure([string]$key, [string]$value) {
 # Replaces KEY's value: for a setting someone is deliberately changing. Single quotes
 # keep Docker Compose from reading a $ in a password as a variable.
 function Set-Setting([string]$key, [string]$value) {
-  $lines = @(Get-Content $EnvFile | Where-Object { $_ -notlike "$key=*" })
+  $lines = @(Get-Content $EnvFile -Encoding UTF8 | Where-Object { $_ -notlike "$key=*" })
   $lines += "$key='$value'"
   [IO.File]::WriteAllText($EnvFile, (($lines -join "`n") + "`n"))
 }
@@ -144,7 +146,13 @@ function Compose {
   $profile = @()
   $method = Get-Setting "METHOD"
   if ($method -eq "cloudflare" -or $method -eq "caddy") { $profile = @("--profile", $method) }
-  & docker compose --env-file $EnvFile -p (Get-Setting "STACK") -f $ComposeFile @profile @args
+  # A function sees pipeline input only as $input and doesn't hand it on, so without this
+  # the native command reads the console instead (a psql probe would wait for a keyboard).
+  if ($MyInvocation.ExpectingInput) {
+    $input | & docker compose --env-file $EnvFile -p (Get-Setting "STACK") -f $ComposeFile @profile @args
+  } else {
+    & docker compose --env-file $EnvFile -p (Get-Setting "STACK") -f $ComposeFile @profile @args
+  }
 }
 
 function Check-Docker {
@@ -305,11 +313,116 @@ function Channel {
 }
 
 # The newest release on this portal's channel, as a git tag, or "" if there isn't one yet.
-function Newest-Release {
+function Newest-Of($names) {
   $c = Channel
-  $tags = @(git -C $Root tag -l "v*" | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and ($_ -eq "v$c" -or $_.StartsWith("v$c.")) })
+  $tags = @($names | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and ($_ -eq "v$c" -or $_.StartsWith("v$c.")) })
   if ($tags.Count -eq 0) { return "" }
   return ($tags | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1)
+}
+
+function Newest-Release { return (Newest-Of @(git -C $Root tag -l "v*")) }
+
+# What a ZIP install (no .git) keeps current: the scripts and the one deploy file the stack
+# reads from this folder (the other deploy/ files are baked into the images). Never
+# portal.env, backups/, update.log or the state files: they aren't in the archive and
+# aren't listed here.
+$ScriptFiles = "portal", "portal.ps1", "deploy/docker-compose.yml"
+# The release the scripts were last brought to, so a quiet night downloads nothing.
+$ScriptsVersionFile = Join-Path $Root ".scripts-version"
+# What a failed or skipped update puts back: the files an update replaced and the version
+# before it (Restore-Scripts), and the release that didn't start, so the nightly check
+# doesn't download it again just to undo it.
+$ScriptsPrev = Join-Path $Root ".scripts-prev"
+$ScriptsSkipFile = Join-Path $Root ".scripts-skip"
+$GithubRepo = "maahir-ahmed/portal"
+
+function Scripts-Fail([string]$tmp, [string]$msg) {
+  Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+  Die $msg
+}
+
+# The same job as Update-Scripts for an install with no .git (the GitHub ZIP): the newest
+# release on the channel, fetched as an archive. It is unpacked and checked in a temp
+# folder first and only then moved over, so a failed or partial download leaves the
+# working install as it was. Returns the files whose content changed.
+function Update-ScriptsArchive {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # 5.1 defaults to older
+  $ProgressPreference = "SilentlyContinue" # the progress bar makes Invoke-WebRequest very slow in 5.1
+  $tmp = Join-Path ([IO.Path]::GetTempPath()) ("portal-scripts-" + [guid]::NewGuid().ToString("N"))
+  New-Item -ItemType Directory -Path $tmp | Out-Null
+  if ((Channel) -eq "latest") {
+    # Follows main on purpose, as the git path does. Main's commit is its version, so the
+    # same "nothing new" and "didn't start last time" checks apply as for a release.
+    try {
+      $resp = Invoke-WebRequest -UseBasicParsing -Headers @{ Accept = "application/vnd.github.sha" } "https://api.github.com/repos/$GithubRepo/commits/main"
+      $content = $resp.Content
+      if ($content -is [byte[]]) { $content = [Text.Encoding]::ASCII.GetString($content) } # unknown media type comes back as bytes
+      $tag = "$content".Trim()
+    } catch { Scripts-Fail $tmp "couldn't check for new versions of the scripts. Check the internet connection and try again" }
+    if ($tag -notmatch '^[0-9a-f]{7,64}$') { Scripts-Fail $tmp "couldn't read the newest version of the scripts from GitHub. Try again later" }
+    $url = "https://github.com/$GithubRepo/archive/$tag.zip"
+  } else {
+    try {
+      $names = @((Invoke-RestMethod -UseBasicParsing "https://api.github.com/repos/$GithubRepo/tags?per_page=100") | ForEach-Object { $_.name })
+    } catch { Scripts-Fail $tmp "couldn't check for new versions of the scripts. Check the internet connection and try again" }
+    $tag = Newest-Of $names
+    $url = "https://github.com/$GithubRepo/archive/refs/tags/$tag.zip"
+  }
+  $have = ""
+  if (Test-Path $ScriptsVersionFile) { $have = (Get-Content $ScriptsVersionFile -Raw).Trim() }
+  $skipped = ""
+  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $ScriptsSkipFile)) { $skipped = (Get-Content $ScriptsSkipFile -Raw).Trim() }
+  if (-not $tag -or $have -eq $tag -or $skipped -eq $tag) { # no release on this channel yet, nothing new, or one that didn't start last time
+    Remove-Item -Recurse -Force $tmp
+    return @()
+  }
+  $zip = Join-Path $tmp "src.zip"
+  try { Invoke-WebRequest -UseBasicParsing $url -OutFile $zip }
+  catch { Scripts-Fail $tmp "couldn't download the scripts for $tag. Check the internet connection and try again" }
+  try { Expand-Archive -Path $zip -DestinationPath (Join-Path $tmp "x") -Force }
+  catch { Scripts-Fail $tmp "the download of the scripts for $tag was damaged. Nothing was changed; try again" }
+  $src = @(Get-ChildItem (Join-Path $tmp "x") -Directory)[0] # the one folder GitHub wraps it in
+  if (-not $src) { Scripts-Fail $tmp "the download of the scripts for $tag was damaged. Nothing was changed; try again" }
+  foreach ($f in $ScriptFiles) {
+    $p = Join-Path $src.FullName $f
+    if (-not (Test-Path $p) -or (Get-Item $p).Length -eq 0) { Scripts-Fail $tmp "the download of the scripts for $tag is missing $f. Nothing was changed; try again" }
+  }
+  $errs = $null
+  [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $src.FullName "portal.ps1"), [ref]$null, [ref]$errs)
+  if ($errs -and $errs.Count -gt 0) { Scripts-Fail $tmp "the downloaded portal.ps1 for $tag is damaged. Nothing was changed; try again" }
+  # Copy everything next to its target first, rename after: a failed copy (disk full)
+  # then leaves every old file in place.
+  $changed = @()
+  try {
+    foreach ($f in $ScriptFiles) {
+      $new = Join-Path $src.FullName $f
+      $old = Join-Path $Root $f
+      if ((-not (Test-Path $old)) -or ((Get-FileHash $new).Hash -ne (Get-FileHash $old).Hash)) {
+        Copy-Item $new "$old.new" -Force
+        $changed += $f
+      }
+    }
+  } catch {
+    foreach ($f in $ScriptFiles) { Remove-Item (Join-Path $Root "$f.new") -Force -ErrorAction SilentlyContinue }
+    Scripts-Fail $tmp "couldn't write the new scripts. Nothing was changed"
+  }
+  try {
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path (Join-Path $ScriptsPrev "deploy") -Force | Out-Null
+    $prevVersion = "none"
+    if (Test-Path $ScriptsVersionFile) { $prevVersion = (Get-Content $ScriptsVersionFile -Raw).Trim() }
+    Set-Content -Path (Join-Path $ScriptsPrev ".scripts-version") -Value $prevVersion -Encoding ASCII
+    foreach ($f in $changed) { Copy-Item (Join-Path $Root $f) (Join-Path $ScriptsPrev $f) -Force }
+  } catch {
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
+    foreach ($f in $ScriptFiles) { Remove-Item (Join-Path $Root "$f.new") -Force -ErrorAction SilentlyContinue }
+    Scripts-Fail $tmp "couldn't keep the old scripts. Nothing was changed"
+  }
+  foreach ($f in $changed) { Move-Item (Join-Path $Root "$f.new") (Join-Path $Root $f) -Force }
+  Set-Content -Path $ScriptsVersionFile -Value $tag -Encoding ASCII
+  Remove-Item -Recurse -Force $tmp
+  if ($changed.Count -gt 0) { Say "Updated the scripts to $tag." }
+  return $changed
 }
 
 # Moves the scripts and compose file to the same release as the images: the newest tag
@@ -327,6 +440,32 @@ function Update-Scripts {
   if (-not $tag) { return } # no release on this channel yet: stay where we are
   git -C $Root checkout -q $tag
   if ($LASTEXITCODE -ne 0) { Die "couldn't move the scripts to $tag. Undo local changes to this folder and try again" }
+}
+
+# Puts the scripts and compose file back to match the images a rollback or skip returns
+# to: git installs go back to $head, the commit before the update; ZIP installs get the
+# files Update-ScriptsArchive kept. With $markSkip, remembers the release that was undone:
+# only where .update-skip is recorded for the images (they didn't start), not when the
+# backup failed, or the next night would update the images but not the scripts.
+function Restore-Scripts([string]$head, [bool]$markSkip = $false) {
+  if (Test-Path $ScriptsPrev) {
+    if ($markSkip -and (Test-Path $ScriptsVersionFile)) { Copy-Item $ScriptsVersionFile $ScriptsSkipFile -Force }
+    foreach ($f in $ScriptFiles) {
+      $kept = Join-Path $ScriptsPrev $f
+      if (Test-Path $kept) {
+        $dest = Join-Path $Root $f
+        Copy-Item $kept "$dest.new" -Force
+        Move-Item "$dest.new" $dest -Force
+      }
+    }
+    $prev = (Get-Content (Join-Path $ScriptsPrev ".scripts-version") -Raw -ErrorAction SilentlyContinue)
+    if ($prev) { $prev = $prev.Trim() }
+    if (-not $prev -or $prev -eq "none") { Remove-Item $ScriptsVersionFile -Force -ErrorAction SilentlyContinue }
+    else { Set-Content -Path $ScriptsVersionFile -Value $prev -Encoding ASCII }
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
+  } elseif ($head) {
+    Quiet { git -C $Root reset -q --keep $head } | Out-Null
+  }
 }
 
 function Install {
@@ -360,7 +499,9 @@ function Install {
   # Through stdin: PowerShell 5.1 mangles double quotes inside native command arguments.
   $users = ('select count(*) from "User";' | Compose exec -T db psql -U society_user -d society_platform -tA 2> $null) -join ""
   $ErrorActionPreference = $old
-  if ($users.Trim() -eq "0") {
+  # A probe that failed counts as no accounts, as in the bash installer: better the setup
+  # link (which only works while there are none) than a login page nobody can use.
+  if (-not $users.Trim() -or $users.Trim() -eq "0") {
     Say "Finish setting up here (this link only works until the first account exists):"
     Say "  $url/setup?token=$(Get-Setting 'SETUP_TOKEN')"
     Say "Everything else, email included, is set up in the portal itself: see Help & guides there."
@@ -436,8 +577,29 @@ function Update {
   $before = Image-Ids
   $head = ""
   if ((Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
-    $head = (git -C $Root rev-parse HEAD)
-    Update-Scripts
+    $head = $env:PORTAL_PREV_HEAD # a rollback returns to this
+    if (-not $head) { $head = (git -C $Root rev-parse HEAD) }
+    # Once: the re-exec has the new scripts already, and must not move them again.
+    if (-not $env:PORTAL_REEXEC) {
+      Update-Scripts
+      if ((git -C $Root rev-parse HEAD) -ne $head) {
+        # This process is the old script: run the new one, so its Write-Settings and
+        # Get-Images (and a newer compose file's settings) are what the update uses.
+        $env:PORTAL_REEXEC = "1"
+        $env:PORTAL_PREV_HEAD = $head
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
+        exit $LASTEXITCODE
+      }
+    }
+  } elseif (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC) {
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue # left over from an earlier update; this run's own is made below
+    $changed = @(Update-ScriptsArchive)
+    # Same reason as above: the new script's settings and image steps are the ones to use.
+    if ($changed.Count -gt 0) {
+      $env:PORTAL_REEXEC = "1"
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
+      exit $LASTEXITCODE
+    }
   }
   Write-Settings # adds any setting a newer version needs
   Get-Images
@@ -452,6 +614,7 @@ function Update {
 
   if ($before -eq $after) {
     Compose up -d --no-build --remove-orphans # picks up a changed compose file, if any
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue # a scripts-only update: nothing was rolled back to
     Say "Already up to date."
     return
   }
@@ -459,8 +622,9 @@ function Update {
   # and so is this one when you run update yourself, or an executive asks for it in
   # Settings (PORTAL_RETRY).
   $skipFile = Join-Path $Root ".update-skip"
-  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw).Trim() -eq $after)) {
+  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw -Encoding UTF8).Trim() -eq $after)) {
     Retag $before
+    Restore-Scripts $head $true
     Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
     return
   }
@@ -469,12 +633,14 @@ function Update {
   $out = Compose run --rm -T backup archive | Select-Object -Last 1
   if ($LASTEXITCODE -ne 0 -or -not ("$out" -like "/backups/*")) {
     Retag $before
+    Restore-Scripts $head
     Die "the backup failed, so nothing was updated"
   }
   Say "Backed up to $(Get-Setting 'BACKUP_DIR')/$("$out".Substring(9))"
   Compose up -d --no-build --remove-orphans
   if (Wait-Ready) {
-    Remove-Item $skipFile -ErrorAction SilentlyContinue
+    Remove-Item $skipFile, $ScriptsSkipFile -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
     Quiet { docker image prune -f } | Out-Null
     Say "Up to date."
     return
@@ -483,7 +649,7 @@ function Update {
   Say "The new version didn't start. Going back to the one before..."
   [IO.File]::WriteAllText($skipFile, $after)
   Retag $before
-  if ($head) { Quiet { git -C $Root reset -q --keep $head } | Out-Null }
+  Restore-Scripts $head $true
   Compose up -d --no-build --remove-orphans
   Wait-Ready | Out-Null
   Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: portal.ps1 logs app"
@@ -526,7 +692,7 @@ function Tick {
   try {
     # A result the portal hasn't heard yet (it was restarting) goes with this check-in.
     if (Test-Path $resultFile) {
-      $lines = @(Get-Content $resultFile) + @("", "", "")
+      $lines = @(Get-Content $resultFile -Encoding UTF8) + @("", "", "")
       $reply = Check-In $lines[0] $lines[1] $lines[2]
       if ($reply) { Remove-Item $resultFile }
     } else {
@@ -540,7 +706,8 @@ function Tick {
     $env:PORTAL_UNATTENDED = "1"
     if ($requested) { $env:PORTAL_RETRY = "1" }
     $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update 2>&1 | Out-String)
+    # Native stderr becomes ErrorRecords; stringify each one to keep its detail without the PowerShell wrapper.
+    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update 2>&1 | ForEach-Object { "$_" } | Out-String)
     $code = $LASTEXITCODE
     $ErrorActionPreference = $old
     Remove-Item Env:PORTAL_UNATTENDED

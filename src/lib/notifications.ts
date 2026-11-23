@@ -94,10 +94,17 @@ export async function notifyExecs(
   type: NotificationType,
   title: string,
   body: string,
-  link?: string
+  link?: string,
+  opts: {
+    // A comment's author is already looking at the thread; they shouldn't be pinged about it.
+    excludeUserId?: string;
+    // The channel is for queue items needing action; comments reach execs by bell and email only.
+    skipDiscord?: boolean;
+  } = {}
 ) {
+  const { excludeUserId, skipDiscord } = opts;
   const execs = await prisma.societyMembership.findMany({
-    where: { societyId, role: "EXECUTIVE", isActive: true },
+    where: { societyId, role: "EXECUTIVE", isActive: true, ...(excludeUserId ? { userId: { not: excludeUserId } } : {}) },
     select: { userId: true },
   });
 
@@ -108,5 +115,5 @@ export async function notifyExecs(
   );
 
   // One channel post for the queue, not one per executive.
-  await postToDiscord(societyId, title, body, link);
+  if (!skipDiscord) await postToDiscord(societyId, title, body, link);
 }

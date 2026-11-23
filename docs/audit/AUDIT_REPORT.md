@@ -171,6 +171,11 @@ installed fresh.
 | F32 | Another executive pays out an executive's own claim; amounts show to the cent | 6dac70d |
 | F74 | `@auth/prisma-adapter` removed | 819058c |
 
+Note: the "another executive pays out an executive's own claim" half of F32 was reverted at the
+committee's request on 2026-11-23. An executive can now mark their own claim as reimbursed;
+the audit log entry for the payout, which records who marked it paid, is the remaining control.
+The to-the-cent amounts in F32 still stand.
+
 Testing caught two mistakes of my own before anything was pushed. F69's first version put
 an unquoted `": "` in the compose file, which stops compose parsing it at all (4d453f5).
 And F47's first version compared `Host` with the port included, which nginx strips,

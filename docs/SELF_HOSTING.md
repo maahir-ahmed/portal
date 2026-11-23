@@ -47,9 +47,13 @@ cd portal
 
 On Windows or a Mac, you can instead download the ZIP from the
 [GitHub page](https://github.com/maahir-ahmed/portal) (green **Code** button, then
-**Download ZIP**), unzip it somewhere permanent (like your Documents folder), and open
-a terminal in that folder. With git, `update` can update the scripts too; with the ZIP,
-download a fresh copy when the portal asks you to.
+**Download ZIP**), unzip it somewhere permanent, and open a terminal in that folder.
+Either way, the portal keeps its own scripts up to date when it updates itself, so you
+never need to download a fresh copy.
+
+On a Mac, don't put the folder in Documents, Desktop or Downloads: macOS stops the
+nightly update from reaching those. Make a folder called `portal` directly in your home
+folder (the one with your name on it in Finder) and unzip it there.
 
 ## 4. Decide how people will reach it
 
