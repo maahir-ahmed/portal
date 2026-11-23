@@ -20,7 +20,7 @@ Pick one:
 Whichever you pick, it needs about 3 GB of free disk space and a stable internet
 connection.
 
-You'll also want a **web address** (a domain, like `portal.chesssoc.org`). A society
+You'll also want a **web address** (a domain, like `portal.example.org`). A society
 website domain works: the portal goes on a part of it, such as `portal.`. If you just
 want to try it out on your own computer first, you can skip the domain for now.
 
@@ -38,22 +38,61 @@ Docker runs the portal and its database in tidy, self-contained boxes.
 
 ## 3. Download the portal
 
-On a server or Pi, connect over SSH and run:
+You don't need git for this. Download the portal as a folder, then open a terminal in it.
+
+Open the [GitHub page](https://github.com/maahir-ahmed/portal), click the green **Code**
+button, then **Download ZIP**. Then follow the steps for your computer.
+
+**Windows:**
+
+1. Make a folder called `portal` in your user folder (`C:\Users\<your name>\portal`) and
+   extract the ZIP into it: right-click the ZIP and choose **Extract All**. The box that
+   opens suggests your Downloads folder. Change it to the folder you just made (click
+   **Browse…**, or type `C:\Users\<your name>\portal`), then click **Extract**.
+2. **Extract All** usually makes a folder inside a folder (`portal-main\portal-main`).
+   The right one is the folder that contains `portal.ps1`. Open folders until you see it.
+3. Open PowerShell in that folder. Either open the folder in File Explorer, right-click an
+   empty space and choose **Open in Terminal** (Windows 11), or open PowerShell from the
+   Start menu and type this, changing the folder name if yours is different:
+
+   ```powershell
+   cd $HOME\portal\portal-main
+   ```
+
+4. Type `dir`. If you can see `portal.ps1` in the list, you're in the right place.
+
+**Mac:**
+
+1. Safari unzips downloads into Downloads by itself, and macOS stops the nightly update
+   from reaching Downloads, Documents and Desktop. So make a folder called `portal` in
+   your home folder (the one with your name on it in Finder), and move the extracted
+   `portal-main` folder into it.
+2. Open Terminal (press Cmd and Space, type Terminal) and type:
+
+   ```bash
+   cd ~/portal/portal-main
+   ```
+
+   Or in Finder, right-click the `portal-main` folder and choose **Services** ›
+   **New Terminal at Folder**.
+3. Type `ls`. If you can see `portal` in the list, you're in the right place.
+
+**A server or Raspberry Pi** (no browser): connect over SSH and run:
 
 ```bash
-git clone https://github.com/maahir-ahmed/portal.git
-cd portal
+curl -L https://github.com/maahir-ahmed/portal/archive/refs/heads/main.tar.gz | tar xz
+cd portal-main
 ```
 
-On Windows or a Mac, you can instead download the ZIP from the
-[GitHub page](https://github.com/maahir-ahmed/portal) (green **Code** button, then
-**Download ZIP**), unzip it somewhere permanent, and open a terminal in that folder.
-Either way, the portal keeps its own scripts up to date when it updates itself, so you
-never need to download a fresh copy.
+Type `ls`. If you can see `portal` in the list, you're in the right place.
 
-On a Mac, don't put the folder in Documents, Desktop or Downloads: macOS stops the
-nightly update from reaching those. Make a folder called `portal` directly in your home
-folder (the one with your name on it in Finder) and unzip it there.
+When you run the install script in the next step, it offers to set up git for you if
+it's missing (it asks first). Git lets the portal keep its own scripts up to date, so you
+never need to download a fresh copy. If you'd rather not, or it can't, the portal still
+keeps itself up to date without it.
+
+If you already have git, you can `git clone https://github.com/maahir-ahmed/portal.git`
+and `cd portal` instead.
 
 ## 4. Decide how people will reach it
 
@@ -75,7 +114,7 @@ behind a university network. It's free.
 3. When it shows install commands, pick **Docker** and copy the command. You'll paste it
    into the install script, which keeps just the token from it. Don't run it yourself.
 4. On the next screen, add a **public hostname**:
-   - Subdomain and domain: the address you want, such as `portal` and `chesssoc.org`
+   - Subdomain and domain: the address you want, such as `portal` and `example.org`
    - Service type: **HTTP**
    - URL: **`web:80`**
 5. Save. Cloudflare creates the web address for you.
@@ -103,13 +142,13 @@ a look around. You can switch to a real address later by running install again (
 
 ## 5. Run the installer
 
-**Server, Pi or Mac:**
+**Server, Pi or Mac**, from inside the portal folder:
 
 ```bash
 ./portal install
 ```
 
-**Windows**, in PowerShell in the portal folder:
+**Windows**, in PowerShell, from inside the portal folder:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File portal.ps1 install
@@ -120,7 +159,7 @@ address (and the tunnel token, for Cloudflare). Then it downloads the portal, st
 it, and prints a link like:
 
 ```
-https://portal.chesssoc.org/setup?token=4f1c…
+https://portal.example.org/setup?token=4f1c…
 ```
 
 ## 6. Finish setting up in the browser
@@ -158,7 +197,7 @@ website domain. Both services below have free plans:
 1. Create a free account.
 2. **Senders, Domains & Dedicated IPs › Domains**: add your domain, then add the DNS
    records it shows. If your domain is on Cloudflare, it can add them for you.
-3. **Senders**: add the address to send from, such as `noreply@chesssoc.org`.
+3. **Senders**: add the address to send from, such as `noreply@example.org`.
 4. **SMTP & API › SMTP**: generate an SMTP key. The same page shows your SMTP login.
 
 New Brevo accounts sometimes need activating before they can send. If emails don't
@@ -172,7 +211,7 @@ arrive and Brevo's log says the account isn't activated, contact Brevo's support
 3. **API Keys**: create a key with sending access to that domain.
 
 **Then, in the portal:** open **Settings › Email**, pick the service, paste the login
-and key, and enter the address to send as, like `Chess Society <noreply@chesssoc.org>`.
+and key, and enter the address to send as, like `Chess Society <noreply@example.org>`.
 Save, then click **Send me a test email**: if the service refuses, the page shows its
 reason. (Prefer the command line? `./portal email` in the portal folder does the same;
 settings saved in the portal win over it.)
