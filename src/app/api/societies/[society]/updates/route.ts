@@ -24,7 +24,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ so
   if (!status.enabled) return NextResponse.json({ error: "Updates are managed elsewhere on this server" }, { status: 400 });
   if (!status.updaterRunning) {
     return NextResponse.json(
-      { error: "The server's updater isn't running. On the server, run: ./portal autoupdate on" },
+      { error: "The server's updater isn't running. On the server, run: ./portal autoupdate on (or .\\portal.ps1 autoupdate on, on Windows)" },
       { status: 409 }
     );
   }
