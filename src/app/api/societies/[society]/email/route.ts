@@ -55,7 +55,7 @@ const schema = z.union([
       .string()
       .trim()
       .max(200)
-      .regex(/^([^<>]*<)?[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>?$/, "Write it like Chess Society <noreply@chesssoc.org>"),
+      .regex(/^([^<>]*<)?[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+>?$/, "Write it like Chess Society <noreply@example.org>"),
   }),
 ]);
 

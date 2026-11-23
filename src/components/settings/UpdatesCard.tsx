@@ -91,7 +91,8 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
         {!status.updaterRunning && (
           <p className="text-amber-700">
             The server&apos;s updater hasn&apos;t checked in lately, so nothing will install. On the server, run{" "}
-            <code className="rounded bg-muted px-1">./portal autoupdate on</code>.
+            <code className="rounded bg-muted px-1">./portal autoupdate on</code>; on Windows, run{" "}
+            <code className="rounded bg-muted px-1">powershell -ExecutionPolicy Bypass -File portal.ps1 autoupdate on</code>.
           </p>
         )}
         {status.requestedAt ? (
@@ -105,7 +106,8 @@ export function UpdatesCard({ societySlug }: { societySlug: string }) {
               <p className="text-muted-foreground">
                 The server&apos;s next check is
                 {status.nextCheckAt ? ` around ${when(status.nextCheckAt)}` : " tonight"}. To install it straight
-                away instead, run <code className="rounded bg-muted px-1">./portal update</code> on the server.
+                away instead, run <code className="rounded bg-muted px-1">./portal update</code>; on Windows, run{" "}
+                <code className="rounded bg-muted px-1">powershell -ExecutionPolicy Bypass -File portal.ps1 update</code>.
               </p>
               <Button onClick={() => setConfirming(true)} disabled={!status.updaterRunning}>
                 Install at the next check

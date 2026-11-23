@@ -30,7 +30,7 @@ function Say([string]$s = "") { Write-Host $s }
 function Die([string]$s) { Write-Host "Error: $s" -ForegroundColor Red; exit 1 }
 function Ask([string]$q, [string]$def = "") {
   # Unattended (an automatic update): nobody can answer, so stop and say why.
-  if ($env:PORTAL_UNATTENDED) { Die "a new setting needs an answer ($q). Run portal.ps1 update yourself." }
+  if ($env:PORTAL_UNATTENDED) { Die "a new setting needs an answer ($q). Run powershell -ExecutionPolicy Bypass -File portal.ps1 update yourself." }
   $prompt = $q; if ($def) { $prompt = "$q [$def]" }
   $a = Read-Host $prompt
   if ($a) { return $a.Trim() } else { return $def }
@@ -104,13 +104,13 @@ function Email-Settings {
     }
     "4" {
       Set-Setting "SMTP_HOST" ""
-      Say "Email is off. Turn it on later with: portal.ps1 email"
+      Say "Email is off. Turn it on later with: powershell -ExecutionPolicy Bypass -File portal.ps1 email"
       return
     }
     default { Die "choose 1, 2, 3 or 4" }
   }
-  $from = Ask "Send as, at your verified domain (e.g. Chess Society <noreply@chesssoc.org>)"
-  if (-not $hostName -or -not $pass -or -not $from) { Die "that needs every answer. Run portal.ps1 email to try again" }
+  $from = Ask "Send as, at your verified domain (e.g. Chess Society <noreply@example.org>)"
+  if (-not $hostName -or -not $pass -or -not $from) { Die "that needs every answer. Run powershell -ExecutionPolicy Bypass -File portal.ps1 email to try again" }
   # Checked before writing any, so a refused answer leaves the old settings whole.
   if ("$hostName$port$user$pass$from".Contains("'")) { Die "the answers can't contain a ' character" }
   Set-Setting "SMTP_HOST" $hostName
@@ -123,7 +123,7 @@ function Email-Settings {
 }
 
 function Email {
-  if (-not (Test-Path $EnvFile)) { Die "no portal.env yet. Run portal.ps1 install first." }
+  if (-not (Test-Path $EnvFile)) { Die "no portal.env yet. Run powershell -ExecutionPolicy Bypass -File portal.ps1 install first." }
   Email-Settings
   Say "Restarting the portal so it uses the new settings..."
   Compose up -d --no-build app
@@ -237,7 +237,7 @@ function Write-Settings {
     Ensure "NEXTAUTH_URL" "http://localhost:$port"
   } else {
     $domain = Get-Setting "DOMAIN"
-    while (-not $domain) { $domain = Ask "The web address it will live at, without https:// (e.g. portal.chesssoc.org)" }
+    while (-not $domain) { $domain = Ask "The web address it will live at, without https:// (e.g. portal.example.org)" }
     $domain = ($domain -replace "^https?://", "") -replace "/.*$", ""
     Ensure "DOMAIN" $domain
     Ensure "NEXTAUTH_URL" "https://$domain"
@@ -301,7 +301,7 @@ function Wait-Ready {
     if ((Quiet { Compose exec -T web wget -q -O /dev/null http://app:3000/login }) -eq 0) { return $true }
     Start-Sleep -Seconds 2
   }
-  Say "It hasn't answered after 3 minutes. See what it's doing with: portal.ps1 logs app"
+  Say "It hasn't answered after 3 minutes. See what it's doing with: powershell -ExecutionPolicy Bypass -File portal.ps1 logs app"
   return $false
 }
 
@@ -321,6 +321,76 @@ function Newest-Of($names) {
 }
 
 function Newest-Release { return (Newest-Of @(git -C $Root tag -l "v*")) }
+
+# `git --version` has to work, not just a git.exe on the PATH.
+function Git-Works {
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+  return ((Quiet { git --version }) -eq 0)
+}
+
+# Installs Git for Windows with winget. Says why itself when it can't; the caller carries
+# on without git either way.
+function Install-Git {
+  if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    Say "Couldn't install git here (winget is missing). Get Git for Windows from https://git-scm.com/download/win,"
+    Say "then run install again. Carrying on without it; updates still work."
+    return $false
+  }
+  # Out-Host: this function's output is its answer, and winget's would become part of it.
+  winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements | Out-Host
+  # The installer changes the PATH in the registry, not in this window: read it again so
+  # git works from here on, without opening a new one.
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+  if (Git-Works) { return $true }
+  Say "Couldn't install git. Carrying on without it; updates still work."
+  return $false
+}
+
+# True when git works, installing it first if the person agrees. Unattended runs can't
+# ask, so they carry on without.
+function Offer-Git {
+  if (Git-Works) { return $true }
+  if ($env:PORTAL_UNATTENDED) { return $false }
+  Say "Git isn't installed. The portal uses it to keep its own scripts up to date."
+  if ((Ask "Install git now? (y/n)" "y") -ne "y") { return $false }
+  return (Install-Git)
+}
+
+# Turns a download with no .git (the GitHub ZIP) into a normal checkout of the same project,
+# at the version Update-Scripts would pick, so updates take the git path from here on.
+# Overwrites the downloaded copies of tracked files and nothing else: portal.env, backups/
+# and the update files are all in .gitignore. Fails without leaving a half-made repo.
+# $prefer is release tags to try first (update passes the version that's running, so a
+# rollback has the right scripts to go back to); none that exist means the newest release.
+# The latest channel follows main regardless.
+function Convert-ToGit([string[]]$prefer = @()) {
+  $gitDir = Join-Path $Root ".git"
+  if ((Test-Path $gitDir) -or -not (Git-Works)) { return $false }
+  $ref = ""
+  $origin = "https://github.com/$GithubRepo.git"
+  if (((Quiet { git -C $Root init -q }) -eq 0) -and ((Quiet { git -C $Root remote add origin $origin }) -eq 0) -and ((Quiet { git -C $Root fetch -q --tags origin }) -eq 0)) {
+    if ((Channel) -eq "latest") {
+      if ((Quiet { git -C $Root checkout -q -f -B main origin/main }) -eq 0) { $ref = "main" }
+    } else {
+      # No release on this channel yet: nothing to pick, so stay a ZIP install.
+      $tag = ""
+      foreach ($want in $prefer) {
+        if ($want -and ((Quiet { git -C $Root rev-parse -q --verify "refs/tags/$want" }) -eq 0)) { $tag = $want; break }
+      }
+      if (-not $tag) { $tag = Newest-Release }
+      if ($tag -and ((Quiet { git -C $Root checkout -q -f $tag }) -eq 0)) { $ref = $tag }
+    }
+  }
+  if (-not $ref) {
+    Remove-Item -Recurse -Force $gitDir -ErrorAction SilentlyContinue # only ever the one made above
+    Say "Couldn't set up git for this folder just now. Carrying on without it; updates still work."
+    return $false
+  }
+  # The ZIP updater's bookkeeping: git knows the version now.
+  Remove-Item -Recurse -Force $ScriptsVersionFile, $ScriptsPrev, $ScriptsSkipFile -ErrorAction SilentlyContinue
+  Say "Set up git for this folder, on $ref."
+  return $true
+}
 
 # What a ZIP install (no .git) keeps current: the scripts and the one deploy file the stack
 # reads from this folder (the other deploy/ files are baked into the images). Never
@@ -470,8 +540,16 @@ function Restore-Scripts([string]$head, [bool]$markSkip = $false) {
 
 function Install {
   Check-Docker
+  # A GitHub download has no .git: get git if it's missing and make the folder a checkout,
+  # so updates take the git path. Never required: without it the ZIP updater still works.
+  # The checkout replaced the scripts, so run them, once (the re-exec skips all of this).
+  if (-not $env:PORTAL_REEXEC -and -not (Test-Path (Join-Path $Root ".git")) -and (Offer-Git) -and (Convert-ToGit)) {
+    $env:PORTAL_REEXEC = "1"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath install
+    exit $LASTEXITCODE
+  }
   # A fresh clone is on main; run the install from the release the images belong to.
-  if (-not $env:PORTAL_REEXEC -and (Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+  if (-not $env:PORTAL_REEXEC -and (Test-Path (Join-Path $Root ".git")) -and (Git-Works)) {
     $was = (git -C $Root rev-parse HEAD)
     Update-Scripts
     if ((git -C $Root rev-parse HEAD) -ne $was) {
@@ -521,7 +599,7 @@ function Backup {
 }
 
 function Restore([string]$file) {
-  if (-not $file) { Die "say which backup: portal.ps1 restore <file.tar.gz>" }
+  if (-not $file) { Die "say which backup: powershell -ExecutionPolicy Bypass -File portal.ps1 restore <file.tar.gz>" }
   if (-not (Test-Path $file)) { Die "no such file: $file" }
   $dir = Get-Setting "BACKUP_DIR"
   $name = Split-Path $file -Leaf
@@ -576,13 +654,30 @@ function Update {
   Check-Docker
   $before = Image-Ids
   $head = ""
-  if ((Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+  # A ZIP install moves onto git as soon as git works, with no question: nothing here
+  # changes except how the scripts update. If it can't, the archive path below carries on.
+  # It goes to the version that's running, not the newest, so the git path below is the
+  # ordinary update from there: it records the right head to roll back to.
+  $converted = $false
+  if (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC) {
+    $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $envLines = docker image inspect -f "{{range .Config.Env}}{{println .}}{{end}}" (Get-Setting "APP_IMAGE") 2> $null
+    $ErrorActionPreference = $old
+    $running = ""
+    foreach ($l in @($envLines)) { if ("$l" -like "APP_VERSION=*") { $running = "$l".Substring(12).Trim().TrimStart("v") } }
+    $prefer = @()
+    if ($running) { $prefer += "v$running" }
+    if (Test-Path $ScriptsVersionFile) { $prefer += (Get-Content $ScriptsVersionFile -Raw).Trim() }
+    $converted = [bool](Convert-ToGit $prefer)
+  }
+  if ((Test-Path (Join-Path $Root ".git")) -and (Git-Works)) {
     $head = $env:PORTAL_PREV_HEAD # a rollback returns to this
     if (-not $head) { $head = (git -C $Root rev-parse HEAD) }
     # Once: the re-exec has the new scripts already, and must not move them again.
     if (-not $env:PORTAL_REEXEC) {
       Update-Scripts
-      if ((git -C $Root rev-parse HEAD) -ne $head) {
+      # A fresh conversion always re-runs: this process is still the ZIP's script.
+      if ($converted -or ((git -C $Root rev-parse HEAD) -ne $head)) {
         # This process is the old script: run the new one, so its Write-Settings and
         # Get-Images (and a newer compose file's settings) are what the update uses.
         $env:PORTAL_REEXEC = "1"
@@ -625,7 +720,7 @@ function Update {
   if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw -Encoding UTF8).Trim() -eq $after)) {
     Retag $before
     Restore-Scripts $head $true
-    Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
+    Say "Skipped: this version didn't start last time. Run powershell -ExecutionPolicy Bypass -File portal.ps1 update to try it again."
     return
   }
 
@@ -652,7 +747,7 @@ function Update {
   Restore-Scripts $head $true
   Compose up -d --no-build --remove-orphans
   Wait-Ready | Out-Null
-  Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: portal.ps1 logs app"
+  Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: powershell -ExecutionPolicy Bypass -File portal.ps1 logs app"
 }
 
 # Talks to the portal's update endpoint from inside the web container, so it works
@@ -660,7 +755,14 @@ function Update {
 function Clean-Json([string]$s) {
   $c = ($s -replace '["\\]', "" -replace "\s+", " ")
   if ($c.Length -gt 400) { $c = $c.Substring(0, 400) }
-  return $c
+  # The body reaches wget as a console-code-page argument, so anything outside printable
+  # ASCII goes as a JSON \uXXXX escape rather than as a character that could be mangled.
+  $sb = New-Object System.Text.StringBuilder
+  foreach ($ch in $c.ToCharArray()) {
+    if ([int]$ch -ge 32 -and [int]$ch -le 126) { [void]$sb.Append($ch) }
+    else { [void]$sb.Append(('\u{0:x4}' -f [int]$ch)) }
+  }
+  return $sb.ToString()
 }
 
 function Check-In([string]$result = "", [string]$detail = "", [string]$version = "") {
@@ -669,9 +771,12 @@ function Check-In([string]$result = "", [string]$detail = "", [string]$version =
     $body = "{`"result`":`"$result`",`"detail`":`"$(Clean-Json $detail)`",`"version`":`"$(Clean-Json $version)`"}"
   }
   $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-  # PowerShell 5.1 mangles double quotes in native arguments, so escape them for it.
+  # PowerShell 5.1 mangles double quotes in native arguments, so escape them for it. It also
+  # doesn't re-quote an argument that already holds \" , so a literal space would split the
+  # body into several arguments (wget: "bad address"), and no result ever reached the portal.
+  # Spaces only occur inside the JSON strings, where \u0020 is the same character.
   $reply = Compose exec -T web wget -q -O - -T 20 --header "Authorization: Bearer $(Get-Setting 'UPDATE_TOKEN')" `
-    --header "Content-Type: application/json" --post-data ($body -replace '"', '\"') http://app:3000/api/system/update 2> $null
+    --header "Content-Type: application/json" --post-data ($body -replace '"', '\"' -replace ' ', '\u0020') http://app:3000/api/system/update 2> $null
   $code = $LASTEXITCODE
   $ErrorActionPreference = $old
   if ($code -eq 0) { return "$reply" } else { return "" }
@@ -747,13 +852,13 @@ function Autoupdate([string]$state) {
     Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
     Say "Automatic updates are on: each night at ${hour}:00 the server checks for a new release"
     Say "and installs it after a backup, while you're signed in to Windows (Docker Desktop only"
-    Say "runs then). To install one straight away, run portal.ps1 update. After changing"
-    Say "UPDATE_HOUR, run portal.ps1 autoupdate on again. Log: update.log"
+    Say "runs then). To install one straight away, run powershell -ExecutionPolicy Bypass -File portal.ps1 update. After changing"
+    Say "UPDATE_HOUR, run powershell -ExecutionPolicy Bypass -File portal.ps1 autoupdate on again. Log: update.log"
   } elseif ($state -eq "off") {
     Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
-    Say "Automatic updates are off. Update with: portal.ps1 update"
+    Say "Automatic updates are off. Update with: powershell -ExecutionPolicy Bypass -File portal.ps1 update"
   } else {
-    Die "say on or off: portal.ps1 autoupdate on"
+    Die "say on or off: powershell -ExecutionPolicy Bypass -File portal.ps1 autoupdate on"
   }
 }
 

@@ -231,7 +231,7 @@ export function EmailSettings({ societySlug }: { societySlug: string }) {
                 id="smtp-from"
                 value={f.from}
                 onChange={(e) => setF({ ...f, from: e.target.value })}
-                placeholder="Chess Society <noreply@chesssoc.org>"
+                placeholder="Chess Society <noreply@example.org>"
                 required
               />
               <p className="text-xs text-muted-foreground">The name people see, then an address at the domain you set up.</p>
