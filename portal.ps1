@@ -43,12 +43,14 @@ function RandomHex([int]$bytes) {
 
 function Get-Setting([string]$key) {
   if (-not (Test-Path $EnvFile)) { return "" }
-  $line = Get-Content $EnvFile | Where-Object { $_ -like "$key=*" } | Select-Object -Last 1
+  $line = Get-Content $EnvFile -Encoding UTF8 | Where-Object { $_ -like "$key=*" } | Select-Object -Last 1
   if ($line) { return $line.Substring($key.Length + 1) } else { return "" }
 }
 function Has-Setting([string]$key) {
-  return (Test-Path $EnvFile) -and [bool](Get-Content $EnvFile | Where-Object { $_ -like "$key=*" })
+  return (Test-Path $EnvFile) -and [bool](Get-Content $EnvFile -Encoding UTF8 | Where-Object { $_ -like "$key=*" })
 }
+# Get-Content says UTF-8 on purpose: with no BOM, Windows PowerShell 5.1 reads the file
+# as the ANSI code page and garbles a non-ASCII path or name.
 # Appends KEY=value unless KEY is already there. UTF-8 without a BOM and \n endings:
 # Docker Compose would read a BOM as part of the first key.
 function Ensure([string]$key, [string]$value) {
@@ -57,7 +59,7 @@ function Ensure([string]$key, [string]$value) {
 # Replaces KEY's value: for a setting someone is deliberately changing. Single quotes
 # keep Docker Compose from reading a $ in a password as a variable.
 function Set-Setting([string]$key, [string]$value) {
-  $lines = @(Get-Content $EnvFile | Where-Object { $_ -notlike "$key=*" })
+  $lines = @(Get-Content $EnvFile -Encoding UTF8 | Where-Object { $_ -notlike "$key=*" })
   $lines += "$key='$value'"
   [IO.File]::WriteAllText($EnvFile, (($lines -join "`n") + "`n"))
 }
@@ -471,7 +473,7 @@ function Update {
   # and so is this one when you run update yourself, or an executive asks for it in
   # Settings (PORTAL_RETRY).
   $skipFile = Join-Path $Root ".update-skip"
-  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw).Trim() -eq $after)) {
+  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw -Encoding UTF8).Trim() -eq $after)) {
     Retag $before
     Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
     return
@@ -538,7 +540,7 @@ function Tick {
   try {
     # A result the portal hasn't heard yet (it was restarting) goes with this check-in.
     if (Test-Path $resultFile) {
-      $lines = @(Get-Content $resultFile) + @("", "", "")
+      $lines = @(Get-Content $resultFile -Encoding UTF8) + @("", "", "")
       $reply = Check-In $lines[0] $lines[1] $lines[2]
       if ($reply) { Remove-Item $resultFile }
     } else {
