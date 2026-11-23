@@ -366,8 +366,10 @@ channel() { local image; image="$(get APP_IMAGE)"; image="${image:-$IMAGES-app:1
 newest_on_channel() {
   local channel
   channel="$(channel)"
-  grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-    | awk -v c="v$channel" '$0 == c || index($0, c ".") == 1' | sort -V | tail -n 1 || true
+  # Numeric sort on the three fields, not sort -V: that isn't on every BSD sort.
+  grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' \
+    | awk -v c="$channel" '$0 == c || index($0, c ".") == 1' \
+    | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1 | sed 's/^./v&/' || true
 }
 
 newest_release() { git -C "$ROOT" tag -l 'v*' | newest_on_channel; }
@@ -403,6 +405,13 @@ GITHUB_REPO="maahir-ahmed/portal"
 SCRIPTS_TMP=""
 SCRIPTS_CHANGED=""
 
+# The bare commit SHA GitHub's API gives for this Accept header.
+fetch_sha() { # fetch_sha URL FILE
+  if command -v curl >/dev/null 2>&1; then curl -fsSL -H 'Accept: application/vnd.github.sha' "$1" -o "$2"
+  elif command -v wget >/dev/null 2>&1; then wget -q --header='Accept: application/vnd.github.sha' -O "$2" "$1"
+  else return 1; fi
+}
+
 fetch() { # fetch URL FILE
   if command -v curl >/dev/null 2>&1; then curl -fsSL "$1" -o "$2"
   elif command -v wget >/dev/null 2>&1; then wget -q -O "$2" "$1"
@@ -419,18 +428,24 @@ update_scripts_archive() {
   local tag url f
   SCRIPTS_TMP="$(mktemp -d)"
   if [ "$(channel)" = latest ]; then
-    tag=main # follows main on purpose, as the git path does
-    url="https://github.com/$GITHUB_REPO/archive/refs/heads/main.tar.gz"
+    # Follows main on purpose, as the git path does. Main's commit is its version, so the
+    # same "nothing new" and "didn't start last time" checks apply as for a release.
+    fetch_sha "https://api.github.com/repos/$GITHUB_REPO/commits/main" "$SCRIPTS_TMP/sha" \
+      || scripts_fail "couldn't check for new versions of the scripts. Check the internet connection and try again"
+    tag="$(tr -d ' \r\n' < "$SCRIPTS_TMP/sha")"
+    case "$tag" in "" | *[!0-9a-f]*) scripts_fail "couldn't read the newest version of the scripts from GitHub. Try again later" ;; esac
+    url="https://github.com/$GITHUB_REPO/archive/$tag.tar.gz"
   else
     fetch "https://api.github.com/repos/$GITHUB_REPO/tags?per_page=100" "$SCRIPTS_TMP/tags.json" \
       || scripts_fail "couldn't check for new versions of the scripts. Check the internet connection and try again"
-    tag="$(grep -oE '"name": *"v[0-9.]+"' "$SCRIPTS_TMP/tags.json" | sed 's/.*"\(v[0-9.]*\)"/\1/' | newest_on_channel)"
-    if [ -z "$tag" ] || [ "$(cat "$SCRIPTS_VERSION_FILE" 2>/dev/null)" = "$tag" ] \
-      || { [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$(cat "$SCRIPTS_SKIP_FILE" 2>/dev/null)" = "$tag" ]; }; then
-      rm -rf "$SCRIPTS_TMP" # no release on this channel yet, nothing new, or one that didn't start last time
-      return 0
-    fi
+    # || true: no matching tag is "nothing to do", not a failed pipeline under pipefail.
+    tag="$(grep -oE '"name": *"v[0-9.]+"' "$SCRIPTS_TMP/tags.json" | sed 's/.*"\(v[0-9.]*\)"/\1/' | newest_on_channel || true)"
     url="https://github.com/$GITHUB_REPO/archive/refs/tags/$tag.tar.gz"
+  fi
+  if [ -z "$tag" ] || [ "$(cat "$SCRIPTS_VERSION_FILE" 2>/dev/null)" = "$tag" ] \
+    || { [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$(cat "$SCRIPTS_SKIP_FILE" 2>/dev/null)" = "$tag" ]; }; then
+    rm -rf "$SCRIPTS_TMP" # no release on this channel yet, nothing new, or one that didn't start last time
+    return 0
   fi
   mkdir "$SCRIPTS_TMP/src"
   fetch "$url" "$SCRIPTS_TMP/src.tar.gz" \
@@ -467,11 +482,13 @@ update_scripts_archive() {
 
 # Puts the scripts and compose file back to match the images a rollback or skip returns
 # to: git installs go back to $1, the commit before the update; ZIP installs get the
-# files update_scripts_archive kept. Remembers the release that was undone.
+# files update_scripts_archive kept. With $2 = skip, remembers the release that was undone:
+# only where .update-skip is recorded for the images (they didn't start), not when the
+# backup failed, or the next night would update the images but not the scripts.
 restore_scripts() {
   local f prev
   if [ -d "$SCRIPTS_PREV" ]; then
-    cat "$SCRIPTS_VERSION_FILE" > "$SCRIPTS_SKIP_FILE" 2>/dev/null || true
+    if [ "${2:-}" = skip ]; then cat "$SCRIPTS_VERSION_FILE" > "$SCRIPTS_SKIP_FILE" 2>/dev/null || true; fi
     for f in $SCRIPT_FILES; do
       if [ -f "$SCRIPTS_PREV/$f" ]; then
         cp -p "$SCRIPTS_PREV/$f" "$ROOT/$f.new" && mv -f "$ROOT/$f.new" "$ROOT/$f" || true
@@ -532,6 +549,7 @@ cmd_update() {
 
   if [ "$before" = "$after" ]; then
     compose up -d --no-build --remove-orphans # picks up a changed compose file, if any
+    rm -rf "$SCRIPTS_PREV" # a scripts-only update: nothing was rolled back to
     say "Already up to date."
     return 0
   fi
@@ -540,7 +558,7 @@ cmd_update() {
   # Settings (PORTAL_RETRY).
   if [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$after" = "$(cat "$ROOT/.update-skip" 2>/dev/null)" ]; then
     IDS="$before" retag
-    restore_scripts "$head"
+    restore_scripts "$head" skip
     say "Skipped: this version didn't start last time. Run ./portal update to try it again."
     return 0
   fi
@@ -562,7 +580,7 @@ cmd_update() {
   say "The new version didn't start. Going back to the one before..."
   printf '%s' "$after" > "$ROOT/.update-skip"
   IDS="$before" retag
-  restore_scripts "$head"
+  restore_scripts "$head" skip
   compose up -d --no-build --remove-orphans
   wait_ready || true
   die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(get BACKUP_DIR). See why with: ./portal logs app"

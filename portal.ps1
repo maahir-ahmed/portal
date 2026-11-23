@@ -351,22 +351,30 @@ function Update-ScriptsArchive {
   $tmp = Join-Path ([IO.Path]::GetTempPath()) ("portal-scripts-" + [guid]::NewGuid().ToString("N"))
   New-Item -ItemType Directory -Path $tmp | Out-Null
   if ((Channel) -eq "latest") {
-    $tag = "main" # follows main on purpose, as the git path does
-    $url = "https://github.com/$GithubRepo/archive/refs/heads/main.zip"
+    # Follows main on purpose, as the git path does. Main's commit is its version, so the
+    # same "nothing new" and "didn't start last time" checks apply as for a release.
+    try {
+      $resp = Invoke-WebRequest -UseBasicParsing -Headers @{ Accept = "application/vnd.github.sha" } "https://api.github.com/repos/$GithubRepo/commits/main"
+      $content = $resp.Content
+      if ($content -is [byte[]]) { $content = [Text.Encoding]::ASCII.GetString($content) } # unknown media type comes back as bytes
+      $tag = "$content".Trim()
+    } catch { Scripts-Fail $tmp "couldn't check for new versions of the scripts. Check the internet connection and try again" }
+    if ($tag -notmatch '^[0-9a-f]{7,64}$') { Scripts-Fail $tmp "couldn't read the newest version of the scripts from GitHub. Try again later" }
+    $url = "https://github.com/$GithubRepo/archive/$tag.zip"
   } else {
     try {
       $names = @((Invoke-RestMethod -UseBasicParsing "https://api.github.com/repos/$GithubRepo/tags?per_page=100") | ForEach-Object { $_.name })
     } catch { Scripts-Fail $tmp "couldn't check for new versions of the scripts. Check the internet connection and try again" }
     $tag = Newest-Of $names
-    $have = ""
-    if (Test-Path $ScriptsVersionFile) { $have = (Get-Content $ScriptsVersionFile -Raw).Trim() }
-    $skipped = ""
-    if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $ScriptsSkipFile)) { $skipped = (Get-Content $ScriptsSkipFile -Raw).Trim() }
-    if (-not $tag -or $have -eq $tag -or $skipped -eq $tag) { # no release on this channel yet, nothing new, or one that didn't start last time
-      Remove-Item -Recurse -Force $tmp
-      return @()
-    }
     $url = "https://github.com/$GithubRepo/archive/refs/tags/$tag.zip"
+  }
+  $have = ""
+  if (Test-Path $ScriptsVersionFile) { $have = (Get-Content $ScriptsVersionFile -Raw).Trim() }
+  $skipped = ""
+  if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $ScriptsSkipFile)) { $skipped = (Get-Content $ScriptsSkipFile -Raw).Trim() }
+  if (-not $tag -or $have -eq $tag -or $skipped -eq $tag) { # no release on this channel yet, nothing new, or one that didn't start last time
+    Remove-Item -Recurse -Force $tmp
+    return @()
   }
   $zip = Join-Path $tmp "src.zip"
   try { Invoke-WebRequest -UseBasicParsing $url -OutFile $zip }
@@ -436,10 +444,12 @@ function Update-Scripts {
 
 # Puts the scripts and compose file back to match the images a rollback or skip returns
 # to: git installs go back to $head, the commit before the update; ZIP installs get the
-# files Update-ScriptsArchive kept. Remembers the release that was undone.
-function Restore-Scripts([string]$head) {
+# files Update-ScriptsArchive kept. With $markSkip, remembers the release that was undone:
+# only where .update-skip is recorded for the images (they didn't start), not when the
+# backup failed, or the next night would update the images but not the scripts.
+function Restore-Scripts([string]$head, [bool]$markSkip = $false) {
   if (Test-Path $ScriptsPrev) {
-    if (Test-Path $ScriptsVersionFile) { Copy-Item $ScriptsVersionFile $ScriptsSkipFile -Force }
+    if ($markSkip -and (Test-Path $ScriptsVersionFile)) { Copy-Item $ScriptsVersionFile $ScriptsSkipFile -Force }
     foreach ($f in $ScriptFiles) {
       $kept = Join-Path $ScriptsPrev $f
       if (Test-Path $kept) {
@@ -604,6 +614,7 @@ function Update {
 
   if ($before -eq $after) {
     Compose up -d --no-build --remove-orphans # picks up a changed compose file, if any
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue # a scripts-only update: nothing was rolled back to
     Say "Already up to date."
     return
   }
@@ -613,7 +624,7 @@ function Update {
   $skipFile = Join-Path $Root ".update-skip"
   if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw -Encoding UTF8).Trim() -eq $after)) {
     Retag $before
-    Restore-Scripts $head
+    Restore-Scripts $head $true
     Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
     return
   }
@@ -638,7 +649,7 @@ function Update {
   Say "The new version didn't start. Going back to the one before..."
   [IO.File]::WriteAllText($skipFile, $after)
   Retag $before
-  Restore-Scripts $head
+  Restore-Scripts $head $true
   Compose up -d --no-build --remove-orphans
   Wait-Ready | Out-Null
   Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: portal.ps1 logs app"
