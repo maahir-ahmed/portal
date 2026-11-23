@@ -146,7 +146,13 @@ function Compose {
   $profile = @()
   $method = Get-Setting "METHOD"
   if ($method -eq "cloudflare" -or $method -eq "caddy") { $profile = @("--profile", $method) }
-  & docker compose --env-file $EnvFile -p (Get-Setting "STACK") -f $ComposeFile @profile @args
+  # A function sees pipeline input only as $input and doesn't hand it on, so without this
+  # the native command reads the console instead (a psql probe would wait for a keyboard).
+  if ($MyInvocation.ExpectingInput) {
+    $input | & docker compose --env-file $EnvFile -p (Get-Setting "STACK") -f $ComposeFile @profile @args
+  } else {
+    & docker compose --env-file $EnvFile -p (Get-Setting "STACK") -f $ComposeFile @profile @args
+  }
 }
 
 function Check-Docker {
@@ -362,7 +368,9 @@ function Install {
   # Through stdin: PowerShell 5.1 mangles double quotes inside native command arguments.
   $users = ('select count(*) from "User";' | Compose exec -T db psql -U society_user -d society_platform -tA 2> $null) -join ""
   $ErrorActionPreference = $old
-  if ($users.Trim() -eq "0") {
+  # A probe that failed counts as no accounts, as in the bash installer: better the setup
+  # link (which only works while there are none) than a login page nobody can use.
+  if (-not $users.Trim() -or $users.Trim() -eq "0") {
     Say "Finish setting up here (this link only works until the first account exists):"
     Say "  $url/setup?token=$(Get-Setting 'SETUP_TOKEN')"
     Say "Everything else, email included, is set up in the portal itself: see Help & guides there."
