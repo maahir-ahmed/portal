@@ -313,11 +313,89 @@ function Channel {
 }
 
 # The newest release on this portal's channel, as a git tag, or "" if there isn't one yet.
-function Newest-Release {
+function Newest-Of($names) {
   $c = Channel
-  $tags = @(git -C $Root tag -l "v*" | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and ($_ -eq "v$c" -or $_.StartsWith("v$c.")) })
+  $tags = @($names | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' -and ($_ -eq "v$c" -or $_.StartsWith("v$c.")) })
   if ($tags.Count -eq 0) { return "" }
   return ($tags | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1)
+}
+
+function Newest-Release { return (Newest-Of @(git -C $Root tag -l "v*")) }
+
+# What a ZIP install (no .git) keeps current: the scripts and the one deploy file the stack
+# reads from this folder (the other deploy/ files are baked into the images). Never
+# portal.env, backups/, update.log or the state files: they aren't in the archive and
+# aren't listed here.
+$ScriptFiles = "portal", "portal.ps1", "deploy/docker-compose.yml"
+# The release the scripts were last brought to, so a quiet night downloads nothing.
+$ScriptsVersionFile = Join-Path $Root ".scripts-version"
+$GithubRepo = "maahir-ahmed/portal"
+
+function Scripts-Fail([string]$tmp, [string]$msg) {
+  Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+  Die $msg
+}
+
+# The same job as Update-Scripts for an install with no .git (the GitHub ZIP): the newest
+# release on the channel, fetched as an archive. It is unpacked and checked in a temp
+# folder first and only then moved over, so a failed or partial download leaves the
+# working install as it was. Returns the files whose content changed.
+function Update-ScriptsArchive {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # 5.1 defaults to older
+  $ProgressPreference = "SilentlyContinue" # the progress bar makes Invoke-WebRequest very slow in 5.1
+  $tmp = Join-Path ([IO.Path]::GetTempPath()) ("portal-scripts-" + [guid]::NewGuid().ToString("N"))
+  New-Item -ItemType Directory -Path $tmp | Out-Null
+  if ((Channel) -eq "latest") {
+    $tag = "main" # follows main on purpose, as the git path does
+    $url = "https://github.com/$GithubRepo/archive/refs/heads/main.zip"
+  } else {
+    try {
+      $names = @((Invoke-RestMethod -UseBasicParsing "https://api.github.com/repos/$GithubRepo/tags?per_page=100") | ForEach-Object { $_.name })
+    } catch { Scripts-Fail $tmp "couldn't check for new versions of the scripts. Check the internet connection and try again" }
+    $tag = Newest-Of $names
+    $have = ""
+    if (Test-Path $ScriptsVersionFile) { $have = (Get-Content $ScriptsVersionFile -Raw).Trim() }
+    if (-not $tag -or $have -eq $tag) { # no release on this channel yet, or nothing new
+      Remove-Item -Recurse -Force $tmp
+      return @()
+    }
+    $url = "https://github.com/$GithubRepo/archive/refs/tags/$tag.zip"
+  }
+  $zip = Join-Path $tmp "src.zip"
+  try { Invoke-WebRequest -UseBasicParsing $url -OutFile $zip }
+  catch { Scripts-Fail $tmp "couldn't download the scripts for $tag. Check the internet connection and try again" }
+  try { Expand-Archive -Path $zip -DestinationPath (Join-Path $tmp "x") -Force }
+  catch { Scripts-Fail $tmp "the download of the scripts for $tag was damaged. Nothing was changed; try again" }
+  $src = @(Get-ChildItem (Join-Path $tmp "x") -Directory)[0] # the one folder GitHub wraps it in
+  if (-not $src) { Scripts-Fail $tmp "the download of the scripts for $tag was damaged. Nothing was changed; try again" }
+  foreach ($f in $ScriptFiles) {
+    $p = Join-Path $src.FullName $f
+    if (-not (Test-Path $p) -or (Get-Item $p).Length -eq 0) { Scripts-Fail $tmp "the download of the scripts for $tag is missing $f. Nothing was changed; try again" }
+  }
+  $errs = $null
+  [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $src.FullName "portal.ps1"), [ref]$null, [ref]$errs)
+  if ($errs -and $errs.Count -gt 0) { Scripts-Fail $tmp "the downloaded portal.ps1 for $tag is damaged. Nothing was changed; try again" }
+  # Copy everything next to its target first, rename after: a failed copy (disk full)
+  # then leaves every old file in place.
+  $changed = @()
+  try {
+    foreach ($f in $ScriptFiles) {
+      $new = Join-Path $src.FullName $f
+      $old = Join-Path $Root $f
+      if ((-not (Test-Path $old)) -or ((Get-FileHash $new).Hash -ne (Get-FileHash $old).Hash)) {
+        Copy-Item $new "$old.new" -Force
+        $changed += $f
+      }
+    }
+  } catch {
+    foreach ($f in $ScriptFiles) { Remove-Item (Join-Path $Root "$f.new") -Force -ErrorAction SilentlyContinue }
+    Scripts-Fail $tmp "couldn't write the new scripts. Nothing was changed"
+  }
+  foreach ($f in $changed) { Move-Item (Join-Path $Root "$f.new") (Join-Path $Root $f) -Force }
+  Set-Content -Path $ScriptsVersionFile -Value $tag -Encoding ASCII
+  Remove-Item -Recurse -Force $tmp
+  if ($changed.Count -gt 0) { Say "Updated the scripts to $tag." }
+  return $changed
 }
 
 # Moves the scripts and compose file to the same release as the images: the newest tag
@@ -459,6 +537,14 @@ function Update {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
         exit $LASTEXITCODE
       }
+    }
+  } elseif (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC) {
+    $changed = @(Update-ScriptsArchive)
+    # Same reason as above: the new script's settings and image steps are the ones to use.
+    if ($changed.Count -gt 0) {
+      $env:PORTAL_REEXEC = "1"
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
+      exit $LASTEXITCODE
     }
   }
   Write-Settings # adds any setting a newer version needs

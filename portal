@@ -362,12 +362,15 @@ cmd_restore() {
 # means v1.4.y), as a git tag, or nothing if there isn't one yet.
 channel() { local image; image="$(get APP_IMAGE)"; image="${image:-$IMAGES-app:1}"; printf '%s' "${image##*:}"; }
 
-newest_release() {
+# Reads tag names on stdin; prints the newest one on the channel.
+newest_on_channel() {
   local channel
   channel="$(channel)"
-  git -C "$ROOT" tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-    | awk -v c="v$channel" '$0 == c || index($0, c ".") == 1' | sort -V | tail -n 1
+  grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+    | awk -v c="v$channel" '$0 == c || index($0, c ".") == 1' | sort -V | tail -n 1 || true
 }
+
+newest_release() { git -C "$ROOT" tag -l 'v*' | newest_on_channel; }
 
 # Moves the scripts and compose file to the same release as the images: the newest tag
 # on the channel, not whatever is on main, so a change reaches self-hosted portals only
@@ -382,6 +385,72 @@ update_scripts() {
   tag="$(newest_release)"
   [ -n "$tag" ] || return 0 # no release on this channel yet: stay where we are
   git -C "$ROOT" checkout -q "$tag" || die "couldn't move the scripts to $tag. Undo local changes to this folder and try again"
+}
+
+# What a ZIP install (no .git) keeps current: the scripts and the one deploy file the stack
+# reads from this folder (the other deploy/ files are baked into the images). Never
+# portal.env, backups/, update.log or the state files: they aren't in the archive and
+# aren't listed here.
+SCRIPT_FILES="portal portal.ps1 deploy/docker-compose.yml"
+# The release the scripts were last brought to, so a quiet night downloads nothing.
+SCRIPTS_VERSION_FILE="$ROOT/.scripts-version"
+GITHUB_REPO="maahir-ahmed/portal"
+SCRIPTS_TMP=""
+SCRIPTS_CHANGED=""
+
+fetch() { # fetch URL FILE
+  if command -v curl >/dev/null 2>&1; then curl -fsSL "$1" -o "$2"
+  elif command -v wget >/dev/null 2>&1; then wget -q -O "$2" "$1"
+  else return 1; fi
+}
+
+scripts_fail() { rm -rf "$SCRIPTS_TMP"; die "$*"; }
+
+# The same job as update_scripts for an install with no .git (the GitHub ZIP): the newest
+# release on the channel, fetched as an archive. It is unpacked and checked in a temp
+# folder first and only then moved over, so a failed or partial download leaves the
+# working install as it was. Sets SCRIPTS_CHANGED when a script's content changed.
+update_scripts_archive() {
+  local tag url f
+  SCRIPTS_TMP="$(mktemp -d)"
+  if [ "$(channel)" = latest ]; then
+    tag=main # follows main on purpose, as the git path does
+    url="https://github.com/$GITHUB_REPO/archive/refs/heads/main.tar.gz"
+  else
+    fetch "https://api.github.com/repos/$GITHUB_REPO/tags?per_page=100" "$SCRIPTS_TMP/tags.json" \
+      || scripts_fail "couldn't check for new versions of the scripts. Check the internet connection and try again"
+    tag="$(grep -oE '"name": *"v[0-9.]+"' "$SCRIPTS_TMP/tags.json" | sed 's/.*"\(v[0-9.]*\)"/\1/' | newest_on_channel)"
+    if [ -z "$tag" ] || [ "$(cat "$SCRIPTS_VERSION_FILE" 2>/dev/null)" = "$tag" ]; then
+      rm -rf "$SCRIPTS_TMP" # no release on this channel yet, or nothing new: stay where we are
+      return 0
+    fi
+    url="https://github.com/$GITHUB_REPO/archive/refs/tags/$tag.tar.gz"
+  fi
+  mkdir "$SCRIPTS_TMP/src"
+  fetch "$url" "$SCRIPTS_TMP/src.tar.gz" \
+    || scripts_fail "couldn't download the scripts for $tag. Check the internet connection and try again"
+  tar -xzf "$SCRIPTS_TMP/src.tar.gz" -C "$SCRIPTS_TMP/src" --strip-components=1 \
+    || scripts_fail "the download of the scripts for $tag was damaged. Nothing was changed; try again"
+  for f in $SCRIPT_FILES; do
+    [ -s "$SCRIPTS_TMP/src/$f" ] || scripts_fail "the download of the scripts for $tag is missing $f. Nothing was changed; try again"
+  done
+  bash -n "$SCRIPTS_TMP/src/portal" || scripts_fail "the downloaded portal script for $tag is damaged. Nothing was changed; try again"
+  # Copy everything next to its target first, rename after: a failed copy (disk full)
+  # then leaves every old file in place. A rename is atomic, and this running script
+  # keeps its old file open.
+  for f in $SCRIPT_FILES; do
+    if ! cmp -s "$SCRIPTS_TMP/src/$f" "$ROOT/$f"; then
+      cp "$SCRIPTS_TMP/src/$f" "$ROOT/$f.new" || { rm -f "$ROOT/portal.new" "$ROOT/portal.ps1.new" "$ROOT/deploy/docker-compose.yml.new"; scripts_fail "couldn't write the new scripts. Nothing was changed"; }
+      SCRIPTS_CHANGED="$SCRIPTS_CHANGED $f"
+    fi
+  done
+  for f in $SCRIPTS_CHANGED; do
+    if [ "$f" = portal ]; then chmod +x "$ROOT/$f.new"; fi
+    mv -f "$ROOT/$f.new" "$ROOT/$f"
+  done
+  printf '%s\n' "$tag" > "$SCRIPTS_VERSION_FILE"
+  rm -rf "$SCRIPTS_TMP"
+  if [ -n "$SCRIPTS_CHANGED" ]; then say "Updated the scripts to $tag."; fi
 }
 
 # The image IDs the three portal images point at now, "none" for one not here.
@@ -417,6 +486,10 @@ cmd_update() {
         PORTAL_REEXEC=1 PORTAL_PREV_HEAD="$head" exec "$ROOT/portal" update
       fi
     fi
+  elif [ ! -d "$ROOT/.git" ] && [ -z "${PORTAL_REEXEC:-}" ]; then
+    update_scripts_archive
+    # Same reason as above: the new script's settings and image steps are the ones to use.
+    if [ -n "$SCRIPTS_CHANGED" ]; then PORTAL_REEXEC=1 exec "$ROOT/portal" update; fi
   fi
   write_settings # adds any setting a newer version needs
   get_images
