@@ -88,10 +88,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
     // Tell the other side. Internal notes are exec-only, so they reach other execs and
     // never the submitter (who may not be one). Tour demo records notify nobody.
     const kind = thread.contentRequest
-      ? { name: thread.contentRequest.eventName, submitter: thread.contentRequest.submittedById, path: "content", label: "request" }
+      ? { name: thread.contentRequest.eventName, submitter: thread.contentRequest.submittedById, assignee: thread.contentRequest.assignedToId, path: "content", label: "request" }
       : thread.roomBooking
-        ? { name: thread.roomBooking.eventName, submitter: thread.roomBooking.submittedById, path: "room-booking", label: "booking" }
-        : { name: thread.treasuryRequest!.description, submitter: thread.treasuryRequest!.submittedById, path: "treasury", label: "claim" };
+        ? { name: thread.roomBooking.eventName, submitter: thread.roomBooking.submittedById, assignee: thread.roomBooking.assignedToId, path: "room-booking", label: "booking" }
+        : { name: thread.treasuryRequest!.description, submitter: thread.treasuryRequest!.submittedById, assignee: null as string | null, path: "treasury", label: "claim" };
     if (!kind.name.startsWith(TUTORIAL_MARKER)) {
       const authorId = session!.user.id;
       const title = `New comment on ${kind.label}: ${kind.name.length > 80 ? `${kind.name.slice(0, 77)}...` : kind.name}`;
@@ -103,8 +103,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
       }
       // An exec's public comment on someone else's request is already the exec side
       // answering, so it only reaches the submitter; everything else reaches the other execs.
-      if (authorId === kind.submitter || membership!.role !== "EXECUTIVE" || body.isInternal) {
-        await notifyExecs(societyId, "COMMENT", title, message, link, authorId);
+      const execsNotified = authorId === kind.submitter || membership!.role !== "EXECUTIVE" || body.isInternal;
+      if (execsNotified) {
+        await notifyExecs(societyId, "COMMENT", title, message, link, { excludeUserId: authorId, skipDiscord: true });
+      }
+      // The assignee works the request, so they hear too, unless they wrote it, are the
+      // submitter, or are an exec just notified above. An internal note reaches an exec assignee only.
+      if (kind.assignee && kind.assignee !== authorId && kind.assignee !== kind.submitter) {
+        const am = await prisma.societyMembership.findFirst({
+          where: { societyId, userId: kind.assignee, isActive: true },
+          select: { role: true },
+        });
+        const assigneeIsExec = am?.role === "EXECUTIVE";
+        if (am && !(assigneeIsExec && execsNotified) && (!body.isInternal || assigneeIsExec)) {
+          await createNotification({ societyId, userId: kind.assignee, type: "COMMENT", title, body: message, link });
+        }
       }
     }
 
