@@ -109,7 +109,7 @@ function Email-Settings {
     }
     default { Die "choose 1, 2, 3 or 4" }
   }
-  $from = Ask "Send as, at your verified domain (e.g. Chess Society <noreply@chesssoc.org>)"
+  $from = Ask "Send as, at your verified domain (e.g. Chess Society <noreply@example.org>)"
   if (-not $hostName -or -not $pass -or -not $from) { Die "that needs every answer. Run powershell -ExecutionPolicy Bypass -File portal.ps1 email to try again" }
   # Checked before writing any, so a refused answer leaves the old settings whole.
   if ("$hostName$port$user$pass$from".Contains("'")) { Die "the answers can't contain a ' character" }
@@ -237,7 +237,7 @@ function Write-Settings {
     Ensure "NEXTAUTH_URL" "http://localhost:$port"
   } else {
     $domain = Get-Setting "DOMAIN"
-    while (-not $domain) { $domain = Ask "The web address it will live at, without https:// (e.g. portal.chesssoc.org)" }
+    while (-not $domain) { $domain = Ask "The web address it will live at, without https:// (e.g. portal.example.org)" }
     $domain = ($domain -replace "^https?://", "") -replace "/.*$", ""
     Ensure "DOMAIN" $domain
     Ensure "NEXTAUTH_URL" "https://$domain"

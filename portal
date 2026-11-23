@@ -141,7 +141,7 @@ write_settings() {
     ensure NEXTAUTH_URL "http://localhost:$port"
   else
     domain="$(get DOMAIN)"
-    while [ -z "$domain" ]; do domain="$(ask "The web address it will live at, without https:// (e.g. portal.chesssoc.org)")"; done
+    while [ -z "$domain" ]; do domain="$(ask "The web address it will live at, without https:// (e.g. portal.example.org)")"; done
     domain="${domain#https://}"; domain="${domain#http://}"; domain="${domain%%/*}"
     ensure DOMAIN "$domain"
     ensure NEXTAUTH_URL "https://$domain"
@@ -246,7 +246,7 @@ email_settings() {
       ;;
     *) die "choose 1, 2, 3 or 4" ;;
   esac
-  from="$(ask "Send as, at your verified domain (e.g. Chess Society <noreply@chesssoc.org>)")"
+  from="$(ask "Send as, at your verified domain (e.g. Chess Society <noreply@example.org>)")"
   [ -n "$host" ] && [ -n "$pass" ] && [ -n "$from" ] || die "that needs every answer. Run ./portal email to try again"
   # Checked before writing any, so a refused answer leaves the old settings whole.
   case "$host$port$user$pass$from" in *"'"*) die "the answers can't contain a ' character" ;; esac
