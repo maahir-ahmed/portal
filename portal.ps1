@@ -360,7 +360,10 @@ function Offer-Git {
 # at the version Update-Scripts would pick, so updates take the git path from here on.
 # Overwrites the downloaded copies of tracked files and nothing else: portal.env, backups/
 # and the update files are all in .gitignore. Fails without leaving a half-made repo.
-function Convert-ToGit {
+# $prefer is release tags to try first (update passes the version that's running, so a
+# rollback has the right scripts to go back to); none that exist means the newest release.
+# The latest channel follows main regardless.
+function Convert-ToGit([string[]]$prefer = @()) {
   $gitDir = Join-Path $Root ".git"
   if ((Test-Path $gitDir) -or -not (Git-Works)) { return $false }
   $ref = ""
@@ -370,7 +373,11 @@ function Convert-ToGit {
       if ((Quiet { git -C $Root checkout -q -f -B main origin/main }) -eq 0) { $ref = "main" }
     } else {
       # No release on this channel yet: nothing to pick, so stay a ZIP install.
-      $tag = Newest-Release
+      $tag = ""
+      foreach ($want in $prefer) {
+        if ($want -and ((Quiet { git -C $Root rev-parse -q --verify "refs/tags/$want" }) -eq 0)) { $tag = $want; break }
+      }
+      if (-not $tag) { $tag = Newest-Release }
       if ($tag -and ((Quiet { git -C $Root checkout -q -f $tag }) -eq 0)) { $ref = $tag }
     }
   }
@@ -649,13 +656,19 @@ function Update {
   $head = ""
   # A ZIP install moves onto git as soon as git works, with no question: nothing here
   # changes except how the scripts update. If it can't, the archive path below carries on.
-  # A rollback after this can't put the old ZIP scripts back (the head it returns to is the
-  # converted one); the next update moves them on again either way.
-  if (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC -and (Convert-ToGit)) {
-    $env:PORTAL_REEXEC = "1"
-    $env:PORTAL_PREV_HEAD = (git -C $Root rev-parse HEAD)
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
-    exit $LASTEXITCODE
+  # It goes to the version that's running, not the newest, so the git path below is the
+  # ordinary update from there: it records the right head to roll back to.
+  $converted = $false
+  if (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC) {
+    $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $envLines = docker image inspect -f "{{range .Config.Env}}{{println .}}{{end}}" (Get-Setting "APP_IMAGE") 2> $null
+    $ErrorActionPreference = $old
+    $running = ""
+    foreach ($l in @($envLines)) { if ("$l" -like "APP_VERSION=*") { $running = "$l".Substring(12).Trim().TrimStart("v") } }
+    $prefer = @()
+    if ($running) { $prefer += "v$running" }
+    if (Test-Path $ScriptsVersionFile) { $prefer += (Get-Content $ScriptsVersionFile -Raw).Trim() }
+    $converted = [bool](Convert-ToGit $prefer)
   }
   if ((Test-Path (Join-Path $Root ".git")) -and (Git-Works)) {
     $head = $env:PORTAL_PREV_HEAD # a rollback returns to this
@@ -663,7 +676,8 @@ function Update {
     # Once: the re-exec has the new scripts already, and must not move them again.
     if (-not $env:PORTAL_REEXEC) {
       Update-Scripts
-      if ((git -C $Root rev-parse HEAD) -ne $head) {
+      # A fresh conversion always re-runs: this process is still the ZIP's script.
+      if ($converted -or ((git -C $Root rev-parse HEAD) -ne $head)) {
         # This process is the old script: run the new one, so its Write-Settings and
         # Get-Images (and a newer compose file's settings) are what the update uses.
         $env:PORTAL_REEXEC = "1"

@@ -453,8 +453,11 @@ offer_git() {
 # at the version update_scripts would pick, so updates take the git path from here on.
 # Overwrites the downloaded copies of tracked files and nothing else: portal.env, backups/
 # and the update files are all in .gitignore. Fails without leaving a half-made repo.
+# Arguments are release tags to prefer, first one that exists first (update passes the
+# version that's running, so a rollback has the right scripts to go back to); none, or
+# none that exist, means the newest release. The latest channel follows main regardless.
 convert_to_git() {
-  local ref="" tag
+  local ref="" tag want
   [ ! -d "$ROOT/.git" ] && git_works || return 1
   if git -C "$ROOT" init -q \
     && git -C "$ROOT" remote add origin "https://github.com/$GITHUB_REPO.git" \
@@ -462,7 +465,11 @@ convert_to_git() {
     if [ "$(channel)" = latest ]; then
       git -C "$ROOT" checkout -q -f -B main origin/main && ref=main
     else
-      tag="$(newest_release)"
+      tag=""
+      for want in "$@"; do
+        if git -C "$ROOT" rev-parse -q --verify "refs/tags/$want" >/dev/null 2>&1; then tag="$want"; break; fi
+      done
+      [ -n "$tag" ] || tag="$(newest_release)"
       # No release on this channel yet: nothing to pick, so stay a ZIP install.
       [ -z "$tag" ] || { git -C "$ROOT" checkout -q -f "$tag" && ref="$tag"; }
     fi
@@ -614,17 +621,21 @@ cmd_update() {
   before="$(image_ids)"
   # A ZIP install moves onto git as soon as git works, with no question: nothing here
   # changes except how the scripts update. If it can't, the archive path below carries on.
-  # ponytail: a rollback after this can't put the old ZIP scripts back (the head it returns
-  # to is the converted one); the next update moves them on again either way.
-  if [ ! -d "$ROOT/.git" ] && [ -z "${PORTAL_REEXEC:-}" ] && convert_to_git; then
-    PORTAL_REEXEC=1 PORTAL_PREV_HEAD="$(git -C "$ROOT" rev-parse HEAD)" exec "$ROOT/portal" update
+  # It goes to the version that's running, not the newest, so the git path below is the
+  # ordinary update from there: it records the right head to roll back to.
+  local converted="" running
+  if [ ! -d "$ROOT/.git" ] && [ -z "${PORTAL_REEXEC:-}" ]; then
+    running="$(docker image inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$(get APP_IMAGE)" 2>/dev/null | sed -n 's/^APP_VERSION=//p' || true)"
+    running="${running#v}"
+    if convert_to_git ${running:+"v$running"} "$(cat "$SCRIPTS_VERSION_FILE" 2>/dev/null || true)"; then converted=1; fi
   fi
   if [ -d "$ROOT/.git" ] && git_works; then
     head="${PORTAL_PREV_HEAD:-$(git -C "$ROOT" rev-parse HEAD)}" # a rollback returns to this
     # Once: the re-exec has the new scripts already, and must not move them again.
     if [ -z "${PORTAL_REEXEC:-}" ]; then
       update_scripts
-      if [ "$(git -C "$ROOT" rev-parse HEAD)" != "$head" ]; then
+      # A fresh conversion always re-runs: this process is still the ZIP's script.
+      if [ -n "$converted" ] || [ "$(git -C "$ROOT" rev-parse HEAD)" != "$head" ]; then
         # This process is the old script: run the new one, so its write_settings and
         # get_images (and a newer compose file's settings) are what the update uses.
         PORTAL_REEXEC=1 PORTAL_PREV_HEAD="$head" exec "$ROOT/portal" update
