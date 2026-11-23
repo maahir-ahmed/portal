@@ -107,7 +107,7 @@ export function Backups({ base }: { base: string }) {
             {nightlyUnreadable && (
               <p className="text-xs text-destructive">
                 The nightly backups folder couldn&apos;t be read, so they aren&apos;t listed here. They are still being
-                taken. Run ./portal update on the server to fix the folder&apos;s permissions.
+                taken. To fix it, run the portal&apos;s update command on the server: ./portal update, or .\portal.ps1 update on Windows.
               </p>
             )}
             {files.length === 0 ? (

@@ -180,7 +180,8 @@ write_settings() {
   # (group_add BACKUP_GID) to list the nightly archives. The archives are 640, so the
   # group still can't write. chmod too, for a folder an earlier version made as 700.
   mkdir -p "$(get BACKUP_DIR)"
-  chmod 750 "$(get BACKUP_DIR)"
+  # Not fatal (set -e): a folder Docker made as root, or an earlier sudo run, isn't ours to chmod.
+  chmod 750 "$(get BACKUP_DIR)" 2>/dev/null || say "Couldn't fix the backups folder's permissions, so the nightly backups may not be listed in Settings. Fix it with: sudo chown -R $(id -un) \"$(get BACKUP_DIR)\""
 }
 
 # Downloads the published images, or builds them here if this checkout is set to (or
