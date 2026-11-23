@@ -660,7 +660,14 @@ function Update {
 function Clean-Json([string]$s) {
   $c = ($s -replace '["\\]', "" -replace "\s+", " ")
   if ($c.Length -gt 400) { $c = $c.Substring(0, 400) }
-  return $c
+  # The body reaches wget as a console-code-page argument, so anything outside printable
+  # ASCII goes as a JSON \uXXXX escape rather than as a character that could be mangled.
+  $sb = New-Object System.Text.StringBuilder
+  foreach ($ch in $c.ToCharArray()) {
+    if ([int]$ch -ge 32 -and [int]$ch -le 126) { [void]$sb.Append($ch) }
+    else { [void]$sb.Append(('\u{0:x4}' -f [int]$ch)) }
+  }
+  return $sb.ToString()
 }
 
 function Check-In([string]$result = "", [string]$detail = "", [string]$version = "") {
@@ -669,9 +676,12 @@ function Check-In([string]$result = "", [string]$detail = "", [string]$version =
     $body = "{`"result`":`"$result`",`"detail`":`"$(Clean-Json $detail)`",`"version`":`"$(Clean-Json $version)`"}"
   }
   $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-  # PowerShell 5.1 mangles double quotes in native arguments, so escape them for it.
+  # PowerShell 5.1 mangles double quotes in native arguments, so escape them for it. It also
+  # doesn't re-quote an argument that already holds \" , so a literal space would split the
+  # body into several arguments (wget: "bad address"), and no result ever reached the portal.
+  # Spaces only occur inside the JSON strings, where \u0020 is the same character.
   $reply = Compose exec -T web wget -q -O - -T 20 --header "Authorization: Bearer $(Get-Setting 'UPDATE_TOKEN')" `
-    --header "Content-Type: application/json" --post-data ($body -replace '"', '\"') http://app:3000/api/system/update 2> $null
+    --header "Content-Type: application/json" --post-data ($body -replace '"', '\"' -replace ' ', '\u0020') http://app:3000/api/system/update 2> $null
   $code = $LASTEXITCODE
   $ErrorActionPreference = $old
   if ($code -eq 0) { return "$reply" } else { return "" }
