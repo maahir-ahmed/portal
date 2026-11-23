@@ -706,7 +706,8 @@ function Tick {
     $env:PORTAL_UNATTENDED = "1"
     if ($requested) { $env:PORTAL_RETRY = "1" }
     $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update 2>&1 | Out-String)
+    # Native stderr becomes ErrorRecords; stringify each one to keep its detail without the PowerShell wrapper.
+    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update 2>&1 | ForEach-Object { "$_" } | Out-String)
     $code = $LASTEXITCODE
     $ErrorActionPreference = $old
     Remove-Item Env:PORTAL_UNATTENDED
