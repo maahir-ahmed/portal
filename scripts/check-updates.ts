@@ -1,6 +1,7 @@
 // Version and channel logic behind the update card and banner (src/lib/updates.ts).
 //   npx tsx scripts/check-updates.ts
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { newer, newestInChannel, parseImage } from "../src/lib/updates";
 
 assert.deepEqual(parseImage("ghcr.io/maahir-ahmed/portal-app:1"), { registry: "ghcr.io", repo: "maahir-ahmed/portal-app", tag: "1" });
@@ -23,5 +24,13 @@ assert.equal(newestInChannel(tags, "2"), "2.0.0");
 assert.equal(newestInChannel(tags, "latest"), null, "latest doesn't follow releases");
 assert.equal(newestInChannel(tags, "1.3.0"), null, "a pinned version never moves");
 assert.equal(newestInChannel(["1.0.0"], "10"), null, "10 isn't a prefix match for 1");
+
+// portal.ps1 has no test of its own. Windows PowerShell 5.1 splits a native argument that holds
+// a literal space once it already contains \", so a check-in body with a space (every result)
+// never reached the portal. Keep the body's spaces escaped.
+const ps1 = readFileSync("portal.ps1", "utf8");
+const checkIn = ps1.slice(ps1.indexOf("function Check-In"), ps1.indexOf("function Tick"));
+assert.ok(checkIn.includes("function Check-In"), "Check-In moved: update this check");
+assert.ok(/--post-data[^\n]*-replace ' ', '\\u0020'/.test(checkIn), "Check-In must escape spaces in the post body for PowerShell 5.1");
 
 console.log("✅ updates: image names, version order and release channels");
