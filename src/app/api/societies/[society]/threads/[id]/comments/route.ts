@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireMembership, serverError } from "@/lib/api";
 import { createAuditLog } from "@/lib/audit";
 import { canViewRequest } from "@/lib/utils";
+import { createNotification, notifyExecs } from "@/lib/notifications";
+import { TUTORIAL_MARKER } from "@/lib/tutorial";
 import { z } from "zod";
 
 const schema = z.object({
@@ -42,9 +44,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
         ],
       },
       include: {
-        treasuryRequest: { select: { submittedById: true } },
-        contentRequest: { select: { submittedById: true, assignedToId: true } },
-        roomBooking: { select: { submittedById: true, assignedToId: true } },
+        treasuryRequest: { select: { submittedById: true, description: true } },
+        contentRequest: { select: { submittedById: true, assignedToId: true, eventName: true } },
+        roomBooking: { select: { submittedById: true, assignedToId: true, eventName: true } },
       },
     });
 
@@ -82,6 +84,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<Param
       entityType: thread.contentRequest ? "content-request" : thread.roomBooking ? "room-booking" : "treasury",
       entityId: requestId,
     });
+
+    // Tell the other side. Internal notes are exec-only, so they reach other execs and
+    // never the submitter (who may not be one). Tour demo records notify nobody.
+    const kind = thread.contentRequest
+      ? { name: thread.contentRequest.eventName, submitter: thread.contentRequest.submittedById, path: "content", label: "request" }
+      : thread.roomBooking
+        ? { name: thread.roomBooking.eventName, submitter: thread.roomBooking.submittedById, path: "room-booking", label: "booking" }
+        : { name: thread.treasuryRequest!.description, submitter: thread.treasuryRequest!.submittedById, path: "treasury", label: "claim" };
+    if (!kind.name.startsWith(TUTORIAL_MARKER)) {
+      const authorId = session!.user.id;
+      const title = `New comment on ${kind.label}: ${kind.name.length > 80 ? `${kind.name.slice(0, 77)}...` : kind.name}`;
+      const text = body.content.length > 300 ? `${body.content.slice(0, 297)}...` : body.content;
+      const message = `${session!.user.name}${body.isInternal ? " (internal note)" : ""}: ${text}`;
+      const link = `/requests/${kind.path}/${requestId}`;
+      if (authorId !== kind.submitter && !body.isInternal) {
+        await createNotification({ societyId, userId: kind.submitter, type: "COMMENT", title, body: message, link });
+      }
+      // An exec's public comment on someone else's request is already the exec side
+      // answering, so it only reaches the submitter; everything else reaches the other execs.
+      if (authorId === kind.submitter || membership!.role !== "EXECUTIVE" || body.isInternal) {
+        await notifyExecs(societyId, "COMMENT", title, message, link, authorId);
+      }
+    }
 
     return NextResponse.json(comment, { status: 201 });
   } catch (err) {
