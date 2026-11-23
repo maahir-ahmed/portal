@@ -329,6 +329,11 @@ function Newest-Release { return (Newest-Of @(git -C $Root tag -l "v*")) }
 $ScriptFiles = "portal", "portal.ps1", "deploy/docker-compose.yml"
 # The release the scripts were last brought to, so a quiet night downloads nothing.
 $ScriptsVersionFile = Join-Path $Root ".scripts-version"
+# What a failed or skipped update puts back: the files an update replaced and the version
+# before it (Restore-Scripts), and the release that didn't start, so the nightly check
+# doesn't download it again just to undo it.
+$ScriptsPrev = Join-Path $Root ".scripts-prev"
+$ScriptsSkipFile = Join-Path $Root ".scripts-skip"
 $GithubRepo = "maahir-ahmed/portal"
 
 function Scripts-Fail([string]$tmp, [string]$msg) {
@@ -355,7 +360,9 @@ function Update-ScriptsArchive {
     $tag = Newest-Of $names
     $have = ""
     if (Test-Path $ScriptsVersionFile) { $have = (Get-Content $ScriptsVersionFile -Raw).Trim() }
-    if (-not $tag -or $have -eq $tag) { # no release on this channel yet, or nothing new
+    $skipped = ""
+    if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $ScriptsSkipFile)) { $skipped = (Get-Content $ScriptsSkipFile -Raw).Trim() }
+    if (-not $tag -or $have -eq $tag -or $skipped -eq $tag) { # no release on this channel yet, nothing new, or one that didn't start last time
       Remove-Item -Recurse -Force $tmp
       return @()
     }
@@ -391,6 +398,18 @@ function Update-ScriptsArchive {
     foreach ($f in $ScriptFiles) { Remove-Item (Join-Path $Root "$f.new") -Force -ErrorAction SilentlyContinue }
     Scripts-Fail $tmp "couldn't write the new scripts. Nothing was changed"
   }
+  try {
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Path (Join-Path $ScriptsPrev "deploy") -Force | Out-Null
+    $prevVersion = "none"
+    if (Test-Path $ScriptsVersionFile) { $prevVersion = (Get-Content $ScriptsVersionFile -Raw).Trim() }
+    Set-Content -Path (Join-Path $ScriptsPrev ".scripts-version") -Value $prevVersion -Encoding ASCII
+    foreach ($f in $changed) { Copy-Item (Join-Path $Root $f) (Join-Path $ScriptsPrev $f) -Force }
+  } catch {
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
+    foreach ($f in $ScriptFiles) { Remove-Item (Join-Path $Root "$f.new") -Force -ErrorAction SilentlyContinue }
+    Scripts-Fail $tmp "couldn't keep the old scripts. Nothing was changed"
+  }
   foreach ($f in $changed) { Move-Item (Join-Path $Root "$f.new") (Join-Path $Root $f) -Force }
   Set-Content -Path $ScriptsVersionFile -Value $tag -Encoding ASCII
   Remove-Item -Recurse -Force $tmp
@@ -413,6 +432,30 @@ function Update-Scripts {
   if (-not $tag) { return } # no release on this channel yet: stay where we are
   git -C $Root checkout -q $tag
   if ($LASTEXITCODE -ne 0) { Die "couldn't move the scripts to $tag. Undo local changes to this folder and try again" }
+}
+
+# Puts the scripts and compose file back to match the images a rollback or skip returns
+# to: git installs go back to $head, the commit before the update; ZIP installs get the
+# files Update-ScriptsArchive kept. Remembers the release that was undone.
+function Restore-Scripts([string]$head) {
+  if (Test-Path $ScriptsPrev) {
+    if (Test-Path $ScriptsVersionFile) { Copy-Item $ScriptsVersionFile $ScriptsSkipFile -Force }
+    foreach ($f in $ScriptFiles) {
+      $kept = Join-Path $ScriptsPrev $f
+      if (Test-Path $kept) {
+        $dest = Join-Path $Root $f
+        Copy-Item $kept "$dest.new" -Force
+        Move-Item "$dest.new" $dest -Force
+      }
+    }
+    $prev = (Get-Content (Join-Path $ScriptsPrev ".scripts-version") -Raw -ErrorAction SilentlyContinue)
+    if ($prev) { $prev = $prev.Trim() }
+    if (-not $prev -or $prev -eq "none") { Remove-Item $ScriptsVersionFile -Force -ErrorAction SilentlyContinue }
+    else { Set-Content -Path $ScriptsVersionFile -Value $prev -Encoding ASCII }
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
+  } elseif ($head) {
+    Quiet { git -C $Root reset -q --keep $head } | Out-Null
+  }
 }
 
 function Install {
@@ -539,6 +582,7 @@ function Update {
       }
     }
   } elseif (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC) {
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue # left over from an earlier update; this run's own is made below
     $changed = @(Update-ScriptsArchive)
     # Same reason as above: the new script's settings and image steps are the ones to use.
     if ($changed.Count -gt 0) {
@@ -569,6 +613,7 @@ function Update {
   $skipFile = Join-Path $Root ".update-skip"
   if ($env:PORTAL_UNATTENDED -and -not $env:PORTAL_RETRY -and (Test-Path $skipFile) -and ((Get-Content $skipFile -Raw -Encoding UTF8).Trim() -eq $after)) {
     Retag $before
+    Restore-Scripts $head
     Say "Skipped: this version didn't start last time. Run portal.ps1 update to try it again."
     return
   }
@@ -577,12 +622,14 @@ function Update {
   $out = Compose run --rm -T backup archive | Select-Object -Last 1
   if ($LASTEXITCODE -ne 0 -or -not ("$out" -like "/backups/*")) {
     Retag $before
+    Restore-Scripts $head
     Die "the backup failed, so nothing was updated"
   }
   Say "Backed up to $(Get-Setting 'BACKUP_DIR')/$("$out".Substring(9))"
   Compose up -d --no-build --remove-orphans
   if (Wait-Ready) {
-    Remove-Item $skipFile -ErrorAction SilentlyContinue
+    Remove-Item $skipFile, $ScriptsSkipFile -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $ScriptsPrev -ErrorAction SilentlyContinue
     Quiet { docker image prune -f } | Out-Null
     Say "Up to date."
     return
@@ -591,7 +638,7 @@ function Update {
   Say "The new version didn't start. Going back to the one before..."
   [IO.File]::WriteAllText($skipFile, $after)
   Retag $before
-  if ($head) { Quiet { git -C $Root reset -q --keep $head } | Out-Null }
+  Restore-Scripts $head
   Compose up -d --no-build --remove-orphans
   Wait-Ready | Out-Null
   Die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(Get-Setting 'BACKUP_DIR'). See why with: portal.ps1 logs app"

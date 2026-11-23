@@ -67,3 +67,5 @@ portal.env
 /.update-result
 /.update.lock
 /.scripts-version
+/.scripts-prev/
+/.scripts-skip

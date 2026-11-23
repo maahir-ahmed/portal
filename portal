@@ -394,6 +394,11 @@ update_scripts() {
 SCRIPT_FILES="portal portal.ps1 deploy/docker-compose.yml"
 # The release the scripts were last brought to, so a quiet night downloads nothing.
 SCRIPTS_VERSION_FILE="$ROOT/.scripts-version"
+# What a failed or skipped update puts back: the files an update replaced and the version
+# before it (restore_scripts), and the release that didn't start, so the nightly check
+# doesn't download it again just to undo it.
+SCRIPTS_PREV="$ROOT/.scripts-prev"
+SCRIPTS_SKIP_FILE="$ROOT/.scripts-skip"
 GITHUB_REPO="maahir-ahmed/portal"
 SCRIPTS_TMP=""
 SCRIPTS_CHANGED=""
@@ -420,8 +425,9 @@ update_scripts_archive() {
     fetch "https://api.github.com/repos/$GITHUB_REPO/tags?per_page=100" "$SCRIPTS_TMP/tags.json" \
       || scripts_fail "couldn't check for new versions of the scripts. Check the internet connection and try again"
     tag="$(grep -oE '"name": *"v[0-9.]+"' "$SCRIPTS_TMP/tags.json" | sed 's/.*"\(v[0-9.]*\)"/\1/' | newest_on_channel)"
-    if [ -z "$tag" ] || [ "$(cat "$SCRIPTS_VERSION_FILE" 2>/dev/null)" = "$tag" ]; then
-      rm -rf "$SCRIPTS_TMP" # no release on this channel yet, or nothing new: stay where we are
+    if [ -z "$tag" ] || [ "$(cat "$SCRIPTS_VERSION_FILE" 2>/dev/null)" = "$tag" ] \
+      || { [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$(cat "$SCRIPTS_SKIP_FILE" 2>/dev/null)" = "$tag" ]; }; then
+      rm -rf "$SCRIPTS_TMP" # no release on this channel yet, nothing new, or one that didn't start last time
       return 0
     fi
     url="https://github.com/$GITHUB_REPO/archive/refs/tags/$tag.tar.gz"
@@ -444,6 +450,12 @@ update_scripts_archive() {
       SCRIPTS_CHANGED="$SCRIPTS_CHANGED $f"
     fi
   done
+  rm -rf "$SCRIPTS_PREV"
+  mkdir -p "$SCRIPTS_PREV/deploy"
+  { cat "$SCRIPTS_VERSION_FILE" 2>/dev/null || echo none; } > "$SCRIPTS_PREV/.scripts-version"
+  for f in $SCRIPTS_CHANGED; do
+    cp -p "$ROOT/$f" "$SCRIPTS_PREV/$f" || { rm -rf "$SCRIPTS_PREV"; rm -f "$ROOT/portal.new" "$ROOT/portal.ps1.new" "$ROOT/deploy/docker-compose.yml.new"; scripts_fail "couldn't keep the old scripts. Nothing was changed"; }
+  done
   for f in $SCRIPTS_CHANGED; do
     if [ "$f" = portal ]; then chmod +x "$ROOT/$f.new"; fi
     mv -f "$ROOT/$f.new" "$ROOT/$f"
@@ -451,6 +463,26 @@ update_scripts_archive() {
   printf '%s\n' "$tag" > "$SCRIPTS_VERSION_FILE"
   rm -rf "$SCRIPTS_TMP"
   if [ -n "$SCRIPTS_CHANGED" ]; then say "Updated the scripts to $tag."; fi
+}
+
+# Puts the scripts and compose file back to match the images a rollback or skip returns
+# to: git installs go back to $1, the commit before the update; ZIP installs get the
+# files update_scripts_archive kept. Remembers the release that was undone.
+restore_scripts() {
+  local f prev
+  if [ -d "$SCRIPTS_PREV" ]; then
+    cat "$SCRIPTS_VERSION_FILE" > "$SCRIPTS_SKIP_FILE" 2>/dev/null || true
+    for f in $SCRIPT_FILES; do
+      if [ -f "$SCRIPTS_PREV/$f" ]; then
+        cp -p "$SCRIPTS_PREV/$f" "$ROOT/$f.new" && mv -f "$ROOT/$f.new" "$ROOT/$f" || true
+      fi
+    done
+    prev="$(cat "$SCRIPTS_PREV/.scripts-version" 2>/dev/null)"
+    if [ "$prev" = none ] || [ -z "$prev" ]; then rm -f "$SCRIPTS_VERSION_FILE"; else printf '%s\n' "$prev" > "$SCRIPTS_VERSION_FILE"; fi
+    rm -rf "$SCRIPTS_PREV"
+  elif [ -n "${1:-}" ]; then
+    git -C "$ROOT" reset -q --keep "$1" || true
+  fi
 }
 
 # The image IDs the three portal images point at now, "none" for one not here.
@@ -487,6 +519,7 @@ cmd_update() {
       fi
     fi
   elif [ ! -d "$ROOT/.git" ] && [ -z "${PORTAL_REEXEC:-}" ]; then
+    rm -rf "$SCRIPTS_PREV" # left over from an earlier update; this run's own is made below
     update_scripts_archive
     # Same reason as above: the new script's settings and image steps are the ones to use.
     if [ -n "$SCRIPTS_CHANGED" ]; then PORTAL_REEXEC=1 exec "$ROOT/portal" update; fi
@@ -507,6 +540,7 @@ cmd_update() {
   # Settings (PORTAL_RETRY).
   if [ -n "${PORTAL_UNATTENDED:-}" ] && [ -z "${PORTAL_RETRY:-}" ] && [ "$after" = "$(cat "$ROOT/.update-skip" 2>/dev/null)" ]; then
     IDS="$before" retag
+    restore_scripts "$head"
     say "Skipped: this version didn't start last time. Run ./portal update to try it again."
     return 0
   fi
@@ -514,11 +548,12 @@ cmd_update() {
   say "Backing up before the update..."
   if ! (cmd_backup); then
     IDS="$before" retag
+    restore_scripts "$head"
     die "the backup failed, so nothing was updated"
   fi
   compose up -d --no-build --remove-orphans
   if wait_ready; then
-    rm -f "$ROOT/.update-skip"
+    rm -rf "$ROOT/.update-skip" "$SCRIPTS_PREV" "$SCRIPTS_SKIP_FILE"
     docker image prune -f >/dev/null
     say "Up to date."
     return 0
@@ -527,7 +562,7 @@ cmd_update() {
   say "The new version didn't start. Going back to the one before..."
   printf '%s' "$after" > "$ROOT/.update-skip"
   IDS="$before" retag
-  [ -z "$head" ] || git -C "$ROOT" reset -q --keep "$head" || true
+  restore_scripts "$head"
   compose up -d --no-build --remove-orphans
   wait_ready || true
   die "rolled back: the new version didn't start, and the portal is on the one before. The backup from just before is in $(get BACKUP_DIR). See why with: ./portal logs app"
