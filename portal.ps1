@@ -436,8 +436,20 @@ function Update {
   $before = Image-Ids
   $head = ""
   if ((Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
-    $head = (git -C $Root rev-parse HEAD)
-    Update-Scripts
+    $head = $env:PORTAL_PREV_HEAD # a rollback returns to this
+    if (-not $head) { $head = (git -C $Root rev-parse HEAD) }
+    # Once: the re-exec has the new scripts already, and must not move them again.
+    if (-not $env:PORTAL_REEXEC) {
+      Update-Scripts
+      if ((git -C $Root rev-parse HEAD) -ne $head) {
+        # This process is the old script: run the new one, so its Write-Settings and
+        # Get-Images (and a newer compose file's settings) are what the update uses.
+        $env:PORTAL_REEXEC = "1"
+        $env:PORTAL_PREV_HEAD = $head
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
+        exit $LASTEXITCODE
+      }
+    }
   }
   Write-Settings # adds any setting a newer version needs
   Get-Images

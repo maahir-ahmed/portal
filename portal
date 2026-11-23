@@ -406,8 +406,16 @@ cmd_update() {
   local before after head="" IDS
   before="$(image_ids)"
   if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
-    head="$(git -C "$ROOT" rev-parse HEAD)"
-    update_scripts
+    head="${PORTAL_PREV_HEAD:-$(git -C "$ROOT" rev-parse HEAD)}" # a rollback returns to this
+    # Once: the re-exec has the new scripts already, and must not move them again.
+    if [ -z "${PORTAL_REEXEC:-}" ]; then
+      update_scripts
+      if [ "$(git -C "$ROOT" rev-parse HEAD)" != "$head" ]; then
+        # This process is the old script: run the new one, so its write_settings and
+        # get_images (and a newer compose file's settings) are what the update uses.
+        PORTAL_REEXEC=1 PORTAL_PREV_HEAD="$head" exec "$ROOT/portal" update
+      fi
+    fi
   fi
   write_settings # adds any setting a newer version needs
   get_images
