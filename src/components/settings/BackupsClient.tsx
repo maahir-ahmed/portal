@@ -56,11 +56,14 @@ const taken = (iso: string) =>
 
 export function Backups({ base }: { base: string }) {
   const [files, setFiles] = useState<BackupFile[] | null>(null);
+  const [nightlyUnreadable, setNightlyUnreadable] = useState(false);
   const [busy, setBusy] = useState(false);
   const stop = useStopOnUnmount();
 
   const load = useCallback(() => {
-    api<BackupFile[]>(base).then(setFiles).catch((e) => toast.error(e.message));
+    api<{ files: BackupFile[]; nightlyUnreadable: boolean }>(base)
+      .then((r) => { setFiles(r.files); setNightlyUnreadable(r.nightlyUnreadable); })
+      .catch((e) => toast.error(e.message));
   }, [base]);
   useEffect(load, [load]);
 
@@ -101,6 +104,12 @@ export function Backups({ base }: { base: string }) {
               Nightly backups are taken automatically and kept for two weeks. Ones taken here include the backup made
               before each restore.
             </p>
+            {nightlyUnreadable && (
+              <p className="text-xs text-destructive">
+                The nightly backups folder couldn&apos;t be read, so they aren&apos;t listed here. They are still being
+                taken. Run ./portal update on the server to fix the folder&apos;s permissions.
+              </p>
+            )}
             {files.length === 0 ? (
               <p className="text-sm text-muted-foreground">None yet.</p>
             ) : (

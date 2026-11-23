@@ -53,12 +53,22 @@ const backupDirs = (): [string, BackupKind][] =>
 const listable = (name: string, kind: BackupKind) =>
   ARCHIVE_NAME.test(name) && (kind === "manual" || OWN_ARCHIVE.test(name));
 
-/** Every archive on the server, newest first: the nightly ones and those made in the app. */
+/**
+ * Every archive on the server, newest first: the nightly ones and those made in the app.
+ * `nightlyUnreadable` is set when the nightly folder is there but the app can't list it
+ * (its permissions), so the page can say so instead of looking as if there were none.
+ * A folder that isn't mounted at all (ENOENT) is not an error: not every stack has one.
+ */
 export async function listBackups() {
   await mkdir(BACKUP_OUT, { recursive: true });
+  let nightlyUnreadable = false;
   const found = await Promise.all(
     backupDirs().map(async ([dir, kind]) => {
-      const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => listable(n, kind));
+      const all = await readdir(dir).catch((e: NodeJS.ErrnoException) => {
+        if (kind === "nightly" && e.code !== "ENOENT") nightlyUnreadable = true;
+        return [] as string[];
+      });
+      const names = all.filter((n) => listable(n, kind));
       return Promise.all(
         names.map(async (name) => {
           // An archive removed (by the keep-days sweep) or unreadable since the listing is skipped.
@@ -68,7 +78,7 @@ export async function listBackups() {
       ).then((rows) => rows.filter((r) => r !== null));
     })
   );
-  return found.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { files: found.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt)), nightlyUnreadable };
 }
 
 /** The path of a listed archive, or null. The name is never trusted as a path. */

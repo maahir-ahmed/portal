@@ -176,7 +176,11 @@ write_settings() {
   ensure UPDATE_HOUR 4
   ensure BUILD_FROM_SOURCE false
   chmod 600 "$ENV_FILE"
+  # 750, not the 077 umask's 700: the app (uid 1001) reaches this folder through its group
+  # (group_add BACKUP_GID) to list the nightly archives. The archives are 640, so the
+  # group still can't write. chmod too, for a folder an earlier version made as 700.
   mkdir -p "$(get BACKUP_DIR)"
+  chmod 750 "$(get BACKUP_DIR)"
 }
 
 # Downloads the published images, or builds them here if this checkout is set to (or
