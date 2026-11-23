@@ -64,7 +64,7 @@ export async function listBackups() {
   let nightlyUnreadable = false;
   const found = await Promise.all(
     backupDirs().map(async ([dir, kind]) => {
-      const all = await readdir(dir).catch((e: NodeJS.ErrnoException) => {
+      const all = await readdir(/* turbopackIgnore: true */ dir).catch((e: NodeJS.ErrnoException) => {
         if (kind === "nightly" && e.code !== "ENOENT") nightlyUnreadable = true;
         return [] as string[];
       });
@@ -72,7 +72,8 @@ export async function listBackups() {
       return Promise.all(
         names.map(async (name) => {
           // An archive removed (by the keep-days sweep) or unreadable since the listing is skipped.
-          const s = await stat(join(dir, name)).catch(() => null);
+          const path = join(dir, name);
+          const s = await stat(/* turbopackIgnore: true */ path).catch(() => null);
           return s ? { name, kind, bytes: s.size, createdAt: s.mtime.toISOString() } : null;
         })
       ).then((rows) => rows.filter((r) => r !== null));
@@ -85,7 +86,8 @@ export async function listBackups() {
 export async function findBackup(name: string): Promise<{ path: string; bytes: number } | null> {
   for (const [dir, kind] of backupDirs()) {
     if (!listable(name, kind)) continue;
-    const s = await stat(join(dir, name)).catch(() => null);
+    const path = join(dir, name);
+    const s = await stat(/* turbopackIgnore: true */ path).catch(() => null);
     if (s?.isFile()) return { path: join(dir, name), bytes: s.size };
   }
   return null;
@@ -253,9 +255,9 @@ export async function receiveChunk(req: NextRequest) {
  * unaffected: it holds the archive open, and Linux keeps a deleted open file readable.
  */
 async function clearOtherUploads(own: string) {
-  const names = await readdir(BACKUP_OUT).catch(() => [] as string[]);
+  const names = await readdir(/* turbopackIgnore: true */ BACKUP_OUT).catch(() => [] as string[]);
   for (const name of names) {
-    const path = join(BACKUP_OUT, name);
+    const path = join(/* turbopackIgnore: true */ BACKUP_OUT, name);
     if (/^\.incoming-[a-z0-9-]+\.tar\.gz$/.test(name) && path !== own) await rm(path, { force: true });
   }
 }
