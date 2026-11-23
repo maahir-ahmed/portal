@@ -27,10 +27,6 @@ export default async function ExecutiveQueuePage({ params }: Props) {
   // Event dates are typed-in wall-clock times, so compare them with the society's clock.
   const now = new Date(wallClockNow(membership.society.timezone));
   const modules = await modulesForSociety(societyId);
-  // Your own claim is paid out by another executive, when there is one.
-  const otherExecs = await prisma.societyMembership.count({
-    where: { societyId, role: "EXECUTIVE", isActive: true, userId: { not: session.user.id } },
-  });
   // Someone else's tour records are theirs to see, not work for this exec.
   const othersDemo = (field: string) => othersDemoFor(field, session.user.id);
   const [rubricAll, roomAll, reimbursementPending, printingAll, grantsAll] = await Promise.all([
@@ -316,11 +312,7 @@ export default async function ExecutiveQueuePage({ params }: Props) {
                         <Link href={`/${societySlug}/requests/treasury/${t.id}`}>
                           <Button size="sm" variant="outline" className="text-xs">View</Button>
                         </Link>
-                        {t.submittedById === session.user.id && otherExecs > 0 ? (
-                          <span className="text-xs text-muted-foreground">Another exec pays this</span>
-                        ) : (
-                          <MarkReimbursedButton societySlug={societySlug} requestId={t.id} amount={amount} account={t.bankAccount} />
-                        )}
+                        <MarkReimbursedButton societySlug={societySlug} requestId={t.id} amount={amount} account={t.bankAccount} />
                       </div>
                     </div>
                   </CardContent>

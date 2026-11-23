@@ -52,9 +52,6 @@ function changes(before: Record<string, unknown>, after: Record<string, unknown>
   );
 }
 
-const otherExecs = (m: { societyId: string; userId: string }) =>
-  prisma.societyMembership.count({ where: { societyId: m.societyId, role: "EXECUTIVE", isActive: true, userId: { not: m.userId } } });
-
 export async function PATCH(req: NextRequest, { params }: { params: Promise<Params> }) {
   const { society, id } = await params;
   const { session, membership, error: accessErr } = await requireRole(society);
@@ -93,11 +90,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<Para
     isOwner && !isExec && request.status === "DRAFT" && body.status === "REIMBURSEMENT_PENDING";
   if (body.status !== undefined && !isExec && !isOwnerSubmit) {
     return NextResponse.json({ error: "Only executives can change status" }, { status: 403 });
-  }
-
-  // Paying yourself out takes a second pair of eyes, when the committee has one.
-  if (body.status === "REIMBURSED" && isOwner && request.status !== "REIMBURSED" && (await otherExecs(membership!)) > 0) {
-    return NextResponse.json({ error: "Another executive marks your own claim as paid" }, { status: 403 });
   }
 
   // A draft can only be submitted once it's a complete claim. Checks the claim as it
