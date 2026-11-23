@@ -280,8 +280,14 @@ wait_ready() {
 
 cmd_install() {
   check_docker
+  # A GitHub download has no .git: get git if it's missing and make the folder a checkout,
+  # so updates take the git path. Never required: without it the ZIP updater still works.
+  # The checkout replaced the scripts, so run them, once (the re-exec skips all of this).
+  if [ -z "${PORTAL_REEXEC:-}" ] && [ ! -d "$ROOT/.git" ] && offer_git && convert_to_git; then
+    PORTAL_REEXEC=1 exec "$ROOT/portal" install
+  fi
   # A fresh clone is on main; run the install from the release the images belong to.
-  if [ -z "${PORTAL_REEXEC:-}" ] && [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+  if [ -z "${PORTAL_REEXEC:-}" ] && [ -d "$ROOT/.git" ] && git_works; then
     local was
     was="$(git -C "$ROOT" rev-parse HEAD)"
     update_scripts
@@ -387,6 +393,88 @@ update_scripts() {
   tag="$(newest_release)"
   [ -n "$tag" ] || return 0 # no release on this channel yet: stay where we are
   git -C "$ROOT" checkout -q "$tag" || die "couldn't move the scripts to $tag. Undo local changes to this folder and try again"
+}
+
+# `git --version`, not `command -v git`: on a Mac without Apple's developer tools,
+# /usr/bin/git is a stub that opens an install dialog and fails.
+git_works() { git --version >/dev/null 2>&1; }
+
+# Installs git with whatever the system has. Says why itself when it can't; the caller
+# carries on without git either way.
+install_git() {
+  local sudo=""
+  case "$(uname -s)" in
+    Darwin)
+      if command -v brew >/dev/null 2>&1; then
+        brew install git </dev/null && return 0
+        say "Couldn't install git with Homebrew. Carrying on without it; updates still work."
+        return 1
+      fi
+      xcode-select --install >/dev/null 2>&1 || true
+      say "A window opened to install Apple's developer tools, which include git. Finish it,"
+      say "then run ./portal install again to set git up. Carrying on without git this time."
+      return 1
+      ;;
+  esac
+  if [ "$(id -u)" != 0 ]; then
+    command -v sudo >/dev/null 2>&1 && sudo=sudo
+    if [ -z "$sudo" ]; then
+      say "Couldn't install git (it needs sudo). Carrying on without it; updates still work."
+      return 1
+    fi
+  fi
+  if command -v apt-get >/dev/null 2>&1; then
+    # Update first: a fresh server's package lists can be empty.
+    { $sudo apt-get update -qq && $sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y git; } </dev/null
+  elif command -v dnf >/dev/null 2>&1; then $sudo dnf install -y git </dev/null
+  elif command -v yum >/dev/null 2>&1; then $sudo yum install -y git </dev/null
+  elif command -v apk >/dev/null 2>&1; then $sudo apk add git </dev/null
+  elif command -v pacman >/dev/null 2>&1; then $sudo pacman -S --noconfirm git </dev/null
+  elif command -v zypper >/dev/null 2>&1; then $sudo zypper --non-interactive install git </dev/null
+  else
+    say "Couldn't find a way to install git here. Carrying on without it; updates still work."
+    return 1
+  fi && git_works && return 0
+  say "Couldn't install git. Carrying on without it; updates still work."
+  return 1
+}
+
+# Succeeds when git works, installing it first if the person agrees. Unattended runs
+# can't ask, so they carry on without.
+offer_git() {
+  git_works && return 0
+  [ -z "${PORTAL_UNATTENDED:-}" ] || return 1
+  say "Git isn't installed. The portal uses it to keep its own scripts up to date."
+  [ "$(ask "Install git now? (y/n)" y)" = y ] || return 1
+  install_git
+}
+
+# Turns a download with no .git (the GitHub ZIP) into a normal checkout of the same project,
+# at the version update_scripts would pick, so updates take the git path from here on.
+# Overwrites the downloaded copies of tracked files and nothing else: portal.env, backups/
+# and the update files are all in .gitignore. Fails without leaving a half-made repo.
+convert_to_git() {
+  local ref="" tag
+  [ ! -d "$ROOT/.git" ] && git_works || return 1
+  if git -C "$ROOT" init -q \
+    && git -C "$ROOT" remote add origin "https://github.com/$GITHUB_REPO.git" \
+    && git -C "$ROOT" fetch -q --tags origin; then
+    if [ "$(channel)" = latest ]; then
+      git -C "$ROOT" checkout -q -f -B main origin/main && ref=main
+    else
+      tag="$(newest_release)"
+      # No release on this channel yet: nothing to pick, so stay a ZIP install.
+      [ -z "$tag" ] || { git -C "$ROOT" checkout -q -f "$tag" && ref="$tag"; }
+    fi
+  fi
+  if [ -z "$ref" ]; then
+    rm -rf "$ROOT/.git" # only ever the one made above: the guard returned if there was one
+    say "Couldn't set up git for this folder just now. Carrying on without it; updates still work."
+    return 1
+  fi
+  # The ZIP updater's bookkeeping: git knows the version now.
+  rm -rf "$SCRIPTS_VERSION_FILE" "$SCRIPTS_PREV" "$SCRIPTS_SKIP_FILE"
+  say "Set up git for this folder, on $(git -C "$ROOT" describe --tags 2>/dev/null || git -C "$ROOT" rev-parse --short HEAD)."
 }
 
 # What a ZIP install (no .git) keeps current: the scripts and the one deploy file the stack
@@ -524,7 +612,14 @@ cmd_update() {
   check_docker
   local before after head="" IDS
   before="$(image_ids)"
-  if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then
+  # A ZIP install moves onto git as soon as git works, with no question: nothing here
+  # changes except how the scripts update. If it can't, the archive path below carries on.
+  # ponytail: a rollback after this can't put the old ZIP scripts back (the head it returns
+  # to is the converted one); the next update moves them on again either way.
+  if [ ! -d "$ROOT/.git" ] && [ -z "${PORTAL_REEXEC:-}" ] && convert_to_git; then
+    PORTAL_REEXEC=1 PORTAL_PREV_HEAD="$(git -C "$ROOT" rev-parse HEAD)" exec "$ROOT/portal" update
+  fi
+  if [ -d "$ROOT/.git" ] && git_works; then
     head="${PORTAL_PREV_HEAD:-$(git -C "$ROOT" rev-parse HEAD)}" # a rollback returns to this
     # Once: the re-exec has the new scripts already, and must not move them again.
     if [ -z "${PORTAL_REEXEC:-}" ]; then

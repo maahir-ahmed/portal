@@ -322,6 +322,69 @@ function Newest-Of($names) {
 
 function Newest-Release { return (Newest-Of @(git -C $Root tag -l "v*")) }
 
+# `git --version` has to work, not just a git.exe on the PATH.
+function Git-Works {
+  if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+  return ((Quiet { git --version }) -eq 0)
+}
+
+# Installs Git for Windows with winget. Says why itself when it can't; the caller carries
+# on without git either way.
+function Install-Git {
+  if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    Say "Couldn't install git here (winget is missing). Get Git for Windows from https://git-scm.com/download/win,"
+    Say "then run install again. Carrying on without it; updates still work."
+    return $false
+  }
+  # Out-Host: this function's output is its answer, and winget's would become part of it.
+  winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements | Out-Host
+  # The installer changes the PATH in the registry, not in this window: read it again so
+  # git works from here on, without opening a new one.
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+  if (Git-Works) { return $true }
+  Say "Couldn't install git. Carrying on without it; updates still work."
+  return $false
+}
+
+# True when git works, installing it first if the person agrees. Unattended runs can't
+# ask, so they carry on without.
+function Offer-Git {
+  if (Git-Works) { return $true }
+  if ($env:PORTAL_UNATTENDED) { return $false }
+  Say "Git isn't installed. The portal uses it to keep its own scripts up to date."
+  if ((Ask "Install git now? (y/n)" "y") -ne "y") { return $false }
+  return (Install-Git)
+}
+
+# Turns a download with no .git (the GitHub ZIP) into a normal checkout of the same project,
+# at the version Update-Scripts would pick, so updates take the git path from here on.
+# Overwrites the downloaded copies of tracked files and nothing else: portal.env, backups/
+# and the update files are all in .gitignore. Fails without leaving a half-made repo.
+function Convert-ToGit {
+  $gitDir = Join-Path $Root ".git"
+  if ((Test-Path $gitDir) -or -not (Git-Works)) { return $false }
+  $ref = ""
+  $origin = "https://github.com/$GithubRepo.git"
+  if (((Quiet { git -C $Root init -q }) -eq 0) -and ((Quiet { git -C $Root remote add origin $origin }) -eq 0) -and ((Quiet { git -C $Root fetch -q --tags origin }) -eq 0)) {
+    if ((Channel) -eq "latest") {
+      if ((Quiet { git -C $Root checkout -q -f -B main origin/main }) -eq 0) { $ref = "main" }
+    } else {
+      # No release on this channel yet: nothing to pick, so stay a ZIP install.
+      $tag = Newest-Release
+      if ($tag -and ((Quiet { git -C $Root checkout -q -f $tag }) -eq 0)) { $ref = $tag }
+    }
+  }
+  if (-not $ref) {
+    Remove-Item -Recurse -Force $gitDir -ErrorAction SilentlyContinue # only ever the one made above
+    Say "Couldn't set up git for this folder just now. Carrying on without it; updates still work."
+    return $false
+  }
+  # The ZIP updater's bookkeeping: git knows the version now.
+  Remove-Item -Recurse -Force $ScriptsVersionFile, $ScriptsPrev, $ScriptsSkipFile -ErrorAction SilentlyContinue
+  Say "Set up git for this folder, on $ref."
+  return $true
+}
+
 # What a ZIP install (no .git) keeps current: the scripts and the one deploy file the stack
 # reads from this folder (the other deploy/ files are baked into the images). Never
 # portal.env, backups/, update.log or the state files: they aren't in the archive and
@@ -470,8 +533,16 @@ function Restore-Scripts([string]$head, [bool]$markSkip = $false) {
 
 function Install {
   Check-Docker
+  # A GitHub download has no .git: get git if it's missing and make the folder a checkout,
+  # so updates take the git path. Never required: without it the ZIP updater still works.
+  # The checkout replaced the scripts, so run them, once (the re-exec skips all of this).
+  if (-not $env:PORTAL_REEXEC -and -not (Test-Path (Join-Path $Root ".git")) -and (Offer-Git) -and (Convert-ToGit)) {
+    $env:PORTAL_REEXEC = "1"
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath install
+    exit $LASTEXITCODE
+  }
   # A fresh clone is on main; run the install from the release the images belong to.
-  if (-not $env:PORTAL_REEXEC -and (Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+  if (-not $env:PORTAL_REEXEC -and (Test-Path (Join-Path $Root ".git")) -and (Git-Works)) {
     $was = (git -C $Root rev-parse HEAD)
     Update-Scripts
     if ((git -C $Root rev-parse HEAD) -ne $was) {
@@ -576,7 +647,17 @@ function Update {
   Check-Docker
   $before = Image-Ids
   $head = ""
-  if ((Test-Path (Join-Path $Root ".git")) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+  # A ZIP install moves onto git as soon as git works, with no question: nothing here
+  # changes except how the scripts update. If it can't, the archive path below carries on.
+  # A rollback after this can't put the old ZIP scripts back (the head it returns to is the
+  # converted one); the next update moves them on again either way.
+  if (-not (Test-Path (Join-Path $Root ".git")) -and -not $env:PORTAL_REEXEC -and (Convert-ToGit)) {
+    $env:PORTAL_REEXEC = "1"
+    $env:PORTAL_PREV_HEAD = (git -C $Root rev-parse HEAD)
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath update
+    exit $LASTEXITCODE
+  }
+  if ((Test-Path (Join-Path $Root ".git")) -and (Git-Works)) {
     $head = $env:PORTAL_PREV_HEAD # a rollback returns to this
     if (-not $head) { $head = (git -C $Root rev-parse HEAD) }
     # Once: the re-exec has the new scripts already, and must not move them again.
