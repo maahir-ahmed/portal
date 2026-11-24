@@ -3,7 +3,9 @@
 //   npx tsx scripts/check-security.ts
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { escapeHtml, isPrivateAddress, notificationEmail, publicMailAddress } from "../src/lib/email";
 import { debugToolsEnabled, MIN_FREE_BYTES, uploadFits } from "../src/lib/debugTools";
@@ -182,6 +184,51 @@ for (const f of ["src/app/(auth)/login/LoginForm.tsx", "src/app/setup/FirstAccou
     assert.match(form, /method="post"/, `${f}: a form with a password or bank details must say method="post"`);
   }
 }
+
+// TRUSTED_PROXY ends up inside the web container's nginx config, so the script that
+// writes it is a config-injection boundary. It is a shell script, so this runs the real
+// thing with sh (as the container does) rather than mirroring its patterns, which could
+// drift from it. nginx itself is checked by hand: it isn't installed here.
+const trustedProxyScript = (value: string) => {
+  const dir = mkdtempSync(join(tmpdir(), "trusted-proxy-"));
+  try {
+    const out = join(dir, "real-ip.conf");
+    const r = spawnSync("sh", ["deploy/40-trusted-proxy.sh"], {
+      env: { ...process.env, TRUSTED_PROXY: value, REAL_IP_CONF: out, REAL_IP_DEFAULT: "deploy/real-ip.default.conf" },
+      encoding: "utf8",
+    });
+    return { ok: r.status === 0, conf: existsSync(out) ? readFileSync(out, "utf8") : "" };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+for (const bad of [
+  "1.2.3.4; include /etc/passwd", "1.2.3.4;", "1.2.3.4\ninclude /etc/passwd", "1.2.3.4\r", "{1.2.3.4}", "1.2.3.4 }", "1.2.3.4, 5.6.7.8",
+  " 1.2.3.4", "proxy.example.org", "localhost", "$(id)", "1.2.3.4,", ",1.2.3.4", "1.2.3.4,,5.6.7.8", "999.1.1.1", "1.2.3", "1.2.3.4.5", "01.2.3.4",
+  "1.2.3.4/33", "1.2.3.4/", "1.2.3.4/8/8", "1.2.3.4/-1", "2001:db8::/129", "2001:db8::1::2", ":1:2:3:4:5:6:7", "1:2:3:4:5:6:7", "1:2:3:4:5:6:7:8:9",
+  "12345::1", "::g", ":::", "any", "all",
+]) {
+  const r = trustedProxyScript(bad);
+  assert.equal(r.ok, false, `TRUSTED_PROXY ${JSON.stringify(bad)} must be refused`);
+  assert.equal(r.conf.includes("include /etc/passwd"), false, "a refused value is never written");
+}
+for (const good of ["1.2.3.4", "203.0.113.7,10.0.0.0/8", "0.0.0.0/0", "255.255.255.255/32", "2001:db8::/32", "::1", "::", "fe80::1", "1:2:3:4:5:6:7:8", "::ffff:1.2.3.4", "127.0.0.1,172.16.0.0/12,2001:db8::1/128"]) {
+  const r = trustedProxyScript(good);
+  assert.equal(r.ok, true, `TRUSTED_PROXY ${JSON.stringify(good)} must be accepted`);
+  assert.deepEqual(
+    r.conf.split("\n").filter((l) => l.startsWith("set_real_ip_from ")),
+    good.split(",").map((a) => `set_real_ip_from ${a};`),
+    "each address is trusted, and nothing else",
+  );
+  assert.equal(r.conf.includes("172.16.0.0/12;") && !good.includes("172.16.0.0/12"), false, "the bridge is only trusted when listed");
+  assert.match(r.conf, /real_ip_header X-Forwarded-For;\nreal_ip_recursive on;\n$/);
+  assert.equal(r.conf.includes("CF-Connecting-IP"), false, "only one real_ip_header, or nginx won't start");
+}
+// Unset: the file nginx has always had (bridge trust, CF-Connecting-IP).
+const unset = trustedProxyScript("");
+assert.equal(unset.ok, true);
+assert.equal(unset.conf, readFileSync("deploy/real-ip.default.conf", "utf8"));
+assert.match(unset.conf, /set_real_ip_from 172\.16\.0\.0\/12;\nreal_ip_header CF-Connecting-IP;/);
 
 // Resolving is async, so this runs last.
 (async () => {
