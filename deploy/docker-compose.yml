@@ -152,6 +152,10 @@ services:
       # every interface. A self-hosted stack binds 127.0.0.1: its tunnel or Caddy is on
       # the compose network, and the port is only for opening it on the machine itself.
       - "${APP_BIND:-0.0.0.0}:${APP_PORT}:80"
+    environment:
+      # Set only by ./portal's "own reverse proxy" method: the address that proxy connects
+      # from, whose X-Forwarded-For nginx then trusts. Unset, nothing changes (nginx.conf).
+      TRUSTED_PROXY: ${TRUSTED_PROXY:-}
     networks: [internal]
     healthcheck:
       # nginx's own /healthz (nginx.conf), not the app, so this tracks web alone.
