@@ -103,6 +103,71 @@ host_timezone() {
   printf '%s' "${tz:-UTC}"
 }
 
+# The own-proxy method: where the proxy runs, which port it connects to, and which
+# address it connects from (TRUSTED_PROXY, which nginx in the web container trusts to
+# say who the real client is). Each is asked once; a re-run keeps what's in portal.env.
+proxy_settings() {
+  local port bind trusted def="" check
+  bind="$(get APP_BIND)"
+  if [ -z "$bind" ]; then
+    say ""
+    say "Where does your reverse proxy run?"
+    say "  1) On this same computer"
+    say "  2) On another computer (this one then listens on the network)"
+    case "$(ask "Choose 1 or 2" 1)" in
+      1) bind=127.0.0.1 ;; 2) bind=0.0.0.0 ;; *) die "choose 1 or 2" ;;
+    esac
+    ensure APP_BIND "$bind"
+  fi
+
+  port="$(get APP_PORT)"
+  if [ -z "$port" ]; then
+    port=8080
+    while ! port_free "$port"; do port=$((port + 1)); done
+    while :; do
+      port="$(ask "The port your proxy will connect to" "$port")"
+      case "$port" in '' | *[!0-9]*) ;; *) [ "$port" -ge 1 ] && [ "$port" -le 65535 ] && break ;; esac
+      say "That isn't a port number (1 to 65535)."
+      port=8080
+    done
+    ensure APP_PORT "$port"
+  fi
+
+  if ! has TRUSTED_PROXY; then
+    say ""
+    say "The portal needs the address your proxy connects from, so it can tell members apart"
+    say "(sign-in limits are per address). Give one IP address or range, or a list separated"
+    say "by commas, such as 203.0.113.7 or 10.0.0.0/24,2001:db8::/32."
+    if [ "$bind" = 127.0.0.1 ]; then
+      # Docker shows a proxy on this computer as its own gateway address, not 127.0.0.1;
+      # the port is loopback-only, so trusting that whole range lets no one else in.
+      def="127.0.0.1,172.16.0.0/12"
+      say "For a proxy on this computer, the suggestion works. Type none to leave it blank."
+    else
+      say "Leave it blank if you're not sure; docs/SELF_HOSTING.md shows how to find it."
+    fi
+    while :; do
+      trusted="$(ask "Address your proxy connects from" "$def")"
+      [ "$trusted" != none ] || trusted=""
+      trusted="$(printf '%s' "$trusted" | tr -d ' \t')"
+      [ -z "$trusted" ] && break
+      # The same script the web container runs at start, so the two can't disagree.
+      check="$(mktemp)"
+      if TRUSTED_PROXY="$trusted" REAL_IP_CONF="$check" sh "$ROOT/deploy/40-trusted-proxy.sh" >/dev/null 2>&1; then
+        rm -f "$check"
+        break
+      fi
+      rm -f "$check"
+      say "That isn't a list of IP addresses or ranges (such as 203.0.113.7 or 10.0.0.0/24)."
+    done
+    if [ -z "$trusted" ]; then
+      say "Left blank: every member will share your proxy's address, and so share one limit on"
+      say "failed sign-ins. Set TRUSTED_PROXY in portal.env later to fix that."
+    fi
+    ensure TRUSTED_PROXY "$trusted"
+  fi
+}
+
 write_settings() {
   umask 077
   [ -f "$ENV_FILE" ] && say "Found portal.env: keeping the settings already in it."
@@ -123,19 +188,21 @@ write_settings() {
     say "  1) Through a Cloudflare Tunnel (recommended: works anywhere, no ports to open)"
     say "  2) My server has a public IP address, and I'll point the domain at it (Caddy)"
     say "  3) Just on this computer for now, to try it out"
-    case "$(ask "Choose 1, 2 or 3" 1)" in
-      1) method=cloudflare ;; 2) method=caddy ;; 3) method=local ;; *) die "choose 1, 2 or 3" ;;
+    say "  4) My own reverse proxy (advanced: nginx, Caddy or Traefik that you already run)"
+    case "$(ask "Choose 1, 2, 3 or 4" 1)" in
+      1) method=cloudflare ;; 2) method=caddy ;; 3) method=local ;; 4) method=proxy ;; *) die "choose 1, 2, 3 or 4" ;;
     esac
     ensure METHOD "$method"
   fi
 
   port="$(get APP_PORT)"
-  if [ -z "$port" ]; then
+  # The own-proxy method asks for the port and where the proxy runs (proxy_settings).
+  if [ -z "$port" ] && [ "$method" != proxy ]; then
     port=8080
     while ! port_free "$port"; do port=$((port + 1)); done
     ensure APP_PORT "$port"
   fi
-  ensure APP_BIND 127.0.0.1
+  [ "$method" = proxy ] || ensure APP_BIND 127.0.0.1
 
   if [ "$method" = local ]; then
     ensure NEXTAUTH_URL "http://localhost:$port"
@@ -146,6 +213,7 @@ write_settings() {
     ensure DOMAIN "$domain"
     ensure NEXTAUTH_URL "https://$domain"
   fi
+  [ "$method" != proxy ] || proxy_settings
   if [ "$method" = cloudflare ] && ! has TUNNEL_TOKEN; then
     say ""
     say "Paste your Cloudflare Tunnel token (docs/SELF_HOSTING.md, \"Cloudflare Tunnel\", shows where to get it)."
@@ -300,7 +368,7 @@ cmd_install() {
   get_images
   compose up -d --no-build --remove-orphans
   wait_ready || exit 1
-  local url method
+  local url method host
   url="$(get NEXTAUTH_URL)"
   method="$(get METHOD)"
   say ""
@@ -309,6 +377,16 @@ cmd_install() {
     cloudflare) say "In Cloudflare, the tunnel's public hostname $(get DOMAIN) must point to the service http://web:80." ;;
     caddy) say "Point $(get DOMAIN)'s DNS (an A record) at this server and open ports 80 and 443. The certificate arrives on its own." ;;
     local) say "It's only reachable from this computer." ;;
+    proxy)
+      if [ "$(get APP_BIND)" = 127.0.0.1 ]; then host=127.0.0.1; else host="<this computer's address>"; fi
+      say "Point your reverse proxy at http://$host:$(get APP_PORT), and have it:"
+      say "  - pass the Host header on (the address people typed)"
+      say "  - add the visitor's address to X-Forwarded-For"
+      say "  - send X-Forwarded-Proto: https"
+      say "  - allow request bodies of at least 25 MB"
+      say "  - serve $(get DOMAIN) over HTTPS itself"
+      [ "$(get APP_BIND)" = 127.0.0.1 ] || say "Only your proxy should reach port $(get APP_PORT): block it from everyone else with a firewall."
+      ;;
   esac
   say ""
   local users

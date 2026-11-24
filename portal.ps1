@@ -196,6 +196,88 @@ function Lock-Path([string]$path, [string]$what) {
   }
 }
 
+# True for a comma-separated list of IPv4/IPv6 addresses or CIDRs. The web container
+# checks the value again at start (deploy/40-trusted-proxy.sh), so this only has to
+# give the answer early.
+function Test-ProxyList([string]$list) {
+  if (-not ($list -match '^[0-9A-Fa-f:./,]+$')) { return $false }
+  foreach ($item in $list.Split(",")) {
+    $parts = $item.Split("/")
+    if ($parts.Count -gt 2) { return $false }
+    $addr = $null
+    $max = 0
+    # The IPv4 pattern first: TryParse alone accepts short forms such as 1.2.3.
+    if ($parts[0] -match '^(0|[1-9][0-9]{0,2})(\.(0|[1-9][0-9]{0,2})){3}$') {
+      foreach ($octet in $parts[0].Split(".")) { if ([int]$octet -gt 255) { return $false } }
+      $max = 32
+    } elseif ($parts[0].Contains(":") -and [System.Net.IPAddress]::TryParse($parts[0], [ref]$addr) -and $addr.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
+      $max = 128
+    } else { return $false }
+    if ($parts.Count -eq 2) {
+      if (-not ($parts[1] -match '^[0-9]{1,3}$') -or [int]$parts[1] -gt $max) { return $false }
+    }
+  }
+  return $true
+}
+
+# The own-proxy method: where the proxy runs, which port it connects to, and which
+# address it connects from (TRUSTED_PROXY, which nginx in the web container trusts to
+# say who the real client is). Each is asked once; a re-run keeps what's in portal.env.
+function Proxy-Settings {
+  $bind = Get-Setting "APP_BIND"
+  if (-not $bind) {
+    Say ""
+    Say "Where does your reverse proxy run?"
+    Say "  1) On this same computer"
+    Say "  2) On another computer (this one then listens on the network)"
+    switch (Ask "Choose 1 or 2" "1") {
+      "1" { $bind = "127.0.0.1" } "2" { $bind = "0.0.0.0" }
+      default { Die "choose 1 or 2" }
+    }
+    Ensure "APP_BIND" $bind
+  }
+
+  if (-not (Get-Setting "APP_PORT")) {
+    $port = 8080
+    while (-not (Port-Free $port)) { $port++ }
+    while ($true) {
+      $answer = Ask "The port your proxy will connect to" "$port"
+      if (($answer -match '^[0-9]{1,5}$') -and [int]$answer -ge 1 -and [int]$answer -le 65535) { $port = [int]$answer; break }
+      Say "That isn't a port number (1 to 65535)."
+    }
+    Ensure "APP_PORT" "$port"
+  }
+
+  if (-not (Has-Setting "TRUSTED_PROXY")) {
+    $def = ""
+    Say ""
+    Say "The portal needs the address your proxy connects from, so it can tell members apart"
+    Say "(sign-in limits are per address). Give one IP address or range, or a list separated"
+    Say "by commas, such as 203.0.113.7 or 10.0.0.0/24,2001:db8::/32."
+    if ($bind -eq "127.0.0.1") {
+      # Docker shows a proxy on this computer as its own gateway address, not 127.0.0.1;
+      # the port is loopback-only, so trusting that whole range lets no one else in.
+      $def = "127.0.0.1,172.16.0.0/12"
+      Say "For a proxy on this computer, the suggestion works. Type none to leave it blank."
+    } else {
+      Say "Leave it blank if you're not sure; docs/SELF_HOSTING.md shows how to find it."
+    }
+    while ($true) {
+      $trusted = Ask "Address your proxy connects from" $def
+      if ($trusted -eq "none") { $trusted = "" }
+      $trusted = $trusted -replace "\s", ""
+      if (-not $trusted) { break }
+      if (Test-ProxyList $trusted) { break }
+      Say "That isn't a list of IP addresses or ranges (such as 203.0.113.7 or 10.0.0.0/24)."
+    }
+    if (-not $trusted) {
+      Say "Left blank: every member will share your proxy's address, and so share one limit on"
+      Say "failed sign-ins. Set TRUSTED_PROXY in portal.env later to fix that."
+    }
+    Ensure "TRUSTED_PROXY" $trusted
+  }
+}
+
 function Write-Settings {
   if (Test-Path $EnvFile) { Say "Found portal.env: keeping the settings already in it." }
   # Made and locked before the first Ensure, so no password is ever written to a readable file.
@@ -218,20 +300,22 @@ function Write-Settings {
     Say "  1) Through a Cloudflare Tunnel (recommended: works anywhere, no ports to open)"
     Say "  2) My server has a public IP address, and I'll point the domain at it (Caddy)"
     Say "  3) Just on this computer for now, to try it out"
-    switch (Ask "Choose 1, 2 or 3" "1") {
-      "1" { $method = "cloudflare" } "2" { $method = "caddy" } "3" { $method = "local" }
-      default { Die "choose 1, 2 or 3" }
+    Say "  4) My own reverse proxy (advanced: nginx, Caddy or Traefik that you already run)"
+    switch (Ask "Choose 1, 2, 3 or 4" "1") {
+      "1" { $method = "cloudflare" } "2" { $method = "caddy" } "3" { $method = "local" } "4" { $method = "proxy" }
+      default { Die "choose 1, 2, 3 or 4" }
     }
     Ensure "METHOD" $method
   }
 
   $port = Get-Setting "APP_PORT"
-  if (-not $port) {
+  # The own-proxy method asks for the port and where the proxy runs (Proxy-Settings).
+  if ((-not $port) -and $method -ne "proxy") {
     $port = 8080
     while (-not (Port-Free $port)) { $port++ }
     Ensure "APP_PORT" "$port"
   }
-  Ensure "APP_BIND" "127.0.0.1"
+  if ($method -ne "proxy") { Ensure "APP_BIND" "127.0.0.1" }
 
   if ($method -eq "local") {
     Ensure "NEXTAUTH_URL" "http://localhost:$port"
@@ -242,6 +326,7 @@ function Write-Settings {
     Ensure "DOMAIN" $domain
     Ensure "NEXTAUTH_URL" "https://$domain"
   }
+  if ($method -eq "proxy") { Proxy-Settings }
   if ($method -eq "cloudflare" -and -not (Has-Setting "TUNNEL_TOKEN")) {
     Say ""
     Say "Paste your Cloudflare Tunnel token (docs/SELF_HOSTING.md, `"Cloudflare Tunnel`", shows where to get it)."
@@ -571,6 +656,17 @@ function Install {
     "cloudflare" { Say "In Cloudflare, the tunnel's public hostname $(Get-Setting 'DOMAIN') must point to the service http://web:80." }
     "caddy" { Say "Point $(Get-Setting 'DOMAIN')'s DNS (an A record) at this server and open ports 80 and 443. The certificate arrives on its own." }
     "local" { Say "It's only reachable from this computer." }
+    "proxy" {
+      $target = "<this computer's address>"
+      if ((Get-Setting "APP_BIND") -eq "127.0.0.1") { $target = "127.0.0.1" }
+      Say "Point your reverse proxy at http://$($target):$(Get-Setting 'APP_PORT'), and have it:"
+      Say "  - pass the Host header on (the address people typed)"
+      Say "  - add the visitor's address to X-Forwarded-For"
+      Say "  - send X-Forwarded-Proto: https"
+      Say "  - allow request bodies of at least 25 MB"
+      Say "  - serve $(Get-Setting 'DOMAIN') over HTTPS itself"
+      if ((Get-Setting "APP_BIND") -ne "127.0.0.1") { Say "Only your proxy should reach port $(Get-Setting 'APP_PORT'): block it from everyone else with a firewall." }
+    }
   }
   Say ""
   $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
