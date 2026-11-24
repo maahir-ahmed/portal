@@ -75,8 +75,10 @@ portal:
 2. **[Caddy](https://caddyserver.com)**, on a server with a public IP address. It gets
    the HTTPS certificate for you.
 3. **Only on this computer**, to try it out.
+4. **Your own reverse proxy** (advanced), if you already run nginx, Caddy, Traefik or
+   similar. It asks where the proxy runs, and the address it connects from.
 
-For the first two it also asks for your web address, such as `portal.example.org`
+For all but the third it also asks for your web address, such as `portal.example.org`
 (and the tunnel's token, for Cloudflare). On Windows it may ask for your timezone too.
 Then it downloads everything, starts it, and prints a setup link. Open that link to
 create your account and run the setup wizard.
@@ -236,8 +238,9 @@ likely to touch:
 | Setting | What it does |
 |---|---|
 | `NEXTAUTH_URL` | The portal's address, exactly as people visit it, including `https://` |
-| `METHOD` | `cloudflare`, `caddy` or `local` |
+| `METHOD` | `cloudflare`, `caddy`, `proxy` or `local` |
 | `APP_PORT`, `APP_BIND` | The port the portal listens on, on this machine (default `8080`, or the next free one) and the address it binds to (default `127.0.0.1`, so only this machine) |
+| `TRUSTED_PROXY` | Only with your own reverse proxy: the address it connects from, as an IP or range, or a comma-separated list (`203.0.113.7`, `10.0.0.0/24`). The portal believes `X-Forwarded-For` only from these addresses. Blank means every member shares the proxy's address for sign-in limits |
 | `TZ` | Your timezone, such as `Australia/Sydney`, so the nightly backup runs at your 3am (set from the computer's own at install) |
 | `UPDATE_HOUR` | Hour for the nightly update check (default `4`). Run `autoupdate on` again after changing it |
 | `BACKUP_HOUR`, `BACKUP_KEEP_DAYS` | When the nightly backup runs, and how many days to keep (`3`, `14`) |

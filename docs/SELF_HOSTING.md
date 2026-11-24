@@ -96,7 +96,7 @@ and `cd portal` instead.
 
 ## 4. Decide how people will reach it
 
-The install script asks how members will reach the portal. There are three answers.
+The install script asks how members will reach the portal. There are four answers.
 
 ### Cloudflare Tunnel (recommended)
 
@@ -133,6 +133,69 @@ serve HTTPS itself and get its certificate automatically.
    provider's dashboard, and `sudo ufw allow 80,443/tcp` if you use ufw).
 
 The certificate arrives on its own a minute or so after the portal starts.
+
+### Your own reverse proxy (advanced)
+
+This is for people who already run a web server such as nginx, Caddy or Traefik, and
+want it in front of the portal. The portal serves plain HTTP on one port. Your proxy
+handles the web address and HTTPS, and forwards requests to it. The installer asks where
+your proxy runs (on this computer, or another one), which port the portal should listen
+on, and the address your proxy connects from.
+
+Your proxy needs to:
+
+1. Forward everything to `http://<server>:<port>`, where `<server>` is the computer the
+   portal runs on (`127.0.0.1` if the proxy is on the same computer).
+2. Pass the **Host** header on unchanged, so the portal sees the address people typed.
+3. Add the visitor's address to the **X-Forwarded-For** header (append it, don't replace
+   what is there).
+4. Send **X-Forwarded-Proto: https**.
+5. Allow request bodies of at least **25 MB**. Backups are uploaded in 16 MB pieces, and
+   the portal's own limit is 25 MB. Many proxies stop at 1 MB unless told otherwise.
+6. Serve your web address over **HTTPS**. The portal doesn't do that in this setup.
+
+Then tell the portal which address your proxy connects from (`TRUSTED_PROXY`, set by the
+installer). The portal believes `X-Forwarded-For` only from that address, and from no
+other. If you leave it blank, the portal can't tell your members apart: they all appear
+to come from the proxy, and share one limit of 50 failed sign-ins per 15 minutes. If you
+set it to the wrong address, the portal uses the proxy's address instead, so nothing
+breaks, but you get the same shared limit.
+
+To find the address: with `TRUSTED_PROXY` still blank, open the portal through your proxy,
+then run `./portal logs web`. The first number on each line is the address your proxy
+connects from. For a proxy on a server somewhere else, it is that server's public address
+(or its private one, if the two are on the same private network). For a proxy on the same
+computer the installer suggests `127.0.0.1,172.16.0.0/12`, because Docker shows local
+connections as coming from its own network. You can give a list separated by commas, and
+ranges such as `10.0.0.0/24`. To change it later, edit `TRUSTED_PROXY` in `portal.env` and
+run `./portal start`.
+
+If your proxy is on another computer, the portal listens on every network interface, so
+use a firewall to allow that port from your proxy's address only. Anyone else who can
+reach the port can bypass your proxy.
+
+An nginx example (inside a `server` block that already has your certificate):
+
+```nginx
+client_max_body_size 25m;
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+}
+```
+
+A Caddy example (Caddy sets the forwarding headers and gets the certificate by itself):
+
+```
+portal.example.org {
+    request_body {
+        max_size 25MB
+    }
+    reverse_proxy 127.0.0.1:8080
+}
+```
 
 ### Just this computer
 
@@ -297,7 +360,7 @@ from "just this computer" to a real web address):
 
 1. Run `./portal stop` first, while the file still describes the old setup.
 2. Delete the lines the change affects: `METHOD`, `DOMAIN`, `NEXTAUTH_URL` and
-   `TUNNEL_TOKEN`.
+   `TUNNEL_TOKEN` (and, for your own proxy, `APP_BIND`, `APP_PORT` and `TRUSTED_PROXY`).
 3. Run `./portal install` again. It only asks about what's missing and never changes
    your passwords.
 
@@ -340,7 +403,7 @@ needs with one set of steps.
 
 - Everything runs from `deploy/docker-compose.yml` with your `portal.env`: Postgres 16,
   the app, nginx in front of it (which shows a maintenance page while the app restarts),
-  a nightly backup job, and `cloudflared` or Caddy depending on `METHOD`. The scripts are
+  a nightly backup job, and `cloudflared` or Caddy depending on `METHOD` (neither runs for your own proxy). The scripts are
   thin wrappers around `docker compose`; you can run it directly with
   `docker compose --env-file portal.env -p portal -f deploy/docker-compose.yml --profile <cloudflare|caddy> …`.
 - Images come from `ghcr.io/maahir-ahmed/portal-app`, `-web` and `-backup`, for amd64 and
