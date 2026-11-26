@@ -12,6 +12,12 @@
 # connection to a published port arrives from a 172.x gateway, so keeping the bridge
 # would let anyone who can reach the port claim any client IP.
 #
+# The owner can still trust that range on purpose. On Docker Desktop the gateway is the
+# only address nginx ever sees, so a proxy's own address would never match and every
+# member would share one; ./portal suggests 172.16.0.0/12 there. That is safe only while
+# the port is reachable from the proxy alone (a firewall rule, or a private network such
+# as Tailscale), because anything else that reaches it can then set its own client IP.
+#
 # This is a config-injection boundary: the value ends up inside nginx config, so it is
 # checked here again even though ./portal checked it, and nothing but a validated
 # address is ever written. A bad value stops the container rather than falling back to

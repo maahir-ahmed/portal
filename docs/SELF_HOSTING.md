@@ -170,6 +170,16 @@ connections as coming from its own network. You can give a list separated by com
 ranges such as `10.0.0.0/24`. To change it later, edit `TRUSTED_PROXY` in `portal.env` and
 run `./portal start`.
 
+**On Docker Desktop (Windows or Mac)**, the proxy's own address never reaches the portal.
+Docker runs in a small virtual machine, so every connection looks like it comes from
+Docker's own network (an address starting with 172). Setting `TRUSTED_PROXY` to your
+proxy's address then does nothing, and every member shares one sign-in limit. Set it to
+`172.16.0.0/12` instead, which is what the installer suggests there. This is only safe
+if nothing but your proxy can reach the portal's port, because anything else that can
+reach it could then make up its own address. Use a firewall rule, or a private network
+such as Tailscale between the two computers. On Linux, Docker keeps the real address, so
+use the proxy's own address as above.
+
 If your proxy is on another computer, the portal listens on every network interface, so
 use a firewall to allow that port from your proxy's address only. Anyone else who can
 reach the port can bypass your proxy.
