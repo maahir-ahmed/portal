@@ -103,6 +103,15 @@ host_timezone() {
   printf '%s' "${tz:-UTC}"
 }
 
+# Trims the ends and the spaces around commas, nothing else. A space inside an address
+# stays, so validation refuses it: deleting it would save a different address ("1.2.3.4 5"
+# as 1.2.3.45). scripts/check-security.ts runs this function.
+trim_proxy_list() { printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/[[:space:]]*,[[:space:]]*/,/g'; }
+
+# Docker Desktop (Mac and Windows) runs Docker in a VM, so a connection to a published
+# port reaches nginx from the compose network's gateway, not from the sender's address.
+docker_desktop() { docker info --format '{{.OperatingSystem}}' 2>/dev/null </dev/null | grep -qi 'docker desktop'; }
+
 # The own-proxy method: where the proxy runs, which port it connects to, and which
 # address it connects from (TRUSTED_PROXY, which nginx in the web container trusts to
 # say who the real client is). Each is asked once; a re-run keeps what's in portal.env.
@@ -143,13 +152,22 @@ proxy_settings() {
       # the port is loopback-only, so trusting that whole range lets no one else in.
       def="127.0.0.1,172.16.0.0/12"
       say "For a proxy on this computer, the suggestion works. Type none to leave it blank."
+    elif docker_desktop; then
+      # The gateway is the only address nginx ever sees here, so the proxy's own address
+      # would never match. Trusting the range is only safe if nothing else can reach the port.
+      def="172.16.0.0/12"
+      say "Docker Desktop hides your proxy's real address: the portal sees every connection as"
+      say "coming from Docker's own network, so the suggestion trusts that range. That is only"
+      say "safe if just your proxy can reach port $(get APP_PORT) (a firewall rule, or a private"
+      say "network such as Tailscale): anything else that can reach it could set its own address."
+      say "Type none to leave it blank."
     else
       say "Leave it blank if you're not sure; docs/SELF_HOSTING.md shows how to find it."
     fi
     while :; do
       trusted="$(ask "Address your proxy connects from" "$def")"
       [ "$trusted" != none ] || trusted=""
-      trusted="$(printf '%s' "$trusted" | tr -d ' \t')"
+      trusted="$(trim_proxy_list "$trusted")"
       [ -z "$trusted" ] && break
       # The same script the web container runs at start, so the two can't disagree.
       check="$(mktemp)"

@@ -220,6 +220,16 @@ function Test-ProxyList([string]$list) {
   return $true
 }
 
+# Docker Desktop (Mac and Windows) runs Docker in a VM, so a connection to a published
+# port reaches nginx from the compose network's gateway, not from the sender's address.
+function Docker-Desktop {
+  $old = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  $os = ""
+  try { $os = (& docker info --format "{{.OperatingSystem}}" 2> $null) -join "" } catch { }
+  $ErrorActionPreference = $old
+  return [bool]($os -match "(?i)docker desktop")
+}
+
 # The own-proxy method: where the proxy runs, which port it connects to, and which
 # address it connects from (TRUSTED_PROXY, which nginx in the web container trusts to
 # say who the real client is). Each is asked once; a re-run keeps what's in portal.env.
@@ -259,13 +269,24 @@ function Proxy-Settings {
       # the port is loopback-only, so trusting that whole range lets no one else in.
       $def = "127.0.0.1,172.16.0.0/12"
       Say "For a proxy on this computer, the suggestion works. Type none to leave it blank."
+    } elseif (Docker-Desktop) {
+      # The gateway is the only address nginx ever sees here, so the proxy's own address
+      # would never match. Trusting the range is only safe if nothing else can reach the port.
+      $def = "172.16.0.0/12"
+      Say "Docker Desktop hides your proxy's real address: the portal sees every connection as"
+      Say "coming from Docker's own network, so the suggestion trusts that range. That is only"
+      Say "safe if just your proxy can reach port $(Get-Setting 'APP_PORT') (a firewall rule, or a private"
+      Say "network such as Tailscale): anything else that can reach it could set its own address."
+      Say "Type none to leave it blank."
     } else {
       Say "Leave it blank if you're not sure; docs/SELF_HOSTING.md shows how to find it."
     }
     while ($true) {
       $trusted = Ask "Address your proxy connects from" $def
       if ($trusted -eq "none") { $trusted = "" }
-      $trusted = $trusted -replace "\s", ""
+      # Only the ends and the spaces around commas: a space inside an address must fail
+      # the check below, not be deleted into a different address.
+      $trusted = ($trusted -replace "\s*,\s*", ",").Trim()
       if (-not $trusted) { break }
       if (Test-ProxyList $trusted) { break }
       Say "That isn't a list of IP addresses or ranges (such as 203.0.113.7 or 10.0.0.0/24)."

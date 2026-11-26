@@ -203,7 +203,7 @@ const trustedProxyScript = (value: string) => {
   }
 };
 for (const bad of [
-  "1.2.3.4; include /etc/passwd", "1.2.3.4;", "1.2.3.4\ninclude /etc/passwd", "1.2.3.4\r", "{1.2.3.4}", "1.2.3.4 }", "1.2.3.4, 5.6.7.8",
+  "1.2.3.4; include /etc/passwd", "1.2.3.4 5", "1.2.3.4;", "1.2.3.4\ninclude /etc/passwd", "1.2.3.4\r", "{1.2.3.4}", "1.2.3.4 }", "1.2.3.4, 5.6.7.8",
   " 1.2.3.4", "proxy.example.org", "localhost", "$(id)", "1.2.3.4,", ",1.2.3.4", "1.2.3.4,,5.6.7.8", "999.1.1.1", "1.2.3", "1.2.3.4.5", "01.2.3.4",
   "1.2.3.4/33", "1.2.3.4/", "1.2.3.4/8/8", "1.2.3.4/-1", "2001:db8::/129", "2001:db8::1::2", ":1:2:3:4:5:6:7", "1:2:3:4:5:6:7", "1:2:3:4:5:6:7:8:9",
   "12345::1", "::g", ":::", "any", "all",
@@ -224,6 +224,22 @@ for (const good of ["1.2.3.4", "203.0.113.7,10.0.0.0/8", "0.0.0.0/0", "255.255.2
   assert.match(r.conf, /real_ip_header X-Forwarded-For;\nreal_ip_recursive on;\n$/);
   assert.equal(r.conf.includes("CF-Connecting-IP"), false, "only one real_ip_header, or nginx won't start");
 }
+// What the installer does to a typed answer before checking it (the real function, read
+// out of ./portal; portal.ps1's twin can't run here and is traced by hand). Only the ends
+// and the spaces around commas go: a space inside an address must survive to be refused,
+// not be deleted into a different address.
+const trimmed = (typed: string) => {
+  const fn = /^trim_proxy_list\(\).*$/m.exec(readFileSync("portal", "utf8"))?.[0];
+  assert.ok(fn, "portal still defines trim_proxy_list");
+  return spawnSync("bash", ["-c", `${fn}\ntrim_proxy_list "$1"`, "_", typed], { encoding: "utf8" }).stdout;
+};
+assert.equal(trimmed(" 203.0.113.7 , 10.0.0.0/8 "), "203.0.113.7,10.0.0.0/8");
+assert.equal(trustedProxyScript(trimmed(" 203.0.113.7 , 10.0.0.0/8 ")).ok, true);
+for (const typed of ["1.2.3.4 5", "1.2.3.4 ,5 6", "10.0.0.0 /8", "1.2.3.4\t5"]) {
+  assert.equal(trustedProxyScript(trimmed(typed)).ok, false, `${JSON.stringify(typed)} must be refused after trimming, not repaired`);
+}
+assert.ok(readFileSync("portal.ps1", "utf8").includes('($trusted -replace "\\s*,\\s*", ",").Trim()'), "portal.ps1 trims the same way");
+
 // Unset: the file nginx has always had (bridge trust, CF-Connecting-IP).
 const unset = trustedProxyScript("");
 assert.equal(unset.ok, true);
